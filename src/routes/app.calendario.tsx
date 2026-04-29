@@ -46,10 +46,27 @@ const DOW = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 type Filter = "all" | "wins" | "losses";
 
 function CalendarioPage() {
-  const today = new Date();
-  const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  // Avoid SSR/CSR mismatch: initialize date-dependent state on the client.
+  const [today, setToday] = useState<Date | null>(null);
+  const [cursor, setCursor] = useState<Date | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<DayData | null>(null);
+
+  if (typeof window !== "undefined" && !today) {
+    // Will trigger an immediate state set on first client render
+  }
+  // Initialize once on mount
+  if (!today && typeof window !== "undefined") {
+    const d = new Date();
+    // setState in render is safe only via effect; use a microtask
+    queueMicrotask(() => {
+      setToday(d);
+      setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+    });
+  }
+  if (!today || !cursor) {
+    return <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 text-sm text-muted-foreground">Cargando calendario…</div>;
+  }
 
   const data = useMemo(() => generateMonthData(cursor.getFullYear(), cursor.getMonth()), [cursor]);
 
