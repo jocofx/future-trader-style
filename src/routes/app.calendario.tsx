@@ -58,11 +58,11 @@ function CalendarioPage() {
     setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
   }, []);
 
-  if (!today || !cursor) {
-    return <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 text-sm text-muted-foreground">Cargando calendario…</div>;
-  }
+  // Fallback for first SSR/CSR render — keeps hook order stable.
+  const safeCursor = cursor ?? new Date(2026, 3, 1);
+  const safeToday = today ?? safeCursor;
 
-  const data = useMemo(() => generateMonthData(cursor.getFullYear(), cursor.getMonth()), [cursor]);
+  const data = useMemo(() => generateMonthData(safeCursor.getFullYear(), safeCursor.getMonth()), [safeCursor]);
 
   const stats = useMemo(() => {
     const days = Object.values(data);
