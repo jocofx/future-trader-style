@@ -96,7 +96,7 @@ function CalendarioPage() {
     const weeks: (typeof cells)[] = [];
     for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
     return weeks;
-  }, [cursor]);
+  }, [safeCursor]);
 
   const weekTotals = useMemo(() => {
     return grid.map((week) => {
