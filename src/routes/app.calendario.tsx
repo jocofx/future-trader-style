@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Target, Activity, X, Calendar as CalendarIcon,
 } from "lucide-react";
