@@ -1,268 +1,223 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import {
-  Sunrise, Calendar, Newspaper, Target, AlertTriangle, CheckSquare,
-  Square, TrendingUp, TrendingDown, Globe, Bell, Flame, Clock, Bookmark,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { Sunrise, ChevronLeft, ChevronRight, Check, Save } from "lucide-react";
+import { useApp } from "@/context/AppContext";
 
 export const Route = createFileRoute("/app/premarket")({
-  head: () => ({
-    meta: [
-      { title: "Pre-Market · Tradync" },
-      { name: "description", content: "Prepara tu sesión: noticias, calendario económico, watchlist y plan diario." },
-    ],
-  }),
   component: PremarketPage,
 });
 
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-border bg-surface/60 backdrop-blur-xl p-5 ${className}`}>{children}</div>;
-}
-
-function SectionTitle({ icon: Icon, children, hint }: { icon: any; children: React.ReactNode; hint?: string }) {
-  return (
-    <div className="flex items-center justify-between mb-3">
-      <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-semibold tracking-tight">{children}</h2>
-      </div>
-      {hint && <span className="text-[11px] text-muted-foreground font-mono">{hint}</span>}
-    </div>
-  );
-}
-
-const SESSIONS = [
-  { name: "Sídney",   open: "21:00", close: "06:00", status: "closed",  flag: "🇦🇺" },
-  { name: "Tokio",    open: "00:00", close: "09:00", status: "closed",  flag: "🇯🇵" },
-  { name: "Londres",  open: "07:00", close: "16:00", status: "active",  flag: "🇬🇧" },
-  { name: "Nueva York", open: "13:30", close: "20:00", status: "soon",  flag: "🇺🇸" },
+const CHECKLIST_ITEMS = [
+  "He revisado el calendario económico",
+  "He identificado niveles clave (soporte/resistencia)",
+  "Conozco mi sesgo del día (alcista/bajista/neutral)",
+  "He definido mi máximo de pérdida del día",
+  "He descansado bien (mínimo 6h de sueño)",
+  "No tengo distracciones ni estrés externo relevante",
+  "He revisado operaciones abiertas (si las hay)",
+  "Tengo claro qué setups voy a buscar hoy",
 ];
 
-const NEWS = [
-  { time: "14:30", impact: "high",   title: "CPI YoY (USA)",         forecast: "3.2%", previous: "3.4%", currency: "USD" },
-  { time: "16:00", impact: "high",   title: "Powell speech",         forecast: "—",    previous: "—",    currency: "USD" },
-  { time: "10:00", impact: "medium", title: "ECB Lagarde",           forecast: "—",    previous: "—",    currency: "EUR" },
-  { time: "08:30", impact: "low",    title: "Retail Sales (UK)",     forecast: "0.4%", previous: "0.2%", currency: "GBP" },
-  { time: "23:50", impact: "medium", title: "GDP QoQ (Japan)",       forecast: "0.3%", previous: "0.1%", currency: "JPY" },
-];
-
-const HEADLINES = [
-  { src: "Reuters",     time: "07:42", title: "Fed officials hint at slower rate cut path amid sticky inflation", tag: "Macro" },
-  { src: "Bloomberg",   time: "07:15", title: "Oil rallies above $84 as Middle East tensions escalate",            tag: "Commodities" },
-  { src: "FT",          time: "06:58", title: "Nvidia hits new all-time high after AI chip demand surge",          tag: "Equities" },
-  { src: "WSJ",         time: "06:30", title: "Bitcoin tests $96k as institutional inflows accelerate",            tag: "Crypto" },
-];
-
-const WATCHLIST = [
-  { sym: "EURUSD", price: 1.0842, ch: 0.18,  bias: "bullish", note: "Rompe resistencia 1.0830 con volumen" },
-  { sym: "GBPJPY", price: 198.42, ch: -0.34, bias: "bearish", note: "Rechazo en zona supply 199.00" },
-  { sym: "XAUUSD", price: 2418.5, ch: 0.62,  bias: "bullish", note: "Continuación alcista, target 2440" },
-  { sym: "NAS100", price: 18420,  ch: 0.41,  bias: "neutral", note: "Esperar confirmación de NY Open" },
-  { sym: "BTCUSD", price: 96320,  ch: 1.24,  bias: "bullish", note: "Breakout limpio, RR 1:3" },
-];
-
-const INITIAL_CHECKLIST = [
-  { id: "c1", label: "Revisar calendario económico del día",   done: true  },
-  { id: "c2", label: "Leer titulares macro relevantes",        done: true  },
-  { id: "c3", label: "Marcar zonas clave en gráficos H4/D1",   done: false },
-  { id: "c4", label: "Definir bias por activo de la watchlist", done: false },
-  { id: "c5", label: "Confirmar tamaño de posición y SL/TP",   done: false },
-  { id: "c6", label: "Estado mental: descansado, sin tilt",    done: true  },
-  { id: "c7", label: "Bloquear distracciones (móvil, redes)",  done: false },
-];
+const DAYS = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 function PremarketPage() {
-  const [checklist, setChecklist] = useState(INITIAL_CHECKLIST);
-  const [today, setToday] = useState<string>("");
+  const { premarket: { plans, checklistState, load, savePlan, saveChecklist, getPlan, getChecklist } } = useApp();
 
+  const today = new Date().toISOString().slice(0, 10);
+  const [year, setYear]   = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth());
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [checks, setChecks]   = useState<boolean[]>(Array(CHECKLIST_ITEMS.length).fill(false));
+  const [sesgo, setSesgo]     = useState("");
+  const [niveles, setNiveles] = useState("");
+  const [noHacer, setNoHacer] = useState("");
+  const [notas, setNotas]     = useState("");
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+
+  // Load month data when month changes
+  useEffect(() => { load(year, month); }, [year, month]);
+
+  // Load selected day data
   useEffect(() => {
-    setToday(new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }));
-  }, []);
+    const plan = getPlan(selectedDate);
+    setSesgo(plan?.sesgo ?? "");
+    setNiveles(plan?.niveles ?? "");
+    setNoHacer(plan?.no_hacer ?? "");
+    setNotas(plan?.notas ?? "");
+    const cl = getChecklist(selectedDate);
+    setChecks(CHECKLIST_ITEMS.map((_, i) => cl[i] ?? false));
+  }, [selectedDate, plans, checklistState]);
 
-  const toggle = (id: string) => setChecklist((c) => c.map((it) => (it.id === id ? { ...it, done: !it.done } : it)));
-  const done = checklist.filter((c) => c.done).length;
-  const pct = Math.round((done / checklist.length) * 100);
+  const toggleCheck = async (i: number) => {
+    const next = [...checks];
+    next[i] = !next[i];
+    setChecks(next);
+    await saveChecklist(selectedDate, next);
+  };
 
-  const impactCls = (i: string) =>
-    i === "high"   ? "bg-destructive/10 text-destructive border-destructive/25" :
-    i === "medium" ? "bg-warning/10 text-warning border-warning/25" :
-                     "bg-info/10 text-info border-info/25";
+  const handleSave = async () => {
+    setSaving(true);
+    await savePlan(selectedDate, { sesgo, niveles, no_hacer: noHacer, notas });
+    await saveChecklist(selectedDate, checks);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
 
-  const sessionCls = (s: string) =>
-    s === "active" ? "border-success/40 bg-success/5"  :
-    s === "soon"   ? "border-warning/40 bg-warning/5"   :
-                     "border-border bg-surface-2/40";
+  // Calendar grid
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const offset = firstDay === 0 ? 6 : firstDay - 1;
+  const cells = Array(offset).fill(null).concat(Array.from({ length: daysInMonth }, (_, i) => i + 1));
+  const checkedCount = checks.filter(Boolean).length;
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
-            <Sunrise className="h-3.5 w-3.5 text-primary" />
-            Pre-Market
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight capitalize">{today || "Cargando…"}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Prepara tu sesión antes de abrir el primer trade.
-          </p>
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 grid place-items-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+          <Sunrise className="h-5 w-5" />
         </div>
-        <button className="flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition shadow-[0_0_20px_color-mix(in_oklab,var(--primary)_35%,transparent)]">
-          <Bookmark className="h-3.5 w-3.5" /> Guardar plan diario
-        </button>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Pre-Market</h1>
+          <p className="text-sm text-muted-foreground">Plan del día y checklist de preparación</p>
+        </div>
       </div>
 
-      {/* Sessions */}
-      <Card>
-        <SectionTitle icon={Globe} hint="Hora local UTC+1">Sesiones de mercado</SectionTitle>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {SESSIONS.map((s) => (
-            <div key={s.name} className={`rounded-xl border p-3 transition ${sessionCls(s.status)}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{s.flag}</span>
-                  <div className="text-sm font-semibold">{s.name}</div>
-                </div>
-                {s.status === "active" && (
-                  <span className="flex items-center gap-1 text-[10px] font-mono text-success">
-                    <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> LIVE
-                  </span>
-                )}
-                {s.status === "soon" && <span className="text-[10px] font-mono text-warning">PRONTO</span>}
-                {s.status === "closed" && <span className="text-[10px] font-mono text-muted-foreground">CERRADA</span>}
-              </div>
-              <div className="mt-2 text-[11px] text-muted-foreground font-mono">{s.open} → {s.close}</div>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
+        {/* Calendar */}
+        <div className="rounded-2xl border border-border bg-card/60 backdrop-blur overflow-hidden">
+          {/* Month nav */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <button onClick={() => { if (month === 0) { setMonth(11); setYear(y => y-1); } else setMonth(m => m-1); }}
+              className="p-1.5 rounded-lg hover:bg-surface transition text-muted-foreground hover:text-foreground">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="text-sm font-semibold">{MONTHS[month]} {year}</div>
+            <button onClick={() => { if (month === 11) { setMonth(0); setYear(y => y+1); } else setMonth(m => m+1); }}
+              className="p-1.5 rounded-lg hover:bg-surface transition text-muted-foreground hover:text-foreground">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
 
-      <div className="grid lg:grid-cols-[1.1fr_1fr] gap-5">
-        {/* Calendar + News */}
-        <div className="space-y-5">
-          <Card>
-            <SectionTitle icon={Calendar} hint={`${NEWS.length} eventos hoy`}>Calendario económico</SectionTitle>
-            <div className="space-y-2">
-              {NEWS.sort((a, b) => a.time.localeCompare(b.time)).map((n, i) => (
-                <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-surface-2/60 p-3 hover:border-primary/30 transition">
-                  <div className="text-xs font-mono text-muted-foreground w-12 shrink-0">{n.time}</div>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 ${impactCls(n.impact)}`}>
-                    {n.impact === "high" ? "Alto" : n.impact === "medium" ? "Medio" : "Bajo"}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{n.title}</div>
-                    <div className="text-[10px] text-muted-foreground font-mono">
-                      {n.currency} · Forecast {n.forecast} · Prev {n.previous}
-                    </div>
-                  </div>
-                  <button className="text-muted-foreground hover:text-primary transition shrink-0">
-                    <Bell className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </Card>
+          {/* Day headers */}
+          <div className="grid grid-cols-7 px-2 pt-2">
+            {DAYS.map(d => <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-1">{d}</div>)}
+          </div>
 
-          <Card>
-            <SectionTitle icon={Newspaper} hint="Top headlines">Noticias del día</SectionTitle>
-            <ul className="space-y-2.5">
-              {HEADLINES.map((h, i) => (
-                <li key={i} className="flex items-start gap-3 rounded-xl border border-border bg-surface-2/60 p-3 hover:border-primary/30 transition cursor-pointer">
-                  <div className="h-9 w-9 grid place-items-center rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0">
-                    <Flame className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium">{h.title}</div>
-                    <div className="text-[10px] text-muted-foreground font-mono mt-0.5 flex items-center gap-2">
-                      <span>{h.src}</span>·<span><Clock className="inline h-2.5 w-2.5 mr-1" />{h.time}</span>·
-                      <span className="text-primary">#{h.tag}</span>
+          {/* Days */}
+          <div className="grid grid-cols-7 gap-1 p-2">
+            {cells.map((day, i) => {
+              if (!day) return <div key={i} />;
+              const dateStr = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+              const hasPlan = !!getPlan(dateStr);
+              const cl = getChecklist(dateStr);
+              const clCount = cl.filter(Boolean).length;
+              const isToday = dateStr === today;
+              const isSelected = dateStr === selectedDate;
+
+              return (
+                <button key={i} onClick={() => setSelectedDate(dateStr)}
+                  className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition relative
+                    ${isSelected ? "bg-primary text-primary-foreground shadow-glow" :
+                      isToday ? "border border-primary text-primary" :
+                      hasPlan ? "bg-success/10 border border-success/20 text-foreground" :
+                      "hover:bg-surface text-muted-foreground"}`}>
+                  <span className="font-semibold">{day}</span>
+                  {clCount > 0 && !isSelected && (
+                    <div className="absolute bottom-0.5 flex gap-0.5">
+                      {Array.from({length: Math.min(clCount, 4)}).map((_,j) =>
+                        <div key={j} className="w-0.5 h-0.5 rounded-full bg-success" />
+                      )}
                     </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Card>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Checklist progress for selected day */}
+          <div className="px-4 pb-4">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+              <span>Checklist de hoy</span>
+              <span className="font-mono">{checkedCount}/{CHECKLIST_ITEMS.length}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-primary transition-all"
+                style={{ width: `${(checkedCount/CHECKLIST_ITEMS.length)*100}%` }} />
+            </div>
+          </div>
         </div>
 
-        {/* Watchlist + Checklist */}
-        <div className="space-y-5">
-          <Card>
-            <SectionTitle icon={Target} hint={`${WATCHLIST.length} activos`}>Watchlist del día</SectionTitle>
+        {/* Right panel */}
+        <div className="space-y-4">
+          {/* Date label */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold text-muted-foreground">
+              {selectedDate === today ? "Hoy — " : ""}{new Date(selectedDate+"T12:00:00").toLocaleDateString("es", { weekday:"long", day:"numeric", month:"long" })}
+            </div>
+            <button onClick={handleSave} disabled={saving}
+              className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow hover:brightness-110 transition disabled:opacity-50">
+              {saved ? <><Check className="h-4 w-4" /> Guardado</> : saving ? "Guardando..." : <><Save className="h-4 w-4" /> Guardar plan</>}
+            </button>
+          </div>
+
+          {/* Checklist */}
+          <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5">
+            <div className="text-sm font-semibold mb-4">Checklist Pre-Market</div>
             <div className="space-y-2">
-              {WATCHLIST.map((w) => {
-                const up = w.ch >= 0;
-                const biasCls =
-                  w.bias === "bullish" ? "text-success bg-success/10 border-success/25" :
-                  w.bias === "bearish" ? "text-destructive bg-destructive/10 border-destructive/25" :
-                                         "text-muted-foreground bg-surface-3 border-border";
-                return (
-                  <div key={w.sym} className="rounded-xl border border-border bg-surface-2/60 p-3 hover:border-primary/30 transition">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="font-mono text-sm font-bold tracking-tight">{w.sym}</div>
-                        <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${biasCls}`}>
-                          {w.bias}
-                        </span>
-                      </div>
-                      <div className={`flex items-center gap-1 text-xs font-mono font-semibold ${up ? "text-success" : "text-destructive"}`}>
-                        {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                        {up ? "+" : ""}{w.ch.toFixed(2)}%
-                      </div>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <div className="text-[11px] text-muted-foreground truncate">{w.note}</div>
-                      <div className="text-xs font-mono text-foreground/80 ml-2 shrink-0">{w.price.toLocaleString()}</div>
-                    </div>
+              {CHECKLIST_ITEMS.map((item, i) => (
+                <button key={i} onClick={() => toggleCheck(i)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition
+                    ${checks[i] ? "bg-success/8 border-success/20" : "bg-surface/40 border-border hover:border-border-strong"}`}>
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition
+                    ${checks[i] ? "bg-success border-success" : "border-muted-foreground/40"}`}>
+                    {checks[i] && <Check className="h-3 w-3 text-white" />}
                   </div>
-                );
-              })}
-            </div>
-          </Card>
-
-          <Card>
-            <SectionTitle icon={CheckSquare} hint={`${done}/${checklist.length} completados`}>
-              Checklist pre-trade
-            </SectionTitle>
-
-            <div className="mb-4">
-              <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary-glow transition-all"
-                  style={{ width: `${pct}%`, boxShadow: "0 0 10px color-mix(in oklab, var(--primary) 40%, transparent)" }}
-                />
-              </div>
-              <div className="text-[10px] font-mono text-muted-foreground mt-1">{pct}% listo para operar</div>
-            </div>
-
-            <ul className="space-y-1.5">
-              {checklist.map((c) => (
-                <li key={c.id}>
-                  <button
-                    onClick={() => toggle(c.id)}
-                    className={`w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition ${
-                      c.done ? "text-muted-foreground line-through" : "hover:bg-surface-2"
-                    }`}
-                  >
-                    {c.done
-                      ? <CheckSquare className="h-4 w-4 text-primary shrink-0" />
-                      : <Square className="h-4 w-4 text-muted-foreground shrink-0" />}
-                    <span className="flex-1">{c.label}</span>
-                  </button>
-                </li>
+                  <span className={`text-sm ${checks[i] ? "text-foreground line-through text-muted-foreground" : "text-foreground"}`}>
+                    {item}
+                  </span>
+                </button>
               ))}
-            </ul>
+            </div>
+          </div>
 
-            {pct === 100 && (
-              <div className="mt-4 flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 text-success p-2.5 text-xs font-medium">
-                <CheckSquare className="h-4 w-4" /> Listo para operar. ¡Buena sesión!
+          {/* Plan del día */}
+          <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5">
+            <div className="text-sm font-semibold mb-4">Plan del día</div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Sesgo del día</label>
+                <div className="flex gap-2 mt-1.5">
+                  {["Alcista 📈","Bajista 📉","Neutral ↔️"].map(s => (
+                    <button key={s} onClick={() => setSesgo(s)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${sesgo === s ? "bg-primary/15 text-primary border-primary/25" : "bg-surface/60 border-border text-muted-foreground hover:text-foreground"}`}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                <input value={sesgo} onChange={e => setSesgo(e.target.value)} placeholder="O escribe tu sesgo..."
+                  className="mt-2 w-full bg-surface/70 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground" />
               </div>
-            )}
-            {pct < 100 && pct >= 50 && (
-              <div className="mt-4 flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 text-warning p-2.5 text-xs font-medium">
-                <AlertTriangle className="h-4 w-4" /> Completa el checklist antes de abrir posiciones.
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Niveles clave</label>
+                <textarea value={niveles} onChange={e => setNiveles(e.target.value)} rows={2} placeholder="Soporte en 1.0820, resistencia en 1.0850..."
+                  className="mt-1.5 w-full bg-surface/70 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground resize-none" />
               </div>
-            )}
-          </Card>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Lo que NO voy a hacer hoy</label>
+                <textarea value={noHacer} onChange={e => setNoHacer(e.target.value)} rows={2} placeholder="No operar en la apertura, no entrar sin confirmación..."
+                  className="mt-1.5 w-full bg-surface/70 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground resize-none" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Notas adicionales</label>
+                <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2} placeholder="Contexto macro, eventos importantes..."
+                  className="mt-1.5 w-full bg-surface/70 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground resize-none" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

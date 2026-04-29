@@ -1,256 +1,237 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import {
-  CheckCircle2, Flame, Plus, Trophy, TrendingUp, Brain, Dumbbell,
-  BookOpen, Moon, Coffee, Target, Sparkles, Calendar as CalIcon,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Moon, Dumbbell, Brain, Wine } from "lucide-react";
+import { useApp } from "@/context/AppContext";
 
 export const Route = createFileRoute("/app/habitos")({
-  head: () => ({
-    meta: [
-      { title: "Hábitos · Tradync" },
-      { name: "description", content: "Construye disciplina: hábitos diarios, rachas y consistencia del trader." },
-    ],
-  }),
   component: HabitosPage,
 });
 
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-border bg-surface/60 backdrop-blur-xl p-5 ${className}`}>{children}</div>;
-}
+const DAYS    = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+const MONTHS  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-type Habit = {
-  id: string;
-  name: string;
-  icon: any;
-  category: "Mental" | "Físico" | "Trading" | "Bienestar";
-  streak: number;
-  best: number;
-  /** últimos 21 días, 1 = hecho, 0 = no */
-  history: number[];
-};
-
-function gen(seed: number, density: number): number[] {
-  let s = seed;
-  return Array.from({ length: 21 }, () => {
-    s = (s * 9301 + 49297) % 233280;
-    return s / 233280 < density ? 1 : 0;
-  });
-}
-
-const INITIAL: Habit[] = [
-  { id: "h1", name: "Meditar 10 min",        icon: Brain,    category: "Mental",    streak: 12, best: 28, history: gen(11, 0.85) },
-  { id: "h2", name: "Journal post-sesión",   icon: BookOpen, category: "Trading",   streak: 6,  best: 18, history: gen(22, 0.78) },
-  { id: "h3", name: "Ejercicio 30 min",      icon: Dumbbell, category: "Físico",    streak: 4,  best: 21, history: gen(33, 0.66) },
-  { id: "h4", name: "Dormir 7h+",            icon: Moon,     category: "Bienestar", streak: 9,  best: 15, history: gen(44, 0.80) },
-  { id: "h5", name: "Sin café tras 14h",     icon: Coffee,   category: "Bienestar", streak: 3,  best: 11, history: gen(55, 0.60) },
-  { id: "h6", name: "Revisar plan semanal",  icon: Target,   category: "Trading",   streak: 2,  best: 7,  history: gen(66, 0.55) },
+const CORE_HABITS = [
+  { key: "sueno",      label: "Sueño",      icon: Moon,        unit: "h",   max: 10, color: "text-blue" },
+  { key: "ejercicio",  label: "Ejercicio",  icon: Dumbbell,    unit: "min", max: 120, color: "text-success" },
+  { key: "meditacion", label: "Meditación", icon: Brain,       unit: "min", max: 60,  color: "text-purple" },
+  { key: "alcohol",    label: "Alcohol",    icon: Wine,        unit: "u",   max: 5,   color: "text-warning", inverse: true },
 ];
 
-const CAT_COLORS: Record<Habit["category"], string> = {
-  Mental:    "text-info bg-info/10 border-info/25",
-  Trading:   "text-primary bg-primary/10 border-primary/25",
-  Físico:    "text-warning bg-warning/10 border-warning/25",
-  Bienestar: "text-success bg-success/10 border-success/25",
-};
-
 function HabitosPage() {
-  const [habits, setHabits] = useState(INITIAL);
-  const [todayDone, setTodayDone] = useState<Record<string, boolean>>({
-    h1: true, h2: false, h4: true, h6: false,
+  const { habits: { habits, load, save, getForDate } } = useApp();
+
+  const today = new Date().toISOString().slice(0, 10);
+  const [year, setYear]   = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth());
+  const [selected, setSelected] = useState(today);
+  const [values, setValues]     = useState<Record<string, number>>({});
+  const [saving, setSaving]     = useState(false);
+  const [saved, setSaved]       = useState(false);
+
+  useEffect(() => { load(year, month); }, [year, month]);
+
+  useEffect(() => {
+    const h = getForDate(selected);
+    setValues({
+      sueno:      h?.sueno      ?? 0,
+      ejercicio:  h?.ejercicio  ?? 0,
+      meditacion: h?.meditacion ?? 0,
+      alcohol:    h?.alcohol    ?? 0,
+    });
+  }, [selected, habits]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await save(selected, values);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  // Calendar grid
+  const firstDay    = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const offset = firstDay === 0 ? 6 : firstDay - 1;
+  const cells  = Array(offset).fill(null).concat(Array.from({ length: daysInMonth }, (_, i) => i + 1));
+
+  // Score calculation for a day
+  const getScore = (h: ReturnType<typeof getForDate>) => {
+    if (!h) return 0;
+    let score = 0;
+    if ((h.sueno ?? 0) >= 7) score++;
+    if ((h.ejercicio ?? 0) >= 30) score++;
+    if ((h.meditacion ?? 0) >= 10) score++;
+    if ((h.alcohol ?? 0) === 0) score++;
+    return score;
+  };
+
+  // Monthly stats
+  const monthHabits = habits.filter(h => {
+    const d = new Date(h.fecha);
+    return d.getMonth() === month && d.getFullYear() === year;
   });
+  const avgSueno     = monthHabits.length ? (monthHabits.reduce((s,h) => s+(h.sueno??0),0)/monthHabits.length).toFixed(1) : "—";
+  const daysExercise = monthHabits.filter(h => (h.ejercicio??0) >= 30).length;
+  const daysNoAlc    = monthHabits.filter(h => (h.alcohol??0) === 0).length;
+  const avgScore     = monthHabits.length ? (monthHabits.reduce((s,h) => s+getScore(h),0)/monthHabits.length).toFixed(1) : "—";
 
-  const toggle = (id: string) => setTodayDone((m) => ({ ...m, [id]: !m[id] }));
-
-  const totalDoneToday = Object.values(todayDone).filter(Boolean).length;
-  const totalHabits = habits.length;
-  const pctToday = Math.round((totalDoneToday / totalHabits) * 100);
-  const longestStreak = Math.max(...habits.map((h) => h.streak));
-  const totalChecks = habits.reduce((s, h) => s + h.history.reduce((a, b) => a + b, 0), 0);
-  const consistency = Math.round((totalChecks / (habits.length * 21)) * 100);
+  const scoreColor = (s: number) =>
+    s === 4 ? "bg-success/80" : s === 3 ? "bg-success/40" : s === 2 ? "bg-warning/40" : s === 1 ? "bg-destructive/20" : "";
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
-            <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-            Hábitos
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Disciplina diaria del trader</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            La consistencia es el verdadero edge. Construye hábitos que te hagan rentable a largo plazo.
-          </p>
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 grid place-items-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+          <CheckCircle2 className="h-5 w-5" />
         </div>
-        <button className="flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition shadow-[0_0_20px_color-mix(in_oklab,var(--primary)_35%,transparent)]">
-          <Plus className="h-3.5 w-3.5" /> Nuevo hábito
-        </button>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Hábitos</h1>
+          <p className="text-sm text-muted-foreground">Seguimiento de hábitos y bienestar</p>
+        </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Month stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Hoy", value: `${totalDoneToday}/${totalHabits}`, sub: `${pctToday}% completado`, Icon: CheckCircle2, tone: "text-primary" },
-          { label: "Mejor racha", value: `${longestStreak} días`, sub: "Activa ahora", Icon: Flame, tone: "text-warning" },
-          { label: "Consistencia 21d", value: `${consistency}%`, sub: `${totalChecks} checks`, Icon: TrendingUp, tone: "text-success" },
-          { label: "XP semanal", value: "+340", sub: "Nivel 12 → 13", Icon: Trophy, tone: "text-info" },
-        ].map((k) => (
-          <Card key={k.label}>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{k.label}</div>
-                <div className={`text-2xl font-bold font-mono mt-1 ${k.tone}`}>{k.value}</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{k.sub}</div>
-              </div>
-              <div className="h-9 w-9 grid place-items-center rounded-lg bg-primary/10 text-primary border border-primary/20">
-                <k.Icon className="h-4 w-4" />
-              </div>
-            </div>
-          </Card>
+          { label: "Sueño medio",    value: avgSueno+"h",          color: "text-info" },
+          { label: "Días ejercicio", value: daysExercise+" días",  color: "text-success" },
+          { label: "Días sin alcohol", value: daysNoAlc+" días",   color: "text-warning" },
+          { label: "Puntuación media", value: avgScore+"/4",       color: "text-primary" },
+        ].map(s => (
+          <div key={s.label} className="rounded-2xl border border-border bg-card/60 backdrop-blur p-4 text-center">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{s.label}</div>
+            <div className={`text-2xl font-bold font-mono ${s.color}`}>{s.value}</div>
+          </div>
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-[1.4fr_1fr] gap-5">
-        {/* Habits list with 21-day grid */}
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <CalIcon className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-semibold tracking-tight">Tus hábitos</h2>
-            </div>
-            <div className="text-[11px] text-muted-foreground font-mono">Últimos 21 días</div>
+      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
+        {/* Calendar */}
+        <div className="rounded-2xl border border-border bg-card/60 backdrop-blur overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <button onClick={() => { if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1); }}
+              className="p-1.5 rounded-lg hover:bg-surface transition text-muted-foreground hover:text-foreground">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="text-sm font-semibold">{MONTHS[month]} {year}</div>
+            <button onClick={() => { if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1); }}
+              className="p-1.5 rounded-lg hover:bg-surface transition text-muted-foreground hover:text-foreground">
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
-
-          <ul className="space-y-2.5">
-            {habits.map((h) => {
-              const Icon = h.icon;
-              const isDone = !!todayDone[h.id];
+          <div className="grid grid-cols-7 px-2 pt-2">
+            {DAYS.map(d => <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-1">{d}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1 p-2">
+            {cells.map((day, i) => {
+              if (!day) return <div key={i} />;
+              const dateStr = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+              const h = getForDate(dateStr);
+              const score = getScore(h);
+              const isToday    = dateStr === today;
+              const isSelected = dateStr === selected;
               return (
-                <li key={h.id} className="rounded-xl border border-border bg-surface-2/60 p-3 hover:border-primary/30 transition">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => toggle(h.id)}
-                      className={`h-10 w-10 grid place-items-center rounded-xl border transition shrink-0 ${
-                        isDone
-                          ? "bg-primary/15 text-primary border-primary/40 shadow-[0_0_12px_color-mix(in_oklab,var(--primary)_35%,transparent)]"
-                          : "bg-surface text-muted-foreground border-border hover:border-primary/30 hover:text-primary"
-                      }`}
-                      aria-label={`Marcar ${h.name}`}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </button>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm font-semibold truncate">{h.name}</div>
-                        <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${CAT_COLORS[h.category]}`}>
-                          {h.category}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-mono mt-0.5">
-                        <span className="flex items-center gap-1 text-warning">
-                          <Flame className="h-3 w-3" /> {h.streak}d
-                        </span>
-                        <span>Mejor: {h.best}d</span>
-                      </div>
-                    </div>
-
-                    {/* 21-day grid */}
-                    <div className="hidden sm:flex gap-[3px] shrink-0">
-                      {h.history.map((v, i) => (
-                        <div
-                          key={i}
-                          className="h-5 w-2.5 rounded-[3px]"
-                          style={{
-                            background: v
-                              ? "color-mix(in oklab, var(--primary) 75%, transparent)"
-                              : "color-mix(in oklab, var(--foreground) 7%, transparent)",
-                            boxShadow: v ? "0 0 4px color-mix(in oklab, var(--primary) 40%, transparent)" : undefined,
-                          }}
-                          title={`Día -${20 - i}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </li>
+                <button key={i} onClick={() => setSelected(dateStr)}
+                  className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition relative
+                    ${isSelected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}
+                    ${isToday ? "border border-primary" : ""}
+                    ${h && !isSelected ? scoreColor(score) : !isSelected ? "hover:bg-surface" : ""}
+                    ${isSelected ? scoreColor(score) || "bg-primary/20" : ""}`}>
+                  <span className={`font-semibold ${isSelected || isToday ? "text-foreground" : h ? "text-foreground" : "text-muted-foreground"}`}>
+                    {day}
+                  </span>
+                  {h && (
+                    <div className="text-[8px] font-mono mt-0.5 text-muted-foreground">{score}/4</div>
+                  )}
+                </button>
               );
             })}
-          </ul>
-        </Card>
-
-        {/* Right column */}
-        <div className="space-y-5">
-          {/* Today summary */}
-          <Card>
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-semibold tracking-tight">Resumen de hoy</h2>
-            </div>
-            <div className="relative h-[140px] grid place-items-center">
-              <svg viewBox="0 0 100 100" className="absolute inset-0 -rotate-90 mx-auto w-[140px] h-[140px]">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="color-mix(in oklab, var(--foreground) 8%, transparent)" strokeWidth="9" />
-                <circle
-                  cx="50" cy="50" r="42" fill="none" stroke="var(--primary)" strokeWidth="9" strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 42}
-                  strokeDashoffset={2 * Math.PI * 42 - (pctToday / 100) * 2 * Math.PI * 42}
-                  style={{ filter: "drop-shadow(0 0 8px color-mix(in oklab, var(--primary) 60%, transparent))" }}
-                />
-              </svg>
-              <div className="text-center">
-                <div className="text-3xl font-bold font-mono">{pctToday}%</div>
-                <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Completado</div>
+          </div>
+          {/* Legend */}
+          <div className="px-4 pb-4 flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-muted-foreground">Puntuación:</span>
+            {[["4/4","bg-success/80"],["3/4","bg-success/40"],["2/4","bg-warning/40"],["1/4","bg-destructive/20"]].map(([label, cls]) => (
+              <div key={label} className="flex items-center gap-1">
+                <div className={`w-3 h-3 rounded-sm ${cls}`} />
+                <span className="text-[10px] text-muted-foreground">{label}</span>
               </div>
-            </div>
-            <div className="mt-3 text-center text-xs text-muted-foreground">
-              {pctToday === 100 ? "🔥 Día perfecto. Sigue así." :
-               pctToday >= 70 ? "Vas muy bien, cierra el día fuerte." :
-               pctToday >= 40 ? "Aún hay tiempo. No rompas la racha." :
-               "Empieza con uno pequeño. La consistencia gana."}
-            </div>
-          </Card>
+            ))}
+          </div>
+        </div>
 
-          {/* Achievements */}
-          <Card>
-            <div className="flex items-center gap-2 mb-3">
-              <Trophy className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-semibold tracking-tight">Logros recientes</h2>
+        {/* Right panel — habit inputs */}
+        <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <div className="text-sm font-semibold">
+                {selected === today ? "Hoy — " : ""}
+                {new Date(selected+"T12:00:00").toLocaleDateString("es",{weekday:"long",day:"numeric",month:"long"})}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">Registra tus hábitos del día</div>
             </div>
-            <ul className="space-y-2">
-              {[
-                { name: "Racha de 30 días", desc: "Meditación diaria", Icon: Flame, tone: "text-warning bg-warning/10 border-warning/25" },
-                { name: "Disciplina total",  desc: "7 días al 100%",   Icon: Trophy, tone: "text-primary bg-primary/10 border-primary/25" },
-                { name: "Mind & Body",       desc: "Mental + Físico ON", Icon: Brain, tone: "text-info bg-info/10 border-info/25" },
-              ].map((a) => (
-                <li key={a.name} className="flex items-center gap-3 rounded-xl border border-border bg-surface-2/60 p-2.5">
-                  <div className={`h-9 w-9 grid place-items-center rounded-lg border shrink-0 ${a.tone}`}>
-                    <a.Icon className="h-4 w-4" />
+            <button onClick={handleSave} disabled={saving}
+              className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow hover:brightness-110 transition disabled:opacity-50">
+              {saved ? "✓ Guardado" : saving ? "Guardando..." : "Guardar"}
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            {CORE_HABITS.map(h => {
+              const val = values[h.key] ?? 0;
+              const pct = Math.min(100, (val / h.max) * 100);
+              const good = h.inverse ? val === 0 : val >= h.max * 0.5;
+              return (
+                <div key={h.key}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <h.icon className={`h-4 w-4 ${h.color}`} />
+                      <span className="text-sm font-semibold">{h.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setValues(v => ({ ...v, [h.key]: Math.max(0, (v[h.key]??0)-1) }))}
+                        className="w-7 h-7 rounded-lg border border-border bg-surface/60 text-muted-foreground hover:text-foreground transition text-sm font-bold">−</button>
+                      <span className={`font-mono text-lg font-bold w-12 text-center ${good ? "text-success" : h.inverse && val > 0 ? "text-warning" : "text-foreground"}`}>
+                        {val}<span className="text-xs font-normal text-muted-foreground">{h.unit}</span>
+                      </span>
+                      <button onClick={() => setValues(v => ({ ...v, [h.key]: Math.min(h.max, (v[h.key]??0)+1) }))}
+                        className="w-7 h-7 rounded-lg border border-border bg-surface/60 text-muted-foreground hover:text-foreground transition text-sm font-bold">+</button>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">{a.name}</div>
-                    <div className="text-[11px] text-muted-foreground truncate">{a.desc}</div>
+                  <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
+                    <div className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${pct}%`,
+                        background: h.inverse
+                          ? val === 0 ? "oklch(0.78 0.18 158)" : "oklch(0.80 0.16 75)"
+                          : good ? "oklch(0.78 0.18 158)" : "oklch(0.74 0.14 240)"
+                      }} />
                   </div>
-                </li>
-              ))}
-            </ul>
-          </Card>
+                </div>
+              );
+            })}
+          </div>
 
-          {/* Tip */}
-          <Card className="relative overflow-hidden">
-            <div className="absolute inset-0 opacity-60 pointer-events-none"
-              style={{ background: "radial-gradient(400px 140px at 0% 0%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 70%)" }} />
-            <div className="relative flex items-start gap-3">
-              <div className="h-9 w-9 grid place-items-center rounded-lg bg-primary/15 text-primary border border-primary/30 shrink-0">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="text-sm font-semibold">Tip del coach</div>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Encadenar hábitos pequeños es más efectivo que uno grande. Empieza con 2 minutos de journal después de cada sesión.
-                </p>
+          {/* Score */}
+          <div className="mt-6 pt-4 border-t border-border">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Puntuación del día</span>
+              <div className="flex items-center gap-1">
+                {Array.from({length:4}).map((_,i) => {
+                  const score = [
+                    (values.sueno??0) >= 7,
+                    (values.ejercicio??0) >= 30,
+                    (values.meditacion??0) >= 10,
+                    (values.alcohol??0) === 0,
+                  ][i];
+                  return <div key={i} className={`w-5 h-5 rounded-md border ${score ? "bg-success border-success" : "border-border bg-surface/40"}`}>{score && <CheckCircle2 className="w-3 h-3 text-white m-auto mt-0.5" />}</div>;
+                })}
+                <span className="ml-2 font-mono font-bold text-primary">
+                  {[values.sueno>=7,values.ejercicio>=30,values.meditacion>=10,values.alcohol===0].filter(Boolean).length}/4
+                </span>
               </div>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
     </div>
