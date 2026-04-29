@@ -58,11 +58,11 @@ function CalendarioPage() {
     setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
   }, []);
 
-  if (!today || !cursor) {
-    return <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 text-sm text-muted-foreground">Cargando calendario…</div>;
-  }
+  // Fallback for first SSR/CSR render — keeps hook order stable.
+  const safeCursor = cursor ?? new Date(2026, 3, 1);
+  const safeToday = today ?? safeCursor;
 
-  const data = useMemo(() => generateMonthData(cursor.getFullYear(), cursor.getMonth()), [cursor]);
+  const data = useMemo(() => generateMonthData(safeCursor.getFullYear(), safeCursor.getMonth()), [safeCursor]);
 
   const stats = useMemo(() => {
     const days = Object.values(data);
@@ -82,8 +82,8 @@ function CalendarioPage() {
 
   // Build calendar grid: weeks rows, days columns (Mon-first)
   const grid = useMemo(() => {
-    const year = cursor.getFullYear();
-    const month = cursor.getMonth();
+    const year = safeCursor.getFullYear();
+    const month = safeCursor.getMonth();
     const first = new Date(year, month, 1);
     const offset = (first.getDay() + 6) % 7; // Mon = 0
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -96,7 +96,7 @@ function CalendarioPage() {
     const weeks: (typeof cells)[] = [];
     for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
     return weeks;
-  }, [cursor]);
+  }, [safeCursor]);
 
   const weekTotals = useMemo(() => {
     return grid.map((week) => {
@@ -118,10 +118,10 @@ function CalendarioPage() {
     return true;
   };
 
-  const goPrev = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
-  const goNext = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
-  const goToday = () => setCursor(new Date(today.getFullYear(), today.getMonth(), 1));
-  const isToday = (key: string) => key === today.toISOString().slice(0, 10);
+  const goPrev = () => setCursor(new Date(safeCursor.getFullYear(), safeCursor.getMonth() - 1, 1));
+  const goNext = () => setCursor(new Date(safeCursor.getFullYear(), safeCursor.getMonth() + 1, 1));
+  const goToday = () => setCursor(new Date(safeToday.getFullYear(), safeToday.getMonth(), 1));
+  const isToday = (key: string) => key === safeToday.toISOString().slice(0, 10);
 
   return (
     <div className="relative">
@@ -148,7 +148,7 @@ function CalendarioPage() {
               <ChevronLeft className="h-4 w-4" />
             </button>
             <div className="min-w-[180px] text-center px-4 py-2 rounded-lg glass">
-              <div className="text-sm font-semibold tracking-tight">{MONTHS[cursor.getMonth()]} {cursor.getFullYear()}</div>
+              <div className="text-sm font-semibold tracking-tight">{MONTHS[safeCursor.getMonth()]} {safeCursor.getFullYear()}</div>
             </div>
             <button
               onClick={goNext}
