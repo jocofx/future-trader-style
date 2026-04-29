@@ -6,25 +6,33 @@ type Ctx = { theme: Theme; toggle: () => void; setTheme: (t: Theme) => void };
 const ThemeContext = createContext<Ctx | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  // Always start as "dark" to match SSR <html className="dark">. Apply stored preference
+  // only inside an effect to avoid hydration mismatches.
+  const [theme, setThemeState] = useState<Theme>("dark");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = (typeof window !== "undefined" && localStorage.getItem("tradync-theme")) as Theme | null;
-    if (stored === "light" || stored === "dark") setTheme(stored);
+    setMounted(true);
+    try {
+      const stored = localStorage.getItem("tradync-theme") as Theme | null;
+      if (stored === "light" || stored === "dark") setThemeState(stored);
+    } catch {}
   }, []);
 
   useEffect(() => {
+    if (!mounted) return;
     const root = document.documentElement;
     root.classList.remove("light", "dark");
     root.classList.add(theme);
     root.style.colorScheme = theme;
     try { localStorage.setItem("tradync-theme", theme); } catch {}
-  }, [theme]);
+  }, [theme, mounted]);
+
+  const setTheme = (t: Theme) => setThemeState(t);
+  const toggle = () => setThemeState((p) => (p === "dark" ? "light" : "dark"));
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggle: () => setTheme(theme === "dark" ? "light" : "dark") }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={{ theme, setTheme, toggle }}>{children}</ThemeContext.Provider>
   );
 }
 
