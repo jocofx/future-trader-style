@@ -1,5 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AppProvider } from "@/context/AppContext";
 
 import appCss from "../styles.css?url";
 
@@ -31,10 +32,6 @@ export const Route = createRootRoute({
       { title: "Tradync — Trading Journal con Coach IA" },
       { name: "description", content: "El journal de trading premium en español. Registra operaciones, controla riesgo en tiempo real y mejora con tu Coach IA personal." },
       { name: "theme-color", content: "#0ECF8A" },
-      { property: "og:title", content: "Tradync — Trading Journal con Coach IA" },
-      { property: "og:description", content: "Journal premium con estadísticas avanzadas, control de riesgo y Coach IA." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -65,7 +62,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   return (
     <ThemeProvider>
-      <Outlet />
+      <AppProvider>
+        <Outlet />
+      </AppProvider>
     </ThemeProvider>
   );
 }
