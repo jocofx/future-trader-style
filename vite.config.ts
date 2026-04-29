@@ -1,7 +1,3 @@
-// Vercel deployment config
-// Note: @lovable.dev/vite-tanstack-config includes cloudflare by default
-// We override with a Vercel-compatible setup
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -15,6 +11,9 @@ export default defineConfig({
     tailwindcss(),
     tsconfigPaths(),
   ],
+  resolve: {
+    alias: { "@": "/src" },
+  },
   build: {
     outDir: "dist",
     rollupOptions: {
@@ -23,12 +22,9 @@ export default defineConfig({
           vendor:   ["react", "react-dom"],
           router:   ["@tanstack/react-router"],
           supabase: ["@supabase/supabase-js"],
-          ui:       ["lucide-react", "recharts"],
+          ui:       ["lucide-react"],
         },
       },
     },
-  },
-  resolve: {
-    alias: { "@": "/src" },
   },
 });
