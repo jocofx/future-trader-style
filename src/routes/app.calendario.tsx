@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Target, Activity, X, Calendar as CalendarIcon,
 } from "lucide-react";
@@ -46,10 +46,21 @@ const DOW = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 type Filter = "all" | "wins" | "losses";
 
 function CalendarioPage() {
-  const today = new Date();
-  const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  // Avoid SSR/CSR mismatch: date-dependent state initializes on the client only.
+  const [today, setToday] = useState<Date | null>(null);
+  const [cursor, setCursor] = useState<Date | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<DayData | null>(null);
+
+  useEffect(() => {
+    const d = new Date();
+    setToday(d);
+    setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+  }, []);
+
+  if (!today || !cursor) {
+    return <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 text-sm text-muted-foreground">Cargando calendario…</div>;
+  }
 
   const data = useMemo(() => generateMonthData(cursor.getFullYear(), cursor.getMonth()), [cursor]);
 
