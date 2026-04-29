@@ -9,38 +9,264 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
+import { Route as AppPsicologiaRouteImport } from './routes/app.psicologia'
+import { Route as AppPremarketRouteImport } from './routes/app.premarket'
+import { Route as AppOperacionesRouteImport } from './routes/app.operaciones'
+import { Route as AppLogrosRouteImport } from './routes/app.logros'
+import { Route as AppInsightsRouteImport } from './routes/app.insights'
+import { Route as AppHabitosRouteImport } from './routes/app.habitos'
+import { Route as AppGestorEaRouteImport } from './routes/app.gestor-ea'
+import { Route as AppEstadisticasRouteImport } from './routes/app.estadisticas'
+import { Route as AppDiarioRouteImport } from './routes/app.diario'
+import { Route as AppCuentasRouteImport } from './routes/app.cuentas'
+import { Route as AppCoachRouteImport } from './routes/app.coach'
+import { Route as AppCapitalRouteImport } from './routes/app.capital'
+import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
+import { Route as AppBrokerRouteImport } from './routes/app.broker'
+import { Route as AppAfiliadosRouteImport } from './routes/app.afiliados'
 
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRiesgoRoute = AppRiesgoRouteImport.update({
+  id: '/riesgo',
+  path: '/riesgo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPsicologiaRoute = AppPsicologiaRouteImport.update({
+  id: '/psicologia',
+  path: '/psicologia',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPremarketRoute = AppPremarketRouteImport.update({
+  id: '/premarket',
+  path: '/premarket',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOperacionesRoute = AppOperacionesRouteImport.update({
+  id: '/operaciones',
+  path: '/operaciones',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLogrosRoute = AppLogrosRouteImport.update({
+  id: '/logros',
+  path: '/logros',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInsightsRoute = AppInsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHabitosRoute = AppHabitosRouteImport.update({
+  id: '/habitos',
+  path: '/habitos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGestorEaRoute = AppGestorEaRouteImport.update({
+  id: '/gestor-ea',
+  path: '/gestor-ea',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEstadisticasRoute = AppEstadisticasRouteImport.update({
+  id: '/estadisticas',
+  path: '/estadisticas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDiarioRoute = AppDiarioRouteImport.update({
+  id: '/diario',
+  path: '/diario',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCuentasRoute = AppCuentasRouteImport.update({
+  id: '/cuentas',
+  path: '/cuentas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCoachRoute = AppCoachRouteImport.update({
+  id: '/coach',
+  path: '/coach',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCapitalRoute = AppCapitalRouteImport.update({
+  id: '/capital',
+  path: '/capital',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCalendarioRoute = AppCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBrokerRoute = AppBrokerRouteImport.update({
+  id: '/broker',
+  path: '/broker',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAfiliadosRoute = AppAfiliadosRouteImport.update({
+  id: '/afiliados',
+  path: '/afiliados',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/afiliados': typeof AppAfiliadosRoute
+  '/app/broker': typeof AppBrokerRoute
+  '/app/calendario': typeof AppCalendarioRoute
+  '/app/capital': typeof AppCapitalRoute
+  '/app/coach': typeof AppCoachRoute
+  '/app/cuentas': typeof AppCuentasRoute
+  '/app/diario': typeof AppDiarioRoute
+  '/app/estadisticas': typeof AppEstadisticasRoute
+  '/app/gestor-ea': typeof AppGestorEaRoute
+  '/app/habitos': typeof AppHabitosRoute
+  '/app/insights': typeof AppInsightsRoute
+  '/app/logros': typeof AppLogrosRoute
+  '/app/operaciones': typeof AppOperacionesRoute
+  '/app/premarket': typeof AppPremarketRoute
+  '/app/psicologia': typeof AppPsicologiaRoute
+  '/app/riesgo': typeof AppRiesgoRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app/afiliados': typeof AppAfiliadosRoute
+  '/app/broker': typeof AppBrokerRoute
+  '/app/calendario': typeof AppCalendarioRoute
+  '/app/capital': typeof AppCapitalRoute
+  '/app/coach': typeof AppCoachRoute
+  '/app/cuentas': typeof AppCuentasRoute
+  '/app/diario': typeof AppDiarioRoute
+  '/app/estadisticas': typeof AppEstadisticasRoute
+  '/app/gestor-ea': typeof AppGestorEaRoute
+  '/app/habitos': typeof AppHabitosRoute
+  '/app/insights': typeof AppInsightsRoute
+  '/app/logros': typeof AppLogrosRoute
+  '/app/operaciones': typeof AppOperacionesRoute
+  '/app/premarket': typeof AppPremarketRoute
+  '/app/psicologia': typeof AppPsicologiaRoute
+  '/app/riesgo': typeof AppRiesgoRoute
+  '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/afiliados': typeof AppAfiliadosRoute
+  '/app/broker': typeof AppBrokerRoute
+  '/app/calendario': typeof AppCalendarioRoute
+  '/app/capital': typeof AppCapitalRoute
+  '/app/coach': typeof AppCoachRoute
+  '/app/cuentas': typeof AppCuentasRoute
+  '/app/diario': typeof AppDiarioRoute
+  '/app/estadisticas': typeof AppEstadisticasRoute
+  '/app/gestor-ea': typeof AppGestorEaRoute
+  '/app/habitos': typeof AppHabitosRoute
+  '/app/insights': typeof AppInsightsRoute
+  '/app/logros': typeof AppLogrosRoute
+  '/app/operaciones': typeof AppOperacionesRoute
+  '/app/premarket': typeof AppPremarketRoute
+  '/app/psicologia': typeof AppPsicologiaRoute
+  '/app/riesgo': typeof AppRiesgoRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/app/afiliados'
+    | '/app/broker'
+    | '/app/calendario'
+    | '/app/capital'
+    | '/app/coach'
+    | '/app/cuentas'
+    | '/app/diario'
+    | '/app/estadisticas'
+    | '/app/gestor-ea'
+    | '/app/habitos'
+    | '/app/insights'
+    | '/app/logros'
+    | '/app/operaciones'
+    | '/app/premarket'
+    | '/app/psicologia'
+    | '/app/riesgo'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/app/afiliados'
+    | '/app/broker'
+    | '/app/calendario'
+    | '/app/capital'
+    | '/app/coach'
+    | '/app/cuentas'
+    | '/app/diario'
+    | '/app/estadisticas'
+    | '/app/gestor-ea'
+    | '/app/habitos'
+    | '/app/insights'
+    | '/app/logros'
+    | '/app/operaciones'
+    | '/app/premarket'
+    | '/app/psicologia'
+    | '/app/riesgo'
+    | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/app/afiliados'
+    | '/app/broker'
+    | '/app/calendario'
+    | '/app/capital'
+    | '/app/coach'
+    | '/app/cuentas'
+    | '/app/diario'
+    | '/app/estadisticas'
+    | '/app/gestor-ea'
+    | '/app/habitos'
+    | '/app/insights'
+    | '/app/logros'
+    | '/app/operaciones'
+    | '/app/premarket'
+    | '/app/psicologia'
+    | '/app/riesgo'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +274,173 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/riesgo': {
+      id: '/app/riesgo'
+      path: '/riesgo'
+      fullPath: '/app/riesgo'
+      preLoaderRoute: typeof AppRiesgoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/psicologia': {
+      id: '/app/psicologia'
+      path: '/psicologia'
+      fullPath: '/app/psicologia'
+      preLoaderRoute: typeof AppPsicologiaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/premarket': {
+      id: '/app/premarket'
+      path: '/premarket'
+      fullPath: '/app/premarket'
+      preLoaderRoute: typeof AppPremarketRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/operaciones': {
+      id: '/app/operaciones'
+      path: '/operaciones'
+      fullPath: '/app/operaciones'
+      preLoaderRoute: typeof AppOperacionesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/logros': {
+      id: '/app/logros'
+      path: '/logros'
+      fullPath: '/app/logros'
+      preLoaderRoute: typeof AppLogrosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/insights': {
+      id: '/app/insights'
+      path: '/insights'
+      fullPath: '/app/insights'
+      preLoaderRoute: typeof AppInsightsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/habitos': {
+      id: '/app/habitos'
+      path: '/habitos'
+      fullPath: '/app/habitos'
+      preLoaderRoute: typeof AppHabitosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/gestor-ea': {
+      id: '/app/gestor-ea'
+      path: '/gestor-ea'
+      fullPath: '/app/gestor-ea'
+      preLoaderRoute: typeof AppGestorEaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/estadisticas': {
+      id: '/app/estadisticas'
+      path: '/estadisticas'
+      fullPath: '/app/estadisticas'
+      preLoaderRoute: typeof AppEstadisticasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/diario': {
+      id: '/app/diario'
+      path: '/diario'
+      fullPath: '/app/diario'
+      preLoaderRoute: typeof AppDiarioRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/cuentas': {
+      id: '/app/cuentas'
+      path: '/cuentas'
+      fullPath: '/app/cuentas'
+      preLoaderRoute: typeof AppCuentasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/coach': {
+      id: '/app/coach'
+      path: '/coach'
+      fullPath: '/app/coach'
+      preLoaderRoute: typeof AppCoachRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/capital': {
+      id: '/app/capital'
+      path: '/capital'
+      fullPath: '/app/capital'
+      preLoaderRoute: typeof AppCapitalRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/calendario': {
+      id: '/app/calendario'
+      path: '/calendario'
+      fullPath: '/app/calendario'
+      preLoaderRoute: typeof AppCalendarioRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/broker': {
+      id: '/app/broker'
+      path: '/broker'
+      fullPath: '/app/broker'
+      preLoaderRoute: typeof AppBrokerRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/afiliados': {
+      id: '/app/afiliados'
+      path: '/afiliados'
+      fullPath: '/app/afiliados'
+      preLoaderRoute: typeof AppAfiliadosRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppAfiliadosRoute: typeof AppAfiliadosRoute
+  AppBrokerRoute: typeof AppBrokerRoute
+  AppCalendarioRoute: typeof AppCalendarioRoute
+  AppCapitalRoute: typeof AppCapitalRoute
+  AppCoachRoute: typeof AppCoachRoute
+  AppCuentasRoute: typeof AppCuentasRoute
+  AppDiarioRoute: typeof AppDiarioRoute
+  AppEstadisticasRoute: typeof AppEstadisticasRoute
+  AppGestorEaRoute: typeof AppGestorEaRoute
+  AppHabitosRoute: typeof AppHabitosRoute
+  AppInsightsRoute: typeof AppInsightsRoute
+  AppLogrosRoute: typeof AppLogrosRoute
+  AppOperacionesRoute: typeof AppOperacionesRoute
+  AppPremarketRoute: typeof AppPremarketRoute
+  AppPsicologiaRoute: typeof AppPsicologiaRoute
+  AppRiesgoRoute: typeof AppRiesgoRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAfiliadosRoute: AppAfiliadosRoute,
+  AppBrokerRoute: AppBrokerRoute,
+  AppCalendarioRoute: AppCalendarioRoute,
+  AppCapitalRoute: AppCapitalRoute,
+  AppCoachRoute: AppCoachRoute,
+  AppCuentasRoute: AppCuentasRoute,
+  AppDiarioRoute: AppDiarioRoute,
+  AppEstadisticasRoute: AppEstadisticasRoute,
+  AppGestorEaRoute: AppGestorEaRoute,
+  AppHabitosRoute: AppHabitosRoute,
+  AppInsightsRoute: AppInsightsRoute,
+  AppLogrosRoute: AppLogrosRoute,
+  AppOperacionesRoute: AppOperacionesRoute,
+  AppPremarketRoute: AppPremarketRoute,
+  AppPsicologiaRoute: AppPsicologiaRoute,
+  AppRiesgoRoute: AppRiesgoRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
