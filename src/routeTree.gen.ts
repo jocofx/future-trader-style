@@ -9,13 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppPsicologiaRouteImport } from './routes/app.psicologia'
 import { Route as AppPremarketRouteImport } from './routes/app.premarket'
+import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppOperacionesRouteImport } from './routes/app.operaciones'
 import { Route as AppLogrosRouteImport } from './routes/app.logros'
 import { Route as AppInsightsRouteImport } from './routes/app.insights'
@@ -30,17 +31,16 @@ import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
 import { Route as AppBrokerRouteImport } from './routes/app.broker'
 import { Route as AppAfiliadosRouteImport } from './routes/app.afiliados'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/login').then(d => d))
-
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -64,6 +64,11 @@ const AppPsicologiaRoute = AppPsicologiaRouteImport.update({
 const AppPremarketRoute = AppPremarketRouteImport.update({
   id: '/premarket',
   path: '/premarket',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPerfilRoute = AppPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
   getParentRoute: () => AppRoute,
 } as any)
 const AppOperacionesRoute = AppOperacionesRouteImport.update({
@@ -134,8 +139,8 @@ const AppAfiliadosRoute = AppAfiliadosRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -149,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/app/insights': typeof AppInsightsRoute
   '/app/logros': typeof AppLogrosRoute
   '/app/operaciones': typeof AppOperacionesRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app/premarket': typeof AppPremarketRoute
   '/app/psicologia': typeof AppPsicologiaRoute
   '/app/riesgo': typeof AppRiesgoRoute
@@ -170,6 +176,7 @@ export interface FileRoutesByTo {
   '/app/insights': typeof AppInsightsRoute
   '/app/logros': typeof AppLogrosRoute
   '/app/operaciones': typeof AppOperacionesRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app/premarket': typeof AppPremarketRoute
   '/app/psicologia': typeof AppPsicologiaRoute
   '/app/riesgo': typeof AppRiesgoRoute
@@ -178,8 +185,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -193,6 +200,7 @@ export interface FileRoutesById {
   '/app/insights': typeof AppInsightsRoute
   '/app/logros': typeof AppLogrosRoute
   '/app/operaciones': typeof AppOperacionesRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app/premarket': typeof AppPremarketRoute
   '/app/psicologia': typeof AppPsicologiaRoute
   '/app/riesgo': typeof AppRiesgoRoute
@@ -203,6 +211,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/login'
     | '/app/afiliados'
     | '/app/broker'
     | '/app/calendario'
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/app/insights'
     | '/app/logros'
     | '/app/operaciones'
+    | '/app/perfil'
     | '/app/premarket'
     | '/app/psicologia'
     | '/app/riesgo'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/app/afiliados'
     | '/app/broker'
     | '/app/calendario'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/app/insights'
     | '/app/logros'
     | '/app/operaciones'
+    | '/app/perfil'
     | '/app/premarket'
     | '/app/psicologia'
     | '/app/riesgo'
@@ -244,6 +256,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
+    | '/login'
     | '/app/afiliados'
     | '/app/broker'
     | '/app/calendario'
@@ -257,6 +270,7 @@ export interface FileRouteTypes {
     | '/app/insights'
     | '/app/logros'
     | '/app/operaciones'
+    | '/app/perfil'
     | '/app/premarket'
     | '/app/psicologia'
     | '/app/riesgo'
@@ -265,12 +279,19 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LoginRoute: typeof LoginRoute
   AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
@@ -311,6 +332,13 @@ declare module '@tanstack/react-router' {
       path: '/premarket'
       fullPath: '/app/premarket'
       preLoaderRoute: typeof AppPremarketRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/perfil': {
+      id: '/app/perfil'
+      path: '/perfil'
+      fullPath: '/app/perfil'
+      preLoaderRoute: typeof AppPerfilRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/operaciones': {
@@ -421,6 +449,7 @@ interface AppRouteChildren {
   AppInsightsRoute: typeof AppInsightsRoute
   AppLogrosRoute: typeof AppLogrosRoute
   AppOperacionesRoute: typeof AppOperacionesRoute
+  AppPerfilRoute: typeof AppPerfilRoute
   AppPremarketRoute: typeof AppPremarketRoute
   AppPsicologiaRoute: typeof AppPsicologiaRoute
   AppRiesgoRoute: typeof AppRiesgoRoute
@@ -441,6 +470,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppInsightsRoute: AppInsightsRoute,
   AppLogrosRoute: AppLogrosRoute,
   AppOperacionesRoute: AppOperacionesRoute,
+  AppPerfilRoute: AppPerfilRoute,
   AppPremarketRoute: AppPremarketRoute,
   AppPsicologiaRoute: AppPsicologiaRoute,
   AppRiesgoRoute: AppRiesgoRoute,
@@ -451,13 +481,9 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  LoginRoute: LoginRoute,
   AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-
-}
