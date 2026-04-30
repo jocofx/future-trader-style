@@ -9,9 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppPsicologiaRouteImport } from './routes/app.psicologia'
@@ -30,17 +30,16 @@ import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
 import { Route as AppBrokerRouteImport } from './routes/app.broker'
 import { Route as AppAfiliadosRouteImport } from './routes/app.afiliados'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/login').then(d => d))
-
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -134,8 +133,8 @@ const AppAfiliadosRoute = AppAfiliadosRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -178,8 +177,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -203,6 +202,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/login'
     | '/app/afiliados'
     | '/app/broker'
     | '/app/calendario'
@@ -223,6 +223,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/app/afiliados'
     | '/app/broker'
     | '/app/calendario'
@@ -244,6 +245,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
+    | '/login'
     | '/app/afiliados'
     | '/app/broker'
     | '/app/calendario'
@@ -265,12 +267,19 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LoginRoute: typeof LoginRoute
   AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
@@ -451,13 +460,9 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  LoginRoute: LoginRoute,
   AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-
-}
