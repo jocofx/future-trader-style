@@ -331,7 +331,7 @@ function RuleRow({ rule, onToggle, onRemove }: { rule: Rule & { ratio: number; s
           <span className={`text-[10px] uppercase tracking-wider font-semibold ${sevText}`}>
             {rule.severity === "danger" ? "Roto" : rule.severity === "warn" ? "Cerca" : "OK"}
           </span>
-          <button className="h-7 w-7 grid place-items-center rounded-md hover:bg-surface-3 text-muted-foreground transition">
+          <button onClick={onRemove} className="h-7 w-7 grid place-items-center rounded-md hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
