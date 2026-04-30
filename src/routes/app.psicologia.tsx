@@ -1,292 +1,258 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import {
-  Brain, Heart, Zap, Smile, Meh, Frown, AlertTriangle, Sparkles,
-  TrendingDown, TrendingUp, Wind, Activity, Shield, Coffee,
-} from "lucide-react";
+import { useMemo } from "react";
+import { Brain } from "lucide-react";
+import { useApp } from "@/context/AppContext";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 export const Route = createFileRoute("/app/psicologia")({
-  head: () => ({
-    meta: [
-      { title: "Psicología · Tradync" },
-      { name: "description", content: "Estado emocional, control de tilt y bienestar mental del trader." },
-    ],
-  }),
   component: PsicologiaPage,
 });
 
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-border bg-surface/60 backdrop-blur-xl p-5 ${className}`}>{children}</div>;
-}
+const GREEN = "oklch(0.78 0.18 158)";
+const RED   = "oklch(0.68 0.22 18)";
 
-type Mood = "great" | "good" | "neutral" | "bad" | "tilt";
-const MOODS: { k: Mood; label: string; Icon: any; cls: string }[] = [
-  { k: "great",   label: "Enfocado",   Icon: Sparkles, cls: "text-primary bg-primary/15 border-primary/40" },
-  { k: "good",    label: "Tranquilo",  Icon: Smile,    cls: "text-success bg-success/15 border-success/40" },
-  { k: "neutral", label: "Neutral",    Icon: Meh,      cls: "text-muted-foreground bg-surface-3 border-border" },
-  { k: "bad",     label: "Cansado",    Icon: Frown,    cls: "text-warning bg-warning/15 border-warning/40" },
-  { k: "tilt",    label: "Tilt",       Icon: AlertTriangle, cls: "text-destructive bg-destructive/15 border-destructive/40" },
-];
-
-const MOOD_HISTORY = [
-  { day: "Lun", mood: 75 }, { day: "Mar", mood: 82 }, { day: "Mié", mood: 60 },
-  { day: "Jue", mood: 45 }, { day: "Vie", mood: 70 }, { day: "Sáb", mood: 88 }, { day: "Dom", mood: 84 },
-];
-
-const EMOTIONS = [
-  { name: "Confianza",   value: 78, color: "var(--primary)" },
-  { name: "Paciencia",   value: 65, color: "var(--success)" },
-  { name: "Foco",        value: 82, color: "var(--info)" },
-  { name: "Estrés",      value: 38, color: "var(--warning)", inverse: true },
-  { name: "Frustración", value: 24, color: "var(--destructive)", inverse: true },
-];
-
-const TILT_TRIGGERS = [
-  { trigger: "Tras 2 pérdidas seguidas",    impact: "Alto",  count: 12, Icon: TrendingDown },
-  { trigger: "Viernes después de las 16h",  impact: "Alto",  count: 8,  Icon: AlertTriangle },
-  { trigger: "Días con noticias macro",     impact: "Medio", count: 14, Icon: Activity },
-  { trigger: "Tras gap nocturno inesperado", impact: "Bajo",  count: 6,  Icon: Wind },
-];
-
-const BREATH_EXERCISES = [
-  { name: "Box Breathing", desc: "4-4-4-4", duration: "4 min", Icon: Wind, tone: "text-info" },
-  { name: "Coherencia cardíaca", desc: "5-5", duration: "5 min", Icon: Heart, tone: "text-destructive" },
-  { name: "Wim Hof",  desc: "30 ciclos", duration: "11 min", Icon: Zap, tone: "text-warning" },
-];
+const EMOCIONES_ORDER = ["sereno","confiado","motivado","neutral","inseguro","ansioso","frustrado","eufórico"];
+const EMO_EMOJI: Record<string,string> = {
+  sereno:"😌",confiado:"💪",ansioso:"😰",frustrado:"😤",
+  motivado:"🔥",inseguro:"😟",eufórico:"🤩",neutral:"😐"
+};
 
 function PsicologiaPage() {
-  const [mood, setMood] = useState<Mood>("good");
-  const [energy, setEnergy] = useState(75);
-  const [stress, setStress] = useState(35);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const { trades: { trades }, diario: { entries } } = useApp();
 
-  const wellnessScore = useMemo(() => {
-    const moodScore = mood === "great" ? 95 : mood === "good" ? 80 : mood === "neutral" ? 60 : mood === "bad" ? 35 : 15;
-    return Math.round((moodScore * 0.5 + energy * 0.3 + (100 - stress) * 0.2));
-  }, [mood, energy, stress]);
+  const closedTrades = useMemo(() => trades.filter(t => t.resultado != null), [trades]);
 
-  const wellnessLabel =
-    wellnessScore >= 80 ? "Óptimo para operar" :
-    wellnessScore >= 60 ? "Listo con precaución" :
-    wellnessScore >= 40 ? "Operar con cautela" : "Mejor no operar hoy";
+  // P&L por emoción
+  const emoData = useMemo(() => {
+    const map: Record<string,{pnl:number;count:number;wins:number}> = {};
+    closedTrades.forEach(t => {
+      const e = t.emocion || "sin emoción";
+      if (!map[e]) map[e] = { pnl:0, count:0, wins:0 };
+      map[e].pnl += t.resultado ?? 0;
+      map[e].count++;
+      if ((t.resultado??0) > 0) map[e].wins++;
+    });
+    return Object.entries(map).map(([name,d]) => ({
+      name, pnl: parseFloat(d.pnl.toFixed(2)),
+      wr: d.count ? Math.round(d.wins/d.count*100) : 0,
+      count: d.count,
+    })).sort((a,b) => b.count - a.count).slice(0,8);
+  }, [closedTrades]);
 
-  const wellnessTone =
-    wellnessScore >= 80 ? "text-success" :
-    wellnessScore >= 60 ? "text-primary" :
-    wellnessScore >= 40 ? "text-warning" : "text-destructive";
+  // Confianza vs resultado
+  const confData = useMemo(() => {
+    const map: Record<number,{pnl:number;count:number}> = {};
+    closedTrades.filter(t => t.confianza).forEach(t => {
+      const c = t.confianza!;
+      if (!map[c]) map[c] = { pnl:0, count:0 };
+      map[c].pnl += t.resultado ?? 0;
+      map[c].count++;
+    });
+    return Array.from({length:10},(_,i) => ({
+      name: String(i+1),
+      avg: map[i+1]?.count ? parseFloat((map[i+1].pnl/map[i+1].count).toFixed(2)) : 0,
+      count: map[i+1]?.count ?? 0,
+    }));
+  }, [closedTrades]);
+
+  // Alerts
+  const alerts = useMemo(() => {
+    const a: {type:"warning"|"danger"|"success"; msg:string}[] = [];
+    const trades7 = closedTrades.filter(t => new Date(t.fecha) >= new Date(Date.now()-7*86400000));
+
+    // Revenge trading: loss followed by bigger size
+    let revengeCount = 0;
+    for (let i=1;i<closedTrades.length;i++) {
+      if ((closedTrades[i-1].resultado??0)<0 && (closedTrades[i].lotes??0)>(closedTrades[i-1].lotes??0))
+        revengeCount++;
+    }
+    if (revengeCount > 2) a.push({type:"danger", msg:`Posible revenge trading: ${revengeCount} veces aumentaste tamaño tras pérdida`});
+
+    // Overtrading
+    const days: Record<string,number> = {};
+    trades7.forEach(t => { days[t.fecha] = (days[t.fecha]??0)+1; });
+    const maxDay = Math.max(...Object.values(days), 0);
+    if (maxDay > 8) a.push({type:"warning", msg:`Overtrading detectado: ${maxDay} operaciones en un día esta semana`});
+
+    // Good streak
+    let streak=0, maxStreak=0;
+    [...closedTrades].sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach(t=>{
+      if((t.resultado??0)>0){streak++;maxStreak=Math.max(maxStreak,streak);}else streak=0;
+    });
+    if (maxStreak >= 5) a.push({type:"success", msg:`Racha ganadora de ${maxStreak} operaciones consecutivas 🔥`});
+
+    // Win rate by emotion
+    const anxious = emoData.find(e => e.name==="ansioso");
+    if (anxious && anxious.count >= 3 && anxious.wr < 40)
+      a.push({type:"warning", msg:`Cuando operas ansioso tu win rate cae al ${anxious.wr}% — considera hacer pausa`});
+
+    return a;
+  }, [closedTrades, emoData]);
+
+  // Diary emotion stats
+  const diaryEmoStats = useMemo(() => {
+    const map: Record<string,number> = {};
+    entries.forEach(e => { if(e.emocion) map[e.emocion] = (map[e.emocion]??0)+1; });
+    return EMOCIONES_ORDER.filter(k => map[k]).map(k => ({ key:k, count:map[k] }));
+  }, [entries]);
+
+  // Patterns (tag analysis)
+  const tagData = useMemo(() => {
+    const map: Record<string,{pnl:number;count:number;wins:number}> = {};
+    closedTrades.forEach(t => {
+      (t.tags??[]).forEach(tag => {
+        if (!map[tag]) map[tag] = {pnl:0,count:0,wins:0};
+        map[tag].pnl += t.resultado??0;
+        map[tag].count++;
+        if((t.resultado??0)>0) map[tag].wins++;
+      });
+    });
+    return Object.entries(map).map(([name,d]) => ({
+      name, pnl: parseFloat(d.pnl.toFixed(2)),
+      wr: Math.round(d.wins/d.count*100), count: d.count,
+    })).sort((a,b) => b.count-a.count).slice(0,6);
+  }, [closedTrades]);
+
+  const alertColors = { warning:"border-warning/30 bg-warning/8 text-warning", danger:"border-destructive/30 bg-destructive/8 text-destructive", success:"border-success/30 bg-success/8 text-success" };
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
-      <div>
-        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
-          <Brain className="h-3.5 w-3.5 text-primary" />
-          Psicología
+    <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 grid place-items-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+          <Brain className="h-5 w-5" />
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Tu estado mental hoy</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          La psicología es el 80% del trading. Cuídala como cuidas tu capital.
-        </p>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Psicología</h1>
+          <p className="text-sm text-muted-foreground">Análisis emocional y patrones de comportamiento</p>
+        </div>
       </div>
 
-      {/* Wellness Score Hero */}
-      <Card className="relative overflow-hidden">
-        <div className="absolute inset-0 opacity-60 pointer-events-none"
-          style={{ background: "radial-gradient(600px 200px at 10% 0%, color-mix(in oklab, var(--primary) 12%, transparent), transparent 70%)" }} />
-        <div className="relative grid lg:grid-cols-[auto_1fr] gap-6 items-center">
-          {/* Donut */}
-          <div className="relative h-[180px] w-[180px] mx-auto">
-            <svg viewBox="0 0 100 100" className="absolute inset-0 -rotate-90">
-              <circle cx="50" cy="50" r="42" fill="none" stroke="color-mix(in oklab, var(--foreground) 8%, transparent)" strokeWidth="9" />
-              <circle cx="50" cy="50" r="42" fill="none" stroke="var(--primary)" strokeWidth="9" strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 42}
-                strokeDashoffset={2 * Math.PI * 42 - (wellnessScore / 100) * 2 * Math.PI * 42}
-                style={{ filter: "drop-shadow(0 0 12px color-mix(in oklab, var(--primary) 60%, transparent))", transition: "stroke-dashoffset 400ms ease" }}
-              />
-            </svg>
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="text-center">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Wellness</div>
-                <div className="text-4xl font-bold font-mono">{mounted ? wellnessScore : "—"}</div>
-                <div className={`text-[11px] font-semibold mt-0.5 ${wellnessTone}`}>{wellnessLabel}</div>
-              </div>
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          {alerts.map((a,i) => (
+            <div key={i} className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${alertColors[a.type]}`}>
+              <span className="text-lg flex-shrink-0">{a.type==="danger"?"🚨":a.type==="warning"?"⚠️":"✅"}</span>
+              <span className="text-sm font-medium">{a.msg}</span>
             </div>
-          </div>
-
-          {/* Mood + sliders */}
-          <div className="space-y-5">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground mb-2">¿Cómo te sientes hoy?</div>
-              <div className="flex flex-wrap gap-2">
-                {MOODS.map((m) => (
-                  <button
-                    key={m.k}
-                    onClick={() => setMood(m.k)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition ${
-                      mood === m.k ? m.cls : "bg-surface-2/60 text-muted-foreground border-border hover:border-primary/30"
-                    }`}
-                  >
-                    <m.Icon className="h-3.5 w-3.5" /> {m.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center justify-between text-[11px] mb-1.5">
-                  <span className="uppercase tracking-[0.14em] text-muted-foreground flex items-center gap-1.5"><Zap className="h-3 w-3" /> Energía</span>
-                  <span className="font-mono font-bold">{energy}%</span>
-                </div>
-                <input type="range" min="0" max="100" value={energy} onChange={(e) => setEnergy(+e.target.value)}
-                  className="w-full accent-[oklch(0.78_0.18_158)]" />
-              </div>
-              <div>
-                <div className="flex items-center justify-between text-[11px] mb-1.5">
-                  <span className="uppercase tracking-[0.14em] text-muted-foreground flex items-center gap-1.5"><Activity className="h-3 w-3" /> Estrés</span>
-                  <span className="font-mono font-bold">{stress}%</span>
-                </div>
-                <input type="range" min="0" max="100" value={stress} onChange={(e) => setStress(+e.target.value)}
-                  className="w-full accent-[oklch(0.65_0.21_25)]" />
-              </div>
-            </div>
-
-            {wellnessScore < 50 && (
-              <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive p-3 text-xs">
-                <AlertTriangle className="h-4 w-4" />
-                Tu estado actual no es óptimo. Considera reducir tamaño o no operar hoy.
-              </div>
-            )}
-          </div>
+          ))}
         </div>
-      </Card>
+      )}
 
-      <div className="grid lg:grid-cols-[1.2fr_1fr] gap-5">
-        {/* Mood history */}
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Heart className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-semibold tracking-tight">Estado emocional · Última semana</h2>
-            </div>
-            <div className="text-[11px] text-muted-foreground font-mono">Promedio 72</div>
-          </div>
-          <div className="flex items-end justify-between gap-2 h-40">
-            {MOOD_HISTORY.map((d) => {
-              const tone = d.mood >= 75 ? "var(--success)" : d.mood >= 55 ? "var(--primary)" : d.mood >= 40 ? "var(--warning)" : "var(--destructive)";
-              return (
-                <div key={d.day} className="flex-1 flex flex-col items-center gap-2">
-                  <div className="relative w-full flex-1 flex items-end">
-                    <div
-                      className="w-full rounded-t-lg transition-all"
-                      style={{
-                        height: `${d.mood}%`,
-                        background: `linear-gradient(180deg, ${tone}, color-mix(in oklab, ${tone} 30%, transparent))`,
-                        boxShadow: `0 0 12px color-mix(in oklab, ${tone} 40%, transparent)`,
-                      }}
-                    />
-                  </div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">{d.day}</div>
-                  <div className="text-[10px] font-mono text-foreground/70">{d.mood}</div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
+      {/* Row 1: Emoción vs P&L + Confianza vs Resultado */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5">
+          <div className="text-sm font-semibold mb-1">P&L por emoción</div>
+          <div className="text-xs text-muted-foreground mb-4">Cómo afecta tu estado emocional al resultado</div>
+          {emoData.length === 0 ? (
+            <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Añade emociones a tus operaciones</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={emoData} layout="vertical" barSize={14}>
+                <CartesianGrid stroke="oklch(1 0 0 / 0.05)" horizontal={false} />
+                <XAxis type="number" tick={{fontSize:10,fill:"var(--muted-foreground)"}} tickFormatter={v=>`$${v}`} />
+                <YAxis type="category" dataKey="name" tick={{fontSize:10,fill:"var(--muted-foreground)"}} width={70} />
+                <Tooltip formatter={(v:number) => [`$${v.toFixed(2)}`,"P&L"]} contentStyle={{background:"var(--card)",border:"1px solid var(--border)",borderRadius:8}} />
+                <Bar dataKey="pnl" radius={[0,4,4,0]}>
+                  {emoData.map((d,i) => <Cell key={i} fill={d.pnl>=0?GREEN:RED} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
 
-        {/* Emotions breakdown */}
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold tracking-tight">Perfil emocional</h2>
-          </div>
-          <div className="space-y-3">
-            {EMOTIONS.map((e) => (
-              <div key={e.name}>
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-medium">{e.name}</span>
-                  <span className="font-mono text-muted-foreground">{e.value}/100</span>
-                </div>
-                <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
-                  <div className="h-full rounded-full"
-                    style={{
-                      width: `${e.value}%`,
-                      background: e.color,
-                      boxShadow: `0 0 8px color-mix(in oklab, ${e.color} 50%, transparent)`,
-                    }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5">
+          <div className="text-sm font-semibold mb-1">Confianza vs Resultado</div>
+          <div className="text-xs text-muted-foreground mb-4">P&L medio según tu nivel de confianza (1–10)</div>
+          {confData.every(d=>d.count===0) ? (
+            <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Añade confianza a tus operaciones</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={confData} barSize={18}>
+                <CartesianGrid stroke="oklch(1 0 0 / 0.05)" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{fontSize:10,fill:"var(--muted-foreground)"}} />
+                <YAxis tick={{fontSize:10,fill:"var(--muted-foreground)"}} tickFormatter={v=>`$${v}`} />
+                <Tooltip formatter={(v:number,_,p) => [`$${v.toFixed(2)} (${p.payload.count} ops)`,"P&L medio"]} contentStyle={{background:"var(--card)",border:"1px solid var(--border)",borderRadius:8}} />
+                <Bar dataKey="avg" radius={[4,4,0,0]}>
+                  {confData.map((d,i) => <Cell key={i} fill={d.avg>=0?GREEN:RED} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
 
-      <div className="grid lg:grid-cols-[1.3fr_1fr] gap-5">
-        {/* Tilt triggers */}
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              <h2 className="text-sm font-semibold tracking-tight">Disparadores de tilt</h2>
+      {/* Row 2: Tags + Diary emotions */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* Tags */}
+        <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5">
+          <div className="text-sm font-semibold mb-4">Rendimiento por tag/setup</div>
+          {tagData.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">Añade tags a tus operaciones para ver patrones</div>
+          ) : (
+            <div className="space-y-3">
+              {tagData.map(t => {
+                const pos = t.pnl >= 0;
+                return (
+                  <div key={t.name}>
+                    <div className="flex items-center justify-between mb-1 text-xs">
+                      <span className="font-semibold">{t.name}</span>
+                      <div className="flex gap-3 text-muted-foreground">
+                        <span>{t.wr}% WR</span>
+                        <span>{t.count} ops</span>
+                        <span className={`font-bold ${pos?"text-success":"text-destructive"}`}>{pos?"+":""}{t.pnl.toFixed(0)}$</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                      <div className="h-full rounded-full" style={{width:`${t.wr}%`,background:pos?GREEN:RED}} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <span className="text-[11px] text-muted-foreground font-mono">Últimos 90 días</span>
-          </div>
-          <ul className="space-y-2">
-            {TILT_TRIGGERS.map((t) => {
-              const cls =
-                t.impact === "Alto" ? "text-destructive bg-destructive/10 border-destructive/25" :
-                t.impact === "Medio" ? "text-warning bg-warning/10 border-warning/25" :
-                                       "text-info bg-info/10 border-info/25";
-              return (
-                <li key={t.trigger} className="flex items-center gap-3 rounded-xl border border-border bg-surface-2/60 p-3">
-                  <div className={`h-9 w-9 grid place-items-center rounded-lg border shrink-0 ${cls}`}>
-                    <t.Icon className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{t.trigger}</div>
-                    <div className="text-[11px] text-muted-foreground font-mono">Detectado {t.count} veces</div>
-                  </div>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border ${cls} shrink-0`}>
-                    Impacto {t.impact}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
+          )}
+        </div>
 
-        {/* Breath exercises */}
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <Wind className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold tracking-tight">Reset mental rápido</h2>
-          </div>
-          <ul className="space-y-2">
-            {BREATH_EXERCISES.map((b) => (
-              <li key={b.name}>
-                <button className="w-full group flex items-center gap-3 rounded-xl border border-border bg-surface-2/60 p-3 hover:border-primary/40 transition text-left">
-                  <div className={`h-10 w-10 grid place-items-center rounded-xl bg-surface border border-border ${b.tone}`}>
-                    <b.Icon className="h-4 w-4" />
+        {/* Diary emotions */}
+        <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5">
+          <div className="text-sm font-semibold mb-4">Emociones en el diario</div>
+          {diaryEmoStats.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">Registra tu estado emocional en el diario</div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {diaryEmoStats.map(e => (
+                <div key={e.key} className="flex items-center gap-3 p-3 rounded-xl bg-surface/40 border border-border">
+                  <span className="text-2xl">{EMO_EMOJI[e.key]??"😐"}</span>
+                  <div>
+                    <div className="text-sm font-semibold capitalize">{e.key}</div>
+                    <div className="text-xs text-muted-foreground">{e.count} {e.count===1?"día":"días"}</div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold">{b.name}</div>
-                    <div className="text-[11px] text-muted-foreground font-mono">{b.desc} · {b.duration}</div>
-                  </div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground group-hover:text-primary transition">Iniciar →</div>
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-4 pt-4 border-t border-border">
-            <div className="flex items-start gap-3">
-              <Coffee className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Si tu wellness está por debajo de 50, da un paso atrás. Sal a caminar, hidrátate y vuelve mañana. El mercado seguirá ahí.
-              </p>
+                </div>
+              ))}
             </div>
-          </div>
-        </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Tips */}
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 backdrop-blur p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xl">💡</span>
+          <div className="text-sm font-semibold">Consejos basados en tus datos</div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-3 text-sm text-muted-foreground">
+          {closedTrades.length < 10 ? (
+            <p>Registra más operaciones para obtener insights personalizados sobre tu psicología de trading.</p>
+          ) : (
+            <>
+              <p>🎯 Analiza en qué estados emocionales obtienes mejores resultados y trata de operar siempre desde esa base.</p>
+              <p>📊 Un nivel de confianza 7-8 suele ser óptimo. Demasiado alto puede indicar soberbia.</p>
+              <p>⏸️ Si detectas 2 pérdidas seguidas, considera hacer una pausa de 30 minutos antes de seguir.</p>
+              <p>📝 El diario te ayuda a identificar patrones que no ves en tiempo real. Escribe cada día.</p>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
