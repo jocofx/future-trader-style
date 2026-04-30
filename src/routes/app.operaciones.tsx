@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Filter, Plus, Search, Trash2 } from "lucide-react";
+import { Filter, Plus, Search, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import type { Trade } from "@/lib/types";
+import { Modal, Field, inputCls, selectCls, textareaCls, ModalButton } from "@/components/Modal";
 
 export const Route = createFileRoute("/app/operaciones")({
   component: OperacionesPage,
