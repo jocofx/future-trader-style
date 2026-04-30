@@ -67,13 +67,6 @@ const ACHIEVEMENTS: Achievement[] = [
 function LogrosPage() {
   const [filter, setFilter] = useState<"all" | "unlocked" | "in-progress" | Category>("all");
 
-  const filtered = ACHIEVEMENTS.filter((a) => {
-    if (filter === "all") return true;
-    if (filter === "unlocked") return a.unlocked;
-    if (filter === "in-progress") return !a.unlocked && (a.progress ?? 0) > 0;
-    return a.category === filter;
-  }).map(a => dynamicAchievements.find(d => d.id === a.id) || a);
-
   const { trades: { trades } } = useApp();
   const realStats = useMemo(() => computeStats(trades.filter(t => t.resultado != null)), [trades]);
   
@@ -107,8 +100,16 @@ function LogrosPage() {
     };
   }, []);
 
-  const recentUnlock = ACHIEVEMENTS.filter((a) => a.unlocked).slice(-1)[0];
-  const closeToUnlock = ACHIEVEMENTS.filter((a) => !a.unlocked && (a.progress ?? 0) >= 50).sort((a, b) => (b.progress ?? 0) - (a.progress ?? 0))[0];
+  const recentUnlock = dynamicAchievements.filter((a) => a.unlocked).slice(-1)[0];
+  const closeToUnlock = dynamicAchievements.filter((a) => !a.unlocked && (a.progress ?? 0) >= 50).sort((a, b) => (b.progress ?? 0) - (a.progress ?? 0))[0];
+
+  // filtered must come AFTER dynamicAchievements
+  const filtered = dynamicAchievements.filter((a) => {
+    if (filter === "unlocked") return a.unlocked;
+    if (filter === "in-progress") return !a.unlocked && (a.progress ?? 0) > 0;
+    if (filter === "all") return true;
+    return a.category === filter;
+  });
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">

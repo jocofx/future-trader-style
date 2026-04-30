@@ -9,6 +9,7 @@ import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/context/AppContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { computeStats } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 
@@ -221,7 +222,9 @@ function AppShell() {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

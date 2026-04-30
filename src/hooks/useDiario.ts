@@ -9,6 +9,7 @@ export function useDiario(userId: string | null) {
   const load = useCallback(async (limit = 60) => {
     if (!userId) return
     setLoading(true)
+    try {
     const { data } = await supabase
       .from('diario')
       .select('*')
@@ -17,6 +18,7 @@ export function useDiario(userId: string | null) {
       .limit(limit)
     setEntries((data ?? []) as DiaryEntry[])
     setLoading(false)
+    } catch(e) { console.warn(e); setLoading(false); }
   }, [userId])
 
   const save = async (fecha: string, values: Partial<DiaryEntry>) => {

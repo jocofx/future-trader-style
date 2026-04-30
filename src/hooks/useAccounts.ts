@@ -9,6 +9,7 @@ export function useAccounts(userId: string | null) {
   const load = useCallback(async () => {
     if (!userId) return
     setLoading(true)
+    try {
     const { data } = await supabase
       .from('cuentas')
       .select('*')
@@ -16,6 +17,7 @@ export function useAccounts(userId: string | null) {
       .order('created_at', { ascending: true })
     setAccounts((data ?? []) as Account[])
     setLoading(false)
+    } catch(e) { console.warn(e); setLoading(false); }
   }, [userId])
 
   const save = async (account: Omit<Account, 'id' | 'created_at'>) => {

@@ -10,6 +10,7 @@ export function usePremarket(userId: string | null) {
   const load = useCallback(async (year?: number, month?: number) => {
     if (!userId) return
     setLoading(true)
+    try {
     let query = supabase.from('planes').select('*').eq('user_id', userId)
     if (year !== undefined && month !== undefined) {
       const start = `${year}-${String(month + 1).padStart(2, '0')}-01`
@@ -36,6 +37,10 @@ export function usePremarket(userId: string | null) {
       setState(prev => ({ ...prev, ...stateMap }))
     }
     setLoading(false)
+    } catch (e) {
+      console.warn('usePremarket.load error:', e)
+      setLoading(false)
+    }
   }, [userId])
 
   const savePlan = async (fecha: string, plan: Partial<DayPlan>) => {

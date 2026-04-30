@@ -10,6 +10,7 @@ export function useCapital(userId: string | null) {
   const load = useCallback(async () => {
     if (!userId) return
     setLoading(true)
+    try {
     const [invRes, ganRes] = await Promise.all([
       supabase.from('capital_tracker').select('*').eq('user_id', userId).order('fecha', { ascending: false }),
       supabase.from('capital_ganancias').select('*').eq('user_id', userId).order('fecha', { ascending: false }),
@@ -17,6 +18,7 @@ export function useCapital(userId: string | null) {
     setEntries((invRes.data ?? []) as CapitalEntry[])
     setGanancias((ganRes.data ?? []) as CapitalGanancia[])
     setLoading(false)
+    } catch(e) { console.warn(e); setLoading(false); }
   }, [userId])
 
   const addEntry = async (entry: Omit<CapitalEntry, 'id' | 'created_at'>) => {
