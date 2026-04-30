@@ -161,6 +161,202 @@ function OperacionesPage() {
           </div>
         )}
       </div>
+
+      <NewTradeModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSave={async (payload) => {
+          try {
+            await save(payload);
+            setModalOpen(false);
+          } catch (e) {
+            alert(e instanceof Error ? e.message : "Error al guardar la operación");
+          }
+        }}
+      />
     </div>
+  );
+}
+
+type NewTradePayload = Omit<Trade, "id" | "created_at" | "user_id">;
+
+function NewTradeModal({ open, onClose, onSave }: {
+  open: boolean; onClose: () => void; onSave: (t: NewTradePayload) => Promise<void>;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [fecha, setFecha] = useState(today);
+  const [hora, setHora] = useState("");
+  const [instrumento, setInstrumento] = useState("");
+  const [tipo, setTipo] = useState<"BUY" | "SELL">("BUY");
+  const [precioEntrada, setPrecioEntrada] = useState("");
+  const [precioSalida, setPrecioSalida] = useState("");
+  const [lotes, setLotes] = useState("");
+  const [resultado, setResultado] = useState("");
+  const [rr, setRR] = useState("");
+  const [sesion, setSesion] = useState("");
+  const [estrategia, setEstrategia] = useState("");
+  const [emocion, setEmocion] = useState("");
+  const [confianza, setConfianza] = useState("70");
+  const [tags, setTags] = useState("");
+  const [notas, setNotas] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => {
+    setFecha(today); setHora(""); setInstrumento(""); setTipo("BUY");
+    setPrecioEntrada(""); setPrecioSalida(""); setLotes(""); setResultado("");
+    setRR(""); setSesion(""); setEstrategia(""); setEmocion("");
+    setConfianza("70"); setTags(""); setNotas("");
+  };
+
+  const close = () => { onClose(); reset(); };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await onSave({
+        cuenta: null,
+        instrumento: instrumento.trim().toUpperCase(),
+        tipo,
+        fecha,
+        hora: hora || null,
+        precio_entrada: precioEntrada ? parseFloat(precioEntrada) : null,
+        precio_salida: precioSalida ? parseFloat(precioSalida) : null,
+        resultado: resultado ? parseFloat(resultado) : null,
+        lotes: lotes ? parseFloat(lotes) : null,
+        rr: rr ? parseFloat(rr) : null,
+        sesion: sesion || null,
+        emocion: emocion || null,
+        confianza: confianza ? parseInt(confianza) : null,
+        tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : null,
+        notas: notas.trim() || null,
+        imagen_url: null,
+        estado: "closed",
+        estrategia: estrategia.trim() || null,
+        setup: null,
+      });
+      reset();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const pnl = parseFloat(resultado || "0");
+  const isWin = pnl > 0;
+
+  return (
+    <Modal
+      open={open}
+      onClose={close}
+      title="Nueva operación"
+      subtitle="Registra una operación cerrada en tu journal"
+      size="lg"
+      footer={
+        <>
+          <ModalButton type="button" onClick={close}>Cancelar</ModalButton>
+          <ModalButton type="submit" form="new-trade-form" variant="primary" disabled={saving || !instrumento}>
+            <Plus className="h-3.5 w-3.5 inline mr-1" /> {saving ? "Guardando…" : "Guardar trade"}
+          </ModalButton>
+        </>
+      }
+    >
+      <form id="new-trade-form" onSubmit={submit} className="space-y-5">
+        {/* Side toggle */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setTipo("BUY")}
+            className={`flex items-center justify-center gap-2 h-12 rounded-xl border-2 font-bold text-sm transition ${
+              tipo === "BUY"
+                ? "border-success bg-success/15 text-success shadow-[0_0_20px_color-mix(in_oklab,var(--success)_25%,transparent)]"
+                : "border-border bg-surface-2/40 text-muted-foreground hover:border-success/40"
+            }`}
+          >
+            <TrendingUp className="h-4 w-4" /> BUY / LONG
+          </button>
+          <button
+            type="button"
+            onClick={() => setTipo("SELL")}
+            className={`flex items-center justify-center gap-2 h-12 rounded-xl border-2 font-bold text-sm transition ${
+              tipo === "SELL"
+                ? "border-info bg-info/15 text-info shadow-[0_0_20px_color-mix(in_oklab,var(--info)_25%,transparent)]"
+                : "border-border bg-surface-2/40 text-muted-foreground hover:border-info/40"
+            }`}
+          >
+            <TrendingDown className="h-4 w-4" /> SELL / SHORT
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Instrumento">
+            <input className={inputCls} value={instrumento} onChange={(e) => setInstrumento(e.target.value)} placeholder="EURUSD, NAS100…" required maxLength={20} />
+          </Field>
+          <Field label="Estrategia / Setup">
+            <input className={inputCls} value={estrategia} onChange={(e) => setEstrategia(e.target.value)} placeholder="Breakout London…" maxLength={40} />
+          </Field>
+          <Field label="Fecha">
+            <input className={inputCls} type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
+          </Field>
+          <Field label="Hora">
+            <input className={inputCls} type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Field label="Entrada">
+            <input className={inputCls} type="number" step="any" value={precioEntrada} onChange={(e) => setPrecioEntrada(e.target.value)} placeholder="1.0850" />
+          </Field>
+          <Field label="Salida">
+            <input className={inputCls} type="number" step="any" value={precioSalida} onChange={(e) => setPrecioSalida(e.target.value)} placeholder="1.0890" />
+          </Field>
+          <Field label="Lotes">
+            <input className={inputCls} type="number" step="0.01" min="0" value={lotes} onChange={(e) => setLotes(e.target.value)} placeholder="1.0" />
+          </Field>
+          <Field label="R:R">
+            <input className={inputCls} type="number" step="0.1" value={rr} onChange={(e) => setRR(e.target.value)} placeholder="2.0" />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Field label="P&L ($)" className="sm:col-span-1">
+            <input
+              className={`${inputCls} font-bold ${pnl !== 0 ? (isWin ? "text-success" : "text-destructive") : ""}`}
+              type="number" step="0.01" value={resultado} onChange={(e) => setResultado(e.target.value)} placeholder="120.50"
+            />
+          </Field>
+          <Field label="Sesión">
+            <select className={selectCls} value={sesion} onChange={(e) => setSesion(e.target.value)}>
+              <option value="">—</option>
+              <option value="Asia">Asia</option>
+              <option value="Londres">Londres</option>
+              <option value="NY">NY</option>
+              <option value="Overlap">Overlap</option>
+            </select>
+          </Field>
+          <Field label="Emoción">
+            <select className={selectCls} value={emocion} onChange={(e) => setEmocion(e.target.value)}>
+              <option value="">—</option>
+              <option value="confident">Confiado</option>
+              <option value="neutral">Neutral</option>
+              <option value="fomo">FOMO</option>
+              <option value="fearful">Miedo</option>
+              <option value="revenge">Revenge</option>
+            </select>
+          </Field>
+        </div>
+
+        <Field label={`Confianza: ${confianza}%`}>
+          <input type="range" min="0" max="100" value={confianza} onChange={(e) => setConfianza(e.target.value)} className="w-full accent-primary" />
+        </Field>
+
+        <Field label="Tags" hint="Separadas por comas">
+          <input className={inputCls} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="breakout, news, london" />
+        </Field>
+
+        <Field label="Notas">
+          <textarea className={textareaCls} rows={3} value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="¿Qué viste? ¿Qué hiciste bien o mal?" maxLength={500} />
+        </Field>
+      </form>
+    </Modal>
   );
 }
