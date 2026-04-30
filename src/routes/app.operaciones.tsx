@@ -15,10 +15,11 @@ function fmt(n: number, sign = false) {
 }
 
 function OperacionesPage() {
-  const { trades: { trades, remove, loading } } = useApp();
+  const { trades: { trades, save, remove, loading } } = useApp();
   const [search, setSearch] = useState("");
   const [side, setSide]     = useState<"Todos" | "BUY" | "SELL">("Todos");
   const [result, setResult] = useState<"Todos" | "Ganadores" | "Perdedores">("Todos");
+  const [modalOpen, setModalOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return trades.filter(t => {
