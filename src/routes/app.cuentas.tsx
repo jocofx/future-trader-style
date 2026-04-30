@@ -103,16 +103,23 @@ function Sparkline({ seed }: { seed: number }) {
 function CuentasPage() {
   const [filter, setFilter] = useState<"all" | Status>("all");
   const [query, setQuery] = useState("");
+  const [accounts, setAccounts] = useState<Account[]>(ACCOUNTS);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const filtered = ACCOUNTS.filter((a) =>
+  const filtered = accounts.filter((a) =>
     (filter === "all" || a.status === filter) &&
     (query === "" || a.name.toLowerCase().includes(query.toLowerCase()) || a.broker.toLowerCase().includes(query.toLowerCase()))
   );
 
-  const totalBalance = ACCOUNTS.filter((a) => a.status !== "blown").reduce((s, a) => s + a.balance, 0);
-  const totalPnl = ACCOUNTS.reduce((s, a) => s + a.pnl, 0);
-  const activeCount = ACCOUNTS.filter((a) => a.status === "active" || a.status === "challenge").length;
-  const totalTrades = ACCOUNTS.reduce((s, a) => s + a.trades, 0);
+  const totalBalance = accounts.filter((a) => a.status !== "blown").reduce((s, a) => s + a.balance, 0);
+  const totalPnl = accounts.reduce((s, a) => s + a.pnl, 0);
+  const activeCount = accounts.filter((a) => a.status === "active" || a.status === "challenge").length;
+  const totalTrades = accounts.reduce((s, a) => s + a.trades, 0);
+
+  const handleCreate = (a: Account) => {
+    setAccounts((prev) => [a, ...prev]);
+    setModalOpen(false);
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
