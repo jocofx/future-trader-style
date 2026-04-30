@@ -1,4 +1,4 @@
-import { Outlet, Link, useRouterState, createFileRoute, redirect } from "@tanstack/react-router";
+import { Outlet, Link, useRouterState, useNavigate, createFileRoute, redirect } from "@tanstack/react-router";
 import {
   LayoutDashboard, ListOrdered, CalendarDays, BarChart3, ShieldAlert, Wallet, Sunrise,
   CheckCircle2, LineChart, Sparkles, Brain, BookText, Settings2, PlugZap, Trophy, Users2,
@@ -171,26 +171,32 @@ function AppShell() {
         </nav>
 
         {/* User footer */}
-        <div className="border-t border-sidebar-border p-2.5">
-          <div className="flex items-center gap-2.5 rounded-xl bg-surface/60 border border-sidebar-border p-2 hover:border-primary/30 transition cursor-pointer group"
-            onClick={handleLogout} title="Cerrar sesión">
+        <div className="border-t border-sidebar-border p-2.5 space-y-1">
+          {/* Click → perfil, logout icon separate */}
+          <Link to="/app/perfil"
+            className="flex items-center gap-2.5 rounded-xl bg-surface/60 border border-sidebar-border p-2 hover:border-primary/30 transition cursor-pointer group">
             <div className="h-8 w-8 rounded-lg bg-gradient-primary text-primary-foreground grid place-items-center text-xs font-bold shrink-0">
               {initials}
             </div>
             {!collapsed && (
-              <>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[12px] font-semibold truncate">
-                    {user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "Usuario"}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <span className="text-warning">★</span> Plan Pro
-                  </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[12px] font-semibold truncate">
+                  {user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "Usuario"}
                 </div>
-                <LogOut className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition" />
-              </>
+                <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <span className="text-warning">★</span> Plan Pro · Ver perfil →
+                </div>
+              </div>
             )}
-          </div>
+          </Link>
+          {/* Logout button below, only when expanded */}
+          {!collapsed && (
+            <button onClick={handleLogout}
+              className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition">
+              <LogOut className="h-3.5 w-3.5" />
+              Cerrar sesión
+            </button>
+          )}
         </div>
       </aside>
 
