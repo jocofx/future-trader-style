@@ -303,7 +303,7 @@ function RiesgoPage() {
   );
 }
 
-function RuleRow({ rule, onToggle }: { rule: Rule & { ratio: number; severity: Severity }; onToggle: () => void }) {
+function RuleRow({ rule, onToggle, onRemove }: { rule: Rule & { ratio: number; severity: Severity }; onToggle: () => void; onRemove: () => void }) {
   const sevColor = rule.severity === "danger" ? "var(--destructive)" : rule.severity === "warn" ? "var(--warning)" : "var(--primary)";
   const sevText = rule.severity === "danger" ? "text-destructive" : rule.severity === "warn" ? "text-warning" : "text-success";
   const sevBorder = rule.severity === "danger" ? "border-destructive/30" : rule.severity === "warn" ? "border-warning/30" : "border-border";
