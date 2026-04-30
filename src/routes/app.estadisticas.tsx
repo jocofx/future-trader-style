@@ -24,7 +24,11 @@ function filterByPeriod(trades: Trade[], period: Period, account: string): Trade
   const now = new Date();
   return trades.filter(t => {
     // Normalize: compare only the name part, case-insensitive
-    if (account && (t.cuenta ?? "").toLowerCase() !== account.toLowerCase()) return false;
+    if (account) {
+      const tc = (t.cuenta ?? "").trim();
+      const ac = account.trim();
+      if (tc !== ac && tc.toLowerCase() !== ac.toLowerCase()) return false;
+    }
     if (period === "all") return true;
     // Normalize fecha: take YYYY-MM-DD part only to avoid timezone issues
     const d = new Date((t.fecha ?? "").slice(0, 10) + "T12:00:00");
@@ -66,6 +70,13 @@ function EstadisticasPage() {
   const { trades: { trades }, accounts: { accounts } } = useApp();
   const [period, setPeriod]   = useState<Period>("month");
   const [account, setAccount] = useState("");
+
+  // Cuentas that actually appear in trades (guaranteed match)
+  const cuentasEnTrades = useMemo(() => {
+    const set = new Set<string>();
+    trades.forEach(t => { if (t.cuenta) set.add(t.cuenta); });
+    return Array.from(set).sort();
+  }, [trades]);
 
   const filtered = useMemo(() => filterByPeriod(trades, period, account), [trades, period, account]);
   const stats     = useMemo(() => computeStats(filtered), [filtered]);
@@ -129,14 +140,24 @@ function EstadisticasPage() {
             <BarChart3 className="h-3.5 w-3.5 text-primary" /> Análisis
           </div>
           <h1 className="mt-1 text-2xl md:text-3xl font-bold tracking-tight">Estadísticas</h1>
-          <p className="text-sm text-muted-foreground mt-1">{filtered.length} operaciones analizadas</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {filtered.length} operaciones analizadas
+            {account && (
+              <span className="ml-2 text-xs font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                cuenta: "{account}" · {filtered.length} trades
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Account filter */}
           <select value={account} onChange={e => setAccount(e.target.value)}
             className="h-9 px-3 rounded-lg bg-surface/70 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring text-foreground">
             <option value="">Todas las cuentas</option>
-            {accounts.map(a => <option key={a.id} value={a.nombre}>{a.nombre}</option>)}
+            {cuentasEnTrades.length > 0
+              ? cuentasEnTrades.map(c => <option key={c} value={c}>{c}</option>)
+              : accounts.map(a => <option key={a.id} value={a.nombre}>{a.nombre}</option>)
+            }
           </select>
           {/* Period pills */}
           <div className="flex bg-surface/60 border border-border rounded-xl p-1 gap-0.5">
