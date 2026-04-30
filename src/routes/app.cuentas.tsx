@@ -1,305 +1,210 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import {
-  Wallet, Plus, MoreVertical, TrendingUp, TrendingDown, Search,
-  CheckCircle2, AlertTriangle, CircleSlash, Building2, Layers, DollarSign,
-  ArrowUpRight, Star,
-} from "lucide-react";
+import { useState } from "react";
+import { Wallet, Plus, Trash2, Edit2, Check, X } from "lucide-react";
+import { useApp } from "@/context/AppContext";
+import type { Account } from "@/lib/types";
 
 export const Route = createFileRoute("/app/cuentas")({
-  head: () => ({
-    meta: [
-      { title: "Cuentas · Tradync" },
-      { name: "description", content: "Gestiona tus cuentas de trading: brokers, prop firms y demos." },
-    ],
-  }),
   component: CuentasPage,
 });
 
-const fmtUSD = (n: number, sign = false) => {
-  const s = n < 0 ? "-" : sign ? "+" : "";
-  return `${s}$${Math.abs(n).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-};
-const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
-
-type Status = "active" | "challenge" | "paused" | "blown";
-type Account = {
-  id: string;
-  name: string;
-  broker: string;
-  type: "Live" | "Prop Firm" | "Demo";
-  status: Status;
-  currency: string;
-  balance: number;
-  equity: number;
-  pnl: number;
-  pnlPct: number;
-  drawdown: number;
-  maxDD: number;
-  trades: number;
-  winRate: number;
-  rule?: string;
-  ruleProgress?: number;
-  favorite?: boolean;
-};
-
-const ACCOUNTS: Account[] = [
-  { id: "a1", name: "FTMO 100k Phase 2", broker: "FTMO", type: "Prop Firm", status: "challenge", currency: "USD",
-    balance: 104820, equity: 105210, pnl: 5210, pnlPct: 5.21, drawdown: 1.8, maxDD: 10,
-    trades: 47, winRate: 63, rule: "Profit target", ruleProgress: 52, favorite: true },
-  { id: "a2", name: "IC Markets Real",   broker: "IC Markets", type: "Live", status: "active", currency: "USD",
-    balance: 18420, equity: 18540, pnl: 3420, pnlPct: 22.8, drawdown: 0.6, maxDD: 8,
-    trades: 184, winRate: 58, favorite: true },
-  { id: "a3", name: "MyForexFunds 50k",  broker: "MFF", type: "Prop Firm", status: "active", currency: "USD",
-    balance: 53210, equity: 53180, pnl: 3210, pnlPct: 6.42, drawdown: 2.1, maxDD: 5,
-    trades: 92, winRate: 61, rule: "Daily loss", ruleProgress: 18 },
-  { id: "a4", name: "Demo Strategy Lab", broker: "MetaTrader 5", type: "Demo", status: "paused", currency: "USD",
-    balance: 9840, equity: 9840, pnl: -160, pnlPct: -1.6, drawdown: 4.2, maxDD: 15,
-    trades: 31, winRate: 42 },
-  { id: "a5", name: "FTMO 200k Failed",  broker: "FTMO", type: "Prop Firm", status: "blown", currency: "USD",
-    balance: 188400, equity: 188400, pnl: -11600, pnlPct: -5.8, drawdown: 5.8, maxDD: 5,
-    trades: 64, winRate: 39 },
-];
-
-const STATUS_META: Record<Status, { label: string; cls: string; Icon: any }> = {
-  active:    { label: "Activa",      cls: "text-success bg-success/10 border-success/25",          Icon: CheckCircle2 },
-  challenge: { label: "Challenge",   cls: "text-info bg-info/10 border-info/25",                   Icon: Layers },
-  paused:    { label: "Pausada",     cls: "text-muted-foreground bg-surface-3 border-border",      Icon: CircleSlash },
-  blown:     { label: "Liquidada",   cls: "text-destructive bg-destructive/10 border-destructive/25", Icon: AlertTriangle },
-};
-
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`rounded-2xl border border-border bg-surface/60 backdrop-blur-xl p-5 ${className}`}>
-      {children}
-    </div>
-  );
-}
-
-function Sparkline({ seed }: { seed: number }) {
-  const W = 120, H = 32;
-  const points = useMemo(() => {
-    const arr: number[] = [];
-    let v = 50;
-    for (let i = 0; i < 24; i++) {
-      v += ((Math.sin(seed * (i + 1)) + Math.cos(seed * 0.7 * i)) * 8);
-      arr.push(v);
-    }
-    const min = Math.min(...arr), max = Math.max(...arr), r = max - min || 1;
-    return arr.map((y, i) => [(i / (arr.length - 1)) * W, H - ((y - min) / r) * H * 0.9 - 2] as const);
-  }, [seed]);
-  const up = points[points.length - 1][1] < points[0][1];
-  const color = up ? "var(--success)" : "var(--destructive)";
-  const path = points.map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-8">
-      <path d={path} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
-        style={{ filter: `drop-shadow(0 0 4px color-mix(in oklab, ${color} 50%, transparent))` }} />
-    </svg>
-  );
-}
+const TIPOS = ["Real","Demo","Prop Firm","Fondeo","Otra"];
+const BROKERS = ["FTMO","TopStep","MyForexFunds","Interactive Brokers","Pepperstone","ICMarkets","Otro"];
 
 function CuentasPage() {
-  const [filter, setFilter] = useState<"all" | Status>("all");
-  const [query, setQuery] = useState("");
+  const { accounts: { accounts, save, update, remove, loading }, trades: { trades } } = useApp();
+  const [showForm, setShowForm]   = useState(false);
+  const [editing, setEditing]     = useState<string | null>(null);
+  const [form, setForm]           = useState<Partial<Account>>({ activa: true, moneda: "USD" });
+  const [saving, setSaving]       = useState(false);
+  const [err, setErr]             = useState("");
 
-  const filtered = ACCOUNTS.filter((a) =>
-    (filter === "all" || a.status === filter) &&
-    (query === "" || a.name.toLowerCase().includes(query.toLowerCase()) || a.broker.toLowerCase().includes(query.toLowerCase()))
+  const resetForm = () => { setForm({ activa: true, moneda: "USD" }); setErr(""); };
+
+  const handleSave = async () => {
+    if (!form.nombre?.trim()) return setErr("El nombre es obligatorio");
+    setSaving(true);
+    try {
+      if (editing) {
+        await update(editing, form);
+        setEditing(null);
+      } else {
+        await save({ ...form, user_id: "", nombre: form.nombre! });
+        setShowForm(false);
+      }
+      resetForm();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Error guardando"); }
+    finally { setSaving(false); }
+  };
+
+  const handleEdit = (a: Account) => {
+    setEditing(a.id);
+    setForm({ nombre: a.nombre, broker: a.broker ?? "", tipo: a.tipo ?? "", balance: a.balance ?? undefined, moneda: a.moneda ?? "USD", activa: a.activa ?? true, notas: a.notas ?? "" });
+  };
+
+  // Stats per account
+  const accountStats = (nombre: string) => {
+    const t = trades.filter(tr => tr.cuenta === nombre && tr.resultado != null);
+    const wins = t.filter(tr => (tr.resultado??0) > 0);
+    const pnl  = t.reduce((s,tr) => s+(tr.resultado??0), 0);
+    return { total: t.length, wins: wins.length, pnl };
+  };
+
+  const FormFields = () => (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Nombre *</label>
+          <input value={form.nombre ?? ""} onChange={e => setForm(f=>({...f,nombre:e.target.value}))}
+            placeholder="Mi cuenta real" className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Broker</label>
+          <select value={form.broker ?? ""} onChange={e => setForm(f=>({...f,broker:e.target.value}))}
+            className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="">— Selecciona —</option>
+            {BROKERS.map(b => <option key={b}>{b}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Tipo</label>
+          <select value={form.tipo ?? ""} onChange={e => setForm(f=>({...f,tipo:e.target.value}))}
+            className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="">— Selecciona —</option>
+            {TIPOS.map(t => <option key={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Balance ($)</label>
+          <input type="number" value={form.balance ?? ""} onChange={e => setForm(f=>({...f,balance:Number(e.target.value)}))}
+            placeholder="10000" className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+      </div>
+      <div>
+        <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Notas</label>
+        <input value={form.notas ?? ""} onChange={e => setForm(f=>({...f,notas:e.target.value}))}
+          placeholder="Descripción opcional..." className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+      </div>
+      <div className="flex items-center gap-2">
+        <button onClick={() => setForm(f=>({...f,activa:!f.activa}))}
+          className={`w-10 h-5 rounded-full transition-colors ${form.activa ? "bg-success" : "bg-surface-3"} relative`}>
+          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.activa ? "translate-x-5" : "translate-x-0.5"}`} />
+        </button>
+        <span className="text-sm text-muted-foreground">Cuenta activa</span>
+      </div>
+      {err && <div className="text-destructive text-xs">{err}</div>}
+    </div>
   );
 
-  const totalBalance = ACCOUNTS.filter((a) => a.status !== "blown").reduce((s, a) => s + a.balance, 0);
-  const totalPnl = ACCOUNTS.reduce((s, a) => s + a.pnl, 0);
-  const activeCount = ACCOUNTS.filter((a) => a.status === "active" || a.status === "challenge").length;
-  const totalTrades = ACCOUNTS.reduce((s, a) => s + a.trades, 0);
-
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8 space-y-6">
+      <div className="flex items-end justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
-            <Wallet className="h-3.5 w-3.5 text-primary" />
-            Cuentas
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            <Wallet className="h-3.5 w-3.5 text-primary" /> Gestión
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Tus cuentas de trading</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Brokers, prop firms y demos centralizadas en un solo dashboard.
-          </p>
+          <h1 className="mt-1 text-2xl md:text-3xl font-bold tracking-tight">Cuentas</h1>
+          <p className="text-sm text-muted-foreground mt-1">{accounts.length} cuentas registradas</p>
         </div>
-        <button className="flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition shadow-[0_0_20px_color-mix(in_oklab,var(--primary)_35%,transparent)]">
-          <Plus className="h-3.5 w-3.5" /> Añadir cuenta
+        <button onClick={() => { setShowForm(true); resetForm(); }}
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold shadow-glow hover:brightness-110 transition">
+          <Plus className="h-4 w-4" /> Nueva cuenta
         </button>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: "Capital total", value: fmtUSD(totalBalance), sub: `${ACCOUNTS.length} cuentas`, Icon: DollarSign, tone: "text-foreground" },
-          { label: "P&L acumulado", value: fmtUSD(totalPnl, true), sub: "Todas las cuentas", Icon: TrendingUp, tone: totalPnl >= 0 ? "text-success" : "text-destructive" },
-          { label: "Activas", value: String(activeCount), sub: `${ACCOUNTS.length - activeCount} inactivas`, Icon: CheckCircle2, tone: "text-info" },
-          { label: "Operaciones", value: totalTrades.toLocaleString(), sub: "Histórico total", Icon: Layers, tone: "text-foreground" },
-        ].map((k) => (
-          <Card key={k.label}>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{k.label}</div>
-                <div className={`text-2xl font-bold font-mono mt-1 ${k.tone}`}>{k.value}</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{k.sub}</div>
-              </div>
-              <div className="h-9 w-9 grid place-items-center rounded-lg bg-primary/10 text-primary border border-primary/20">
-                <k.Icon className="h-4 w-4" />
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nombre o broker…"
-            className="w-full h-9 pl-9 pr-3 rounded-lg bg-surface/70 border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-          />
-        </div>
-        <div className="flex gap-1 rounded-xl border border-border bg-surface/60 backdrop-blur-xl p-1">
-          {([
-            ["all", "Todas"], ["active", "Activas"], ["challenge", "Challenge"],
-            ["paused", "Pausadas"], ["blown", "Liquidadas"],
-          ] as const).map(([k, label]) => (
-            <button
-              key={k}
-              onClick={() => setFilter(k as any)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                filter === k
-                  ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_25%,transparent)]"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {label}
+      {/* New account form */}
+      {showForm && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 backdrop-blur p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm font-semibold">Nueva cuenta</div>
+            <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+          </div>
+          <FormFields />
+          <div className="flex gap-2 mt-4">
+            <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold hover:bg-surface transition">Cancelar</button>
+            <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-semibold shadow-glow hover:brightness-110 transition disabled:opacity-50">
+              {saving ? "Guardando..." : "Guardar cuenta"}
             </button>
-          ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Account cards */}
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.map((a, idx) => {
-          const meta = STATUS_META[a.status];
-          const StatusIcon = meta.Icon;
-          const ddPct = (a.drawdown / a.maxDD) * 100;
-          return (
-            <div
-              key={a.id}
-              className="group relative rounded-2xl border border-border bg-surface/70 backdrop-blur-xl p-5 hover:border-primary/40 transition overflow-hidden"
-            >
-              <div
-                className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-0 group-hover:opacity-100 transition pointer-events-none"
-                style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--primary) 18%, transparent), transparent 70%)" }}
-              />
-              <div className="relative">
+      {/* Accounts grid */}
+      {loading ? (
+        <div className="text-center py-16 text-muted-foreground">Cargando cuentas…</div>
+      ) : accounts.length === 0 ? (
+        <div className="text-center py-16">
+          <div className="text-4xl mb-4">🏦</div>
+          <div className="text-muted-foreground text-sm">Sin cuentas. Añade tu primera cuenta para organizar tus operaciones.</div>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {accounts.map(a => {
+            const stats = accountStats(a.nombre);
+            const isEditing = editing === a.id;
+            return (
+              <div key={a.id} className={`rounded-2xl border bg-card/60 backdrop-blur overflow-hidden ${a.activa ? "border-border" : "border-border/50 opacity-60"}`}>
                 {/* Header */}
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="h-10 w-10 grid place-items-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 text-primary shrink-0">
-                      <Building2 className="h-4.5 w-4.5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <div className="text-sm font-semibold truncate">{a.name}</div>
-                        {a.favorite && <Star className="h-3 w-3 fill-warning text-warning shrink-0" />}
+                <div className="px-5 pt-5 pb-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${a.activa ? "bg-success" : "bg-muted-foreground"}`} />
+                        <span className="font-bold text-base">{a.nombre}</span>
                       </div>
-                      <div className="text-[11px] text-muted-foreground truncate">{a.broker} · {a.type}</div>
+                      <div className="flex gap-2 mt-1">
+                        {a.broker && <span className="text-[10px] px-2 py-0.5 rounded-full bg-surface-2 border border-border text-muted-foreground">{a.broker}</span>}
+                        {a.tipo   && <span className="text-[10px] px-2 py-0.5 rounded-full bg-surface-2 border border-border text-muted-foreground">{a.tipo}</span>}
+                      </div>
                     </div>
-                  </div>
-                  <button className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-foreground p-1 -m-1">
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {/* Status badge */}
-                <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border ${meta.cls}`}>
-                  <StatusIcon className="h-3 w-3" /> {meta.label}
-                </span>
-
-                {/* Balance */}
-                <div className="mt-4 flex items-end justify-between">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Balance</div>
-                    <div className="text-2xl font-bold font-mono">{fmtUSD(a.balance)}</div>
-                  </div>
-                  <div className={`text-right ${a.pnl >= 0 ? "text-success" : "text-destructive"}`}>
-                    <div className="flex items-center gap-1 justify-end text-xs font-mono font-semibold">
-                      {a.pnl >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                      {fmtPct(a.pnlPct)}
+                    <div className="flex gap-1">
+                      <button onClick={() => handleEdit(a)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition"><Edit2 className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => { if(confirm("¿Eliminar esta cuenta?")) remove(a.id); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
-                    <div className="text-[11px] font-mono opacity-80">{fmtUSD(a.pnl, true)}</div>
                   </div>
                 </div>
 
-                {/* Sparkline */}
-                <div className="mt-2"><Sparkline seed={idx + 1} /></div>
-
-                {/* Drawdown bar */}
-                <div className="mt-3">
-                  <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-                    <span>Drawdown</span>
-                    <span className="font-mono">{a.drawdown.toFixed(1)}% / {a.maxDD}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.min(100, ddPct)}%`,
-                        background: ddPct > 80 ? "var(--destructive)" : ddPct > 50 ? "var(--warning)" : "var(--success)",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Rule progress */}
-                {a.rule && a.ruleProgress !== undefined && (
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-                      <span>{a.rule}</span>
-                      <span className="font-mono">{a.ruleProgress}%</span>
+                {isEditing ? (
+                  <div className="px-5 pb-5 space-y-3 border-t border-border pt-4">
+                    <FormFields />
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditing(null); resetForm(); }} className="flex-1 py-2 rounded-lg border border-border text-xs font-semibold hover:bg-surface transition">Cancelar</button>
+                      <button onClick={handleSave} disabled={saving} className="flex-1 py-2 rounded-lg bg-gradient-primary text-primary-foreground text-xs font-semibold hover:brightness-110 transition disabled:opacity-50">
+                        {saving ? "…" : <><Check className="h-3 w-3 inline mr-1"/>Guardar</>}
+                      </button>
                     </div>
-                    <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-primary to-primary-glow"
-                        style={{ width: `${a.ruleProgress}%`, boxShadow: "0 0 8px color-mix(in oklab, var(--primary) 50%, transparent)" }}
-                      />
+                  </div>
+                ) : (
+                  <div className="px-5 pb-5 border-t border-border pt-4">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Ops</div>
+                        <div className="font-mono font-bold mt-0.5">{stats.total}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">WR</div>
+                        <div className="font-mono font-bold mt-0.5">{stats.total ? Math.round(stats.wins/stats.total*100)+"%" : "—"}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">P&L</div>
+                        <div className={`font-mono font-bold mt-0.5 ${stats.pnl>=0?"text-success":"text-destructive"}`}>
+                          {stats.total ? (stats.pnl>=0?"+":"-")+"$"+Math.abs(stats.pnl).toFixed(0) : "—"}
+                        </div>
+                      </div>
                     </div>
+                    {a.balance && (
+                      <div className="mt-3 text-xs text-muted-foreground text-center font-mono">
+                        Balance: ${a.balance.toLocaleString()} {a.moneda}
+                      </div>
+                    )}
+                    {a.notas && <div className="mt-2 text-xs text-muted-foreground text-center">{a.notas}</div>}
                   </div>
                 )}
-
-                {/* Stats footer */}
-                <div className="mt-4 pt-3 border-t border-border grid grid-cols-3 gap-2 text-center">
-                  <div>
-                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Trades</div>
-                    <div className="text-sm font-mono font-semibold">{a.trades}</div>
-                  </div>
-                  <div>
-                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Win rate</div>
-                    <div className="text-sm font-mono font-semibold text-primary">{a.winRate}%</div>
-                  </div>
-                  <div>
-                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Equity</div>
-                    <div className="text-sm font-mono font-semibold">{fmtUSD(a.equity)}</div>
-                  </div>
-                </div>
-
-                <button className="mt-4 w-full flex items-center justify-center gap-1.5 h-8 rounded-lg border border-border bg-surface-2/60 hover:border-primary/40 hover:text-primary transition text-xs font-medium">
-                  Ver detalle <ArrowUpRight className="h-3.5 w-3.5" />
-                </button>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
