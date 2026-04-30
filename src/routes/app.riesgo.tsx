@@ -33,6 +33,13 @@ function RiesgoPage() {
     { id: "consecutive", label: "Pérdidas consecutivas", limit: 3,    current: 2,   unit: "L",  enabled: true },
     { id: "cooldown",    label: "Cool-down post pérdida",limit: 30,   current: 30,  unit: " min", enabled: true },
   ]);
+  const [ruleModal, setRuleModal] = useState(false);
+
+  const addRule = (r: Omit<Rule, "id" | "current">) => {
+    setRules((prev) => [...prev, { ...r, id: `rule-${Date.now()}`, current: 0 }]);
+    setRuleModal(false);
+  };
+  const removeRule = (id: string) => setRules((prev) => prev.filter((r) => r.id !== id));
 
   const computed = rules.map((r) => {
     const ratio = r.current / r.limit;
