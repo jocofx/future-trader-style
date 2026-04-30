@@ -145,9 +145,9 @@ function CuentasPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Capital total", value: fmtUSD(totalBalance), sub: `${ACCOUNTS.length} cuentas`, Icon: DollarSign, tone: "text-foreground" },
+          { label: "Capital total", value: fmtUSD(totalBalance), sub: `${accounts.length} cuentas`, Icon: DollarSign, tone: "text-foreground" },
           { label: "P&L acumulado", value: fmtUSD(totalPnl, true), sub: "Todas las cuentas", Icon: TrendingUp, tone: totalPnl >= 0 ? "text-success" : "text-destructive" },
-          { label: "Activas", value: String(activeCount), sub: `${ACCOUNTS.length - activeCount} inactivas`, Icon: CheckCircle2, tone: "text-info" },
+          { label: "Activas", value: String(activeCount), sub: `${accounts.length - activeCount} inactivas`, Icon: CheckCircle2, tone: "text-info" },
           { label: "Operaciones", value: totalTrades.toLocaleString(), sub: "Histórico total", Icon: Layers, tone: "text-foreground" },
         ].map((k) => (
           <Card key={k.label}>
