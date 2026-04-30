@@ -311,6 +311,111 @@ function CuentasPage() {
           );
         })}
       </div>
+
+      <AddAccountModal open={modalOpen} onClose={() => setModalOpen(false)} onCreate={handleCreate} />
     </div>
+  );
+}
+
+function AddAccountModal({ open, onClose, onCreate }: {
+  open: boolean; onClose: () => void; onCreate: (a: Account) => void;
+}) {
+  const [name, setName] = useState("");
+  const [broker, setBroker] = useState("");
+  const [type, setType] = useState<Account["type"]>("Live");
+  const [status, setStatus] = useState<Status>("active");
+  const [currency, setCurrency] = useState("USD");
+  const [balance, setBalance] = useState("");
+  const [maxDD, setMaxDD] = useState("10");
+  const [rule, setRule] = useState("");
+  const [favorite, setFavorite] = useState(false);
+
+  const reset = () => {
+    setName(""); setBroker(""); setType("Live"); setStatus("active");
+    setCurrency("USD"); setBalance(""); setMaxDD("10"); setRule(""); setFavorite(false);
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const bal = parseFloat(balance) || 0;
+    const account: Account = {
+      id: `a${Date.now()}`,
+      name: name.trim(),
+      broker: broker.trim(),
+      type, status, currency,
+      balance: bal,
+      equity: bal,
+      pnl: 0, pnlPct: 0,
+      drawdown: 0,
+      maxDD: parseFloat(maxDD) || 10,
+      trades: 0, winRate: 0,
+      rule: rule.trim() || undefined,
+      ruleProgress: rule.trim() ? 0 : undefined,
+      favorite,
+    };
+    onCreate(account);
+    reset();
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={() => { onClose(); reset(); }}
+      title="Añadir nueva cuenta"
+      subtitle="Conecta un broker, prop firm o demo a tu dashboard"
+      size="lg"
+      footer={
+        <>
+          <ModalButton type="button" onClick={() => { onClose(); reset(); }}>Cancelar</ModalButton>
+          <ModalButton type="submit" form="add-account-form" variant="primary" disabled={!name || !broker}>
+            <Plus className="h-3.5 w-3.5 inline mr-1" /> Crear cuenta
+          </ModalButton>
+        </>
+      }
+    >
+      <form id="add-account-form" onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="Nombre de la cuenta" className="sm:col-span-2">
+          <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="FTMO 100k Phase 2" required maxLength={60} />
+        </Field>
+        <Field label="Broker / Proveedor">
+          <input className={inputCls} value={broker} onChange={(e) => setBroker(e.target.value)} placeholder="FTMO, IC Markets…" required maxLength={40} />
+        </Field>
+        <Field label="Tipo">
+          <select className={selectCls} value={type} onChange={(e) => setType(e.target.value as Account["type"])}>
+            <option value="Live">Live</option>
+            <option value="Prop Firm">Prop Firm</option>
+            <option value="Demo">Demo</option>
+          </select>
+        </Field>
+        <Field label="Estado inicial">
+          <select className={selectCls} value={status} onChange={(e) => setStatus(e.target.value as Status)}>
+            <option value="active">Activa</option>
+            <option value="challenge">Challenge</option>
+            <option value="paused">Pausada</option>
+          </select>
+        </Field>
+        <Field label="Moneda">
+          <select className={selectCls} value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+          </select>
+        </Field>
+        <Field label="Balance inicial">
+          <input className={inputCls} type="number" min="0" step="100" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="10000" required />
+        </Field>
+        <Field label="Drawdown máx. (%)">
+          <input className={inputCls} type="number" min="0" max="100" step="0.5" value={maxDD} onChange={(e) => setMaxDD(e.target.value)} />
+        </Field>
+        <Field label="Regla principal (opcional)" className="sm:col-span-2" hint="Ej: Profit target, Daily loss limit…">
+          <input className={inputCls} value={rule} onChange={(e) => setRule(e.target.value)} placeholder="Profit target" maxLength={40} />
+        </Field>
+        <label className="sm:col-span-2 flex items-center gap-2.5 cursor-pointer p-3 rounded-lg border border-border bg-surface-2/40 hover:border-primary/30 transition">
+          <input type="checkbox" checked={favorite} onChange={(e) => setFavorite(e.target.checked)} className="accent-primary" />
+          <Star className={`h-4 w-4 ${favorite ? "fill-warning text-warning" : "text-muted-foreground"}`} />
+          <span className="text-sm">Marcar como favorita</span>
+        </label>
+      </form>
+    </Modal>
   );
 }
