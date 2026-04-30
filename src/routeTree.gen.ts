@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppPsicologiaRouteImport } from './routes/app.psicologia'
@@ -34,6 +35,12 @@ const AppRoute = AppRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() => import('./routes/login').then(d => d))
+
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -127,6 +134,7 @@ const AppAfiliadosRoute = AppAfiliadosRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/app': typeof AppRouteWithChildren
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
@@ -148,6 +156,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -169,6 +178,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/app': typeof AppRouteWithChildren
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
@@ -255,6 +265,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
   AppRoute: typeof AppRouteWithChildren
 }
 
@@ -440,6 +451,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
   AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
