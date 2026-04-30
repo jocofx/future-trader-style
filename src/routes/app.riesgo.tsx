@@ -210,14 +210,22 @@ function RiesgoPage() {
               <div className="text-sm font-semibold">Reglas activas</div>
               <div className="text-xs text-muted-foreground">Se evalúan en tiempo real ante cada operación</div>
             </div>
-            <button className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-gradient-primary text-primary-foreground shadow-glow hover:brightness-110 transition">
+            <button
+              onClick={() => setRuleModal(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-gradient-primary text-primary-foreground shadow-glow hover:brightness-110 transition"
+            >
               <Plus className="h-3.5 w-3.5" /> Nueva regla
             </button>
           </div>
 
           <div className="mt-5 space-y-3">
             {computed.map((r) => (
-              <RuleRow key={r.id} rule={r} onToggle={() => setRules(rules.map((x) => x.id === r.id ? { ...x, enabled: !x.enabled } : x))} />
+              <RuleRow
+                key={r.id}
+                rule={r}
+                onToggle={() => setRules(rules.map((x) => x.id === r.id ? { ...x, enabled: !x.enabled } : x))}
+                onRemove={() => removeRule(r.id)}
+              />
             ))}
           </div>
         </div>
