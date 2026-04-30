@@ -299,7 +299,102 @@ function RiesgoPage() {
           </div>
         </div>
       </div>
+      <NewRuleModal open={ruleModal} onClose={() => setRuleModal(false)} onCreate={addRule} />
     </div>
+  );
+}
+
+function NewRuleModal({ open, onClose, onCreate }: {
+  open: boolean; onClose: () => void; onCreate: (r: Omit<Rule, "id" | "current">) => void;
+}) {
+  const [label, setLabel] = useState("");
+  const [limit, setLimit] = useState("");
+  const [unit, setUnit] = useState("$");
+  const [enabled, setEnabled] = useState(true);
+
+  const reset = () => { setLabel(""); setLimit(""); setUnit("$"); setEnabled(true); };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onCreate({ label: label.trim(), limit: parseFloat(limit) || 0, unit, enabled });
+    reset();
+  };
+
+  const presets = [
+    { label: "Pérdida diaria máx.", unit: "$", limit: "1000" },
+    { label: "Trades por día", unit: " trades", limit: "5" },
+    { label: "Riesgo por trade", unit: "%", limit: "1" },
+    { label: "Drawdown semanal", unit: "%", limit: "5" },
+  ];
+
+  return (
+    <Modal
+      open={open}
+      onClose={() => { onClose(); reset(); }}
+      title="Nueva regla de riesgo"
+      subtitle="Define un límite que se evaluará en tiempo real"
+      size="md"
+      footer={
+        <>
+          <ModalButton type="button" onClick={() => { onClose(); reset(); }}>Cancelar</ModalButton>
+          <ModalButton type="submit" form="new-rule-form" variant="primary" disabled={!label || !limit}>
+            <Plus className="h-3.5 w-3.5 inline mr-1" /> Crear regla
+          </ModalButton>
+        </>
+      }
+    >
+      <form id="new-rule-form" onSubmit={submit} className="space-y-4">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground mb-2 font-medium">Plantillas</div>
+          <div className="grid grid-cols-2 gap-2">
+            {presets.map((p) => (
+              <button
+                type="button"
+                key={p.label}
+                onClick={() => { setLabel(p.label); setUnit(p.unit); setLimit(p.limit); }}
+                className="text-left p-2.5 rounded-lg border border-border bg-surface-2/40 hover:border-primary/40 hover:bg-primary/5 transition text-xs"
+              >
+                <div className="font-semibold truncate">{p.label}</div>
+                <div className="text-muted-foreground font-mono text-[10px] mt-0.5">≤ {p.limit}{p.unit}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Field label="Nombre de la regla">
+          <input className={inputCls} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ej: Pérdida diaria máx." required maxLength={50} />
+        </Field>
+
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="Límite" className="col-span-2">
+            <input className={inputCls} type="number" min="0" step="0.1" value={limit} onChange={(e) => setLimit(e.target.value)} placeholder="1000" required />
+          </Field>
+          <Field label="Unidad">
+            <select className={selectCls} value={unit} onChange={(e) => setUnit(e.target.value)}>
+              <option value="$">$</option>
+              <option value="%">%</option>
+              <option value=" trades">trades</option>
+              <option value=" min">minutos</option>
+              <option value="L">pérdidas</option>
+            </select>
+          </Field>
+        </div>
+
+        <label className="flex items-center justify-between p-3 rounded-lg border border-border bg-surface-2/40 cursor-pointer">
+          <div>
+            <div className="text-sm font-medium">Activar al crear</div>
+            <div className="text-[11px] text-muted-foreground">La regla bloqueará operaciones si se rompe</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setEnabled(!enabled)}
+            className={`relative h-5 w-9 rounded-full transition shrink-0 ${enabled ? "bg-primary" : "bg-surface-3"}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-background shadow transition-transform ${enabled ? "translate-x-4" : ""}`} />
+          </button>
+        </label>
+      </form>
+    </Modal>
   );
 }
 
