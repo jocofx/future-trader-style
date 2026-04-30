@@ -134,7 +134,10 @@ function CuentasPage() {
             Brokers, prop firms y demos centralizadas en un solo dashboard.
           </p>
         </div>
-        <button className="flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition shadow-[0_0_20px_color-mix(in_oklab,var(--primary)_35%,transparent)]">
+        <button
+          onClick={() => setModalOpen(true)}
+          className="flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition shadow-[0_0_20px_color-mix(in_oklab,var(--primary)_35%,transparent)]"
+        >
           <Plus className="h-3.5 w-3.5" /> Añadir cuenta
         </button>
       </div>
