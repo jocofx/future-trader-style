@@ -5,6 +5,7 @@ import {
   CheckCircle2, AlertTriangle, CircleSlash, Building2, Layers, DollarSign,
   ArrowUpRight, Star,
 } from "lucide-react";
+import { Modal, Field, inputCls, selectCls, textareaCls, ModalButton } from "@/components/Modal";
 
 export const Route = createFileRoute("/app/cuentas")({
   head: () => ({
