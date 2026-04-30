@@ -25,7 +25,7 @@ const GAN_EMOJI: Record<string, string> = {
 // ── Modal components ──────────────────────────────────────────────
 function InversionModal({ onClose, onSave }: {
   onClose: () => void
-  onSave: (e: Omit<CapitalEntry, "id" | "created_at">) => Promise<void>
+  onSave: (e: Omit<CapitalEntry, "id" | "created_at">) => Promise<CapitalEntry | void>
 }) {
   const [tipo, setTipo]       = useState("")
   const [proveedor, setProv]  = useState("")
@@ -116,7 +116,7 @@ function GananciaModal({ entries, onClose, onSave, preselect }: {
   entries: CapitalEntry[]
   preselect?: string
   onClose: () => void
-  onSave: (g: Omit<CapitalGanancia, "id" | "created_at">) => Promise<void>
+  onSave: (g: Omit<CapitalGanancia, "id" | "created_at">) => Promise<CapitalGanancia | void>
 }) {
   const [invId, setInvId]   = useState(preselect ?? "")
   const [cantidad, setCant] = useState("")

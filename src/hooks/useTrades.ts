@@ -20,7 +20,7 @@ export function useTrades(userId: string | null) {
         .order('created_at', { ascending: false })
       if (error) throw error
       // Normalise tipo (BUY/SELL) — mirrors parseSupabaseRow() from legacy JS
-      const normalised = (data ?? []).map(t => ({
+      const normalised = (data ?? []).map((t: any) => ({
         ...t,
         tipo: normalizeSide(t.tipo),
       })) as Trade[]

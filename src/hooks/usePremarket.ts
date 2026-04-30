@@ -28,7 +28,7 @@ export function usePremarket(userId: string | null) {
         .eq('user_id', userId)
         .like('clave', `${prefix}%`)
       const stateMap: Record<string, boolean[]> = {}
-      ;(configs ?? []).forEach(c => {
+      ;(configs ?? []).forEach((c: any) => {
         const date = c.clave.replace('checklist_daily_', '')
         const val = c.valor as { state?: boolean[] }
         if (val?.state) stateMap[date] = val.state

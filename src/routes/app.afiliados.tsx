@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useApp } from "@/context/AppContext";
+import { supabase } from "@/lib/supabase";
+import { useEffect } from "react";
 import { useMemo, useState } from "react";
 import {
   Users2, Copy, Check, DollarSign, Share2, TrendingUp, Gift, Crown,
@@ -7,12 +10,6 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/afiliados")({
-  head: () => ({
-    meta: [
-      { title: "Afiliados · Tradync" },
-      { name: "description", content: "Gana 30% recurrente refiriendo traders disciplinados a Tradync." },
-    ],
-  }),
   component: AfiliadosPage,
 });
 
@@ -65,7 +62,9 @@ const PAYOUT_META = {
 } as const;
 
 function AfiliadosPage() {
-  const referralCode = "TRADYNC-NEXUS42";
+  const { user } = useApp();
+  // Generate referral code from user ID
+  const referralCode = user ? "TRADYNC-" + user.id.slice(0, 6).toUpperCase() : "TRADYNC-XXXX";
   const referralUrl = `https://tradync.app/r/${referralCode.toLowerCase()}`;
   const [copied, setCopied] = useState<"code" | "url" | null>(null);
 

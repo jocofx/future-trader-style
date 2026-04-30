@@ -29,7 +29,16 @@ function CuentasPage() {
         await update(editing, form);
         setEditing(null);
       } else {
-        await save({ ...form, user_id: "", nombre: form.nombre! });
+        await save({
+          user_id: "",
+          nombre: form.nombre!,
+          broker: form.broker ?? null,
+          tipo: form.tipo ?? null,
+          balance: form.balance ?? null,
+          moneda: form.moneda ?? "USD",
+          activa: form.activa ?? true,
+          notas: form.notas ?? null,
+        });
         setShowForm(false);
       }
       resetForm();

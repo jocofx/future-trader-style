@@ -54,11 +54,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Auth listener
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: any) => {
       setUser(data.session?.user ?? null)
       setLoading(false)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e: any, session: any) => {
       setUser(session?.user ?? null)
       setLoading(false)
     })
@@ -81,12 +81,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .select('plan,estado')
       .eq('user_id', user.id)
       .single()
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         if (data?.estado === 'active' || data?.estado === 'trialing') {
           setPlan((data.plan ?? 'free') as UserPlan)
         }
       })
-      .catch(() => {})
+      .then(() => {}).catch(() => {})
 
     // Load risk settings from Supabase (overrides localStorage)
     supabase.from('configuracion')
@@ -94,7 +94,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .eq('user_id', user.id)
       .eq('clave', 'riskSettings')
       .single()
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         if (data?.valor) setRiskSettingsState(prev => ({ ...prev, ...(data.valor as Partial<RiskSettings>) }))
       })
       .catch(() => {})

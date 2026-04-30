@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useApp } from "@/context/AppContext";
+import { supabase } from "@/lib/supabase";
+import { useEffect } from "react";
 import { useState } from "react";
 import {
   PlugZap, Plus, Search, CheckCircle2, AlertCircle, Loader2, ShieldCheck,
@@ -72,9 +75,9 @@ function BrokerPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
   
   // Load real API key from Supabase
-  useState(() => {
+  useEffect(() => {
     if (!user) return;
-    supabase.from('api_keys').select('*').eq('user_id', user.id).then(({ data }) => {
+    supabase.from('api_keys').select('*').eq('user_id', user.id).then(({ data }: any) => {
       if (data && data.length > 0) {
         setConnections([{
           id: data[0].id,
@@ -84,12 +87,12 @@ function BrokerPage() {
           lastSync: new Date(data[0].created_at).toLocaleDateString('es'),
           tradesSync: 0,
           balance: 0,
-        } as Connection]);
+        } as unknown as Connection]);
       } else {
         setConnections([]);
       }
     }).catch(() => {});
-  });
+  }, [user]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selected, setSelected] = useState<BrokerProvider | null>(null);
   const [query, setQuery] = useState("");
@@ -402,7 +405,7 @@ function ConnectModal({ open, provider, onClose, onConnect }: {
 
         {provider.protocols.length > 1 && (
           <Field label="Protocolo">
-            <select className={selectCls} value={type} onChange={(e) => setType(e.target.value as Connection["type"])}>
+            <select className={selectCls} value={type} onChange={(e) => setType(e.target.value as unknown as Connection["type"])}>
               {provider.protocols.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </Field>

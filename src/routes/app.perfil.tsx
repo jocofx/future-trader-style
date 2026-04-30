@@ -506,31 +506,12 @@ function NotificationRow({ item }: { item: { id: string; label: string; desc: st
 
 function ThemeSelector() {
   const { theme, setTheme } = useTheme();
-function ThemeSelector() {
-  const { theme, setTheme } = useTheme();
   const opts = [
     { v: "light" as const, label: "Claro",  Icon: Sun },
     { v: "dark"  as const, label: "Oscuro", Icon: Moon },
   ];
   return (
     <div className="grid grid-cols-2 gap-2">
-      {opts.map((o) => (
-        <button
-          key={o.v}
-          onClick={() => setTheme(o.v)}
-          className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
-            theme === o.v
-              ? "border-primary bg-primary/10 text-primary shadow-[0_0_16px_color-mix(in_oklab,var(--primary)_20%,transparent)]"
-              : "border-border bg-surface-2/40 text-muted-foreground hover:border-primary/40 hover:text-foreground"
-          }`}
-        >
-          <o.Icon className="h-5 w-5" />
-          <span className="text-xs font-semibold">{o.label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
       {opts.map((o) => (
         <button
           key={o.v}
