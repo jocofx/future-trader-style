@@ -54,7 +54,10 @@ function OperacionesPage() {
             </span>
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold shadow-glow hover:brightness-110 transition">
+        <button
+          onClick={() => setModalOpen(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold shadow-glow hover:brightness-110 transition"
+        >
           <Plus className="h-4 w-4" /> Nueva operación
         </button>
       </div>
