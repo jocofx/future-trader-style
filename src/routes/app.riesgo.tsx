@@ -4,6 +4,7 @@ import {
   ShieldAlert, ShieldCheck, AlertTriangle, TrendingDown, Pause, Lock, Activity,
   Plus, Trash2, ChevronRight, Flame, CircleDot,
 } from "lucide-react";
+import { Modal, Field, inputCls, selectCls, ModalButton } from "@/components/Modal";
 
 export const Route = createFileRoute("/app/riesgo")({
   component: RiesgoPage,
