@@ -167,7 +167,7 @@ function OperacionesPage() {
         onClose={() => setModalOpen(false)}
         onSave={async (payload) => {
           try {
-            await save(payload);
+            await save(payload as Omit<Trade, "id" | "created_at">);
             setModalOpen(false);
           } catch (e) {
             alert(e instanceof Error ? e.message : "Error al guardar la operación");
