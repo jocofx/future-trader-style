@@ -16,6 +16,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppPsicologiaRouteImport } from './routes/app.psicologia'
 import { Route as AppPremarketRouteImport } from './routes/app.premarket'
+import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppOperacionesRouteImport } from './routes/app.operaciones'
 import { Route as AppLogrosRouteImport } from './routes/app.logros'
 import { Route as AppInsightsRouteImport } from './routes/app.insights'
@@ -63,6 +64,11 @@ const AppPsicologiaRoute = AppPsicologiaRouteImport.update({
 const AppPremarketRoute = AppPremarketRouteImport.update({
   id: '/premarket',
   path: '/premarket',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPerfilRoute = AppPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
   getParentRoute: () => AppRoute,
 } as any)
 const AppOperacionesRoute = AppOperacionesRouteImport.update({
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/app/insights': typeof AppInsightsRoute
   '/app/logros': typeof AppLogrosRoute
   '/app/operaciones': typeof AppOperacionesRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app/premarket': typeof AppPremarketRoute
   '/app/psicologia': typeof AppPsicologiaRoute
   '/app/riesgo': typeof AppRiesgoRoute
@@ -169,6 +176,7 @@ export interface FileRoutesByTo {
   '/app/insights': typeof AppInsightsRoute
   '/app/logros': typeof AppLogrosRoute
   '/app/operaciones': typeof AppOperacionesRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app/premarket': typeof AppPremarketRoute
   '/app/psicologia': typeof AppPsicologiaRoute
   '/app/riesgo': typeof AppRiesgoRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/app/insights': typeof AppInsightsRoute
   '/app/logros': typeof AppLogrosRoute
   '/app/operaciones': typeof AppOperacionesRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app/premarket': typeof AppPremarketRoute
   '/app/psicologia': typeof AppPsicologiaRoute
   '/app/riesgo': typeof AppRiesgoRoute
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/app/insights'
     | '/app/logros'
     | '/app/operaciones'
+    | '/app/perfil'
     | '/app/premarket'
     | '/app/psicologia'
     | '/app/riesgo'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/app/insights'
     | '/app/logros'
     | '/app/operaciones'
+    | '/app/perfil'
     | '/app/premarket'
     | '/app/psicologia'
     | '/app/riesgo'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/app/insights'
     | '/app/logros'
     | '/app/operaciones'
+    | '/app/perfil'
     | '/app/premarket'
     | '/app/psicologia'
     | '/app/riesgo'
@@ -320,6 +332,13 @@ declare module '@tanstack/react-router' {
       path: '/premarket'
       fullPath: '/app/premarket'
       preLoaderRoute: typeof AppPremarketRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/perfil': {
+      id: '/app/perfil'
+      path: '/perfil'
+      fullPath: '/app/perfil'
+      preLoaderRoute: typeof AppPerfilRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/operaciones': {
@@ -430,6 +449,7 @@ interface AppRouteChildren {
   AppInsightsRoute: typeof AppInsightsRoute
   AppLogrosRoute: typeof AppLogrosRoute
   AppOperacionesRoute: typeof AppOperacionesRoute
+  AppPerfilRoute: typeof AppPerfilRoute
   AppPremarketRoute: typeof AppPremarketRoute
   AppPsicologiaRoute: typeof AppPsicologiaRoute
   AppRiesgoRoute: typeof AppRiesgoRoute
@@ -450,6 +470,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppInsightsRoute: AppInsightsRoute,
   AppLogrosRoute: AppLogrosRoute,
   AppOperacionesRoute: AppOperacionesRoute,
+  AppPerfilRoute: AppPerfilRoute,
   AppPremarketRoute: AppPremarketRoute,
   AppPsicologiaRoute: AppPsicologiaRoute,
   AppRiesgoRoute: AppRiesgoRoute,
