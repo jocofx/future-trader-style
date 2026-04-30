@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useApp } from "@/context/AppContext";
+import { computeStats } from "@/lib/types";
 import { useMemo, useState } from "react";
 import {
   Trophy, Star, Lock, Flame, Target, Zap, Crown, Medal, Sparkles,
@@ -70,16 +72,32 @@ function LogrosPage() {
     if (filter === "unlocked") return a.unlocked;
     if (filter === "in-progress") return !a.unlocked && (a.progress ?? 0) > 0;
     return a.category === filter;
-  });
+  }).map(a => dynamicAchievements.find(d => d.id === a.id) || a);
+
+  const { trades: { trades } } = useApp();
+  const realStats = useMemo(() => computeStats(trades.filter(t => t.resultado != null)), [trades]);
+  
+  // Dynamic achievements based on real trades
+  const dynamicAchievements = useMemo(() => {
+    return ACHIEVEMENTS.map(a => {
+      if (a.id === "1") return {...a, unlocked: realStats.total >= 1, progress: Math.min(100, realStats.total)};
+      if (a.id === "2") return {...a, unlocked: realStats.total >= 10, progress: Math.min(100, realStats.total*10)};
+      if (a.id === "3") return {...a, unlocked: realStats.total >= 50, progress: Math.min(100, Math.round(realStats.total/50*100))};
+      if (a.id === "4") return {...a, unlocked: realStats.winRate >= 0.70 && realStats.total >= 20, progress: Math.min(100, Math.round(realStats.winRate*100))};
+      if (a.id === "5") return {...a, unlocked: realStats.pnl >= 100, progress: Math.min(100, Math.round(realStats.pnl))};
+      if (a.id === "6") return {...a, unlocked: realStats.wins >= 3, progress: Math.min(100, Math.round(realStats.wins/3*100))};
+      return a;
+    });
+  }, [realStats]);
 
   const stats = useMemo(() => {
-    const unlocked = ACHIEVEMENTS.filter((a) => a.unlocked);
+    const unlocked = dynamicAchievements.filter((a) => a.unlocked);
     const xp = unlocked.reduce((s, a) => s + a.xp, 0);
     const level = Math.floor(xp / 500) + 1;
     const xpInLevel = xp % 500;
     const nextLevelAt = 500;
     return {
-      total: ACHIEVEMENTS.length,
+      total: dynamicAchievements.length,
       unlocked: unlocked.length,
       xp,
       level,

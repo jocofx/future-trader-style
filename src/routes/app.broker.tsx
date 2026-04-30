@@ -68,7 +68,28 @@ const STATUS_META: Record<Status, { label: string; cls: string; Icon: any; dot: 
 const fmtUSD = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 function BrokerPage() {
-  const [connections, setConnections] = useState<Connection[]>(INITIAL_CONNECTIONS);
+  const { user } = useApp();
+  const [connections, setConnections] = useState<Connection[]>([]);
+  
+  // Load real API key from Supabase
+  useState(() => {
+    if (!user) return;
+    supabase.from('api_keys').select('*').eq('user_id', user.id).then(({ data }) => {
+      if (data && data.length > 0) {
+        setConnections([{
+          id: data[0].id,
+          providerId: "tradync-ea",
+          status: "connected",
+          accountId: data[0].token.slice(0, 12),
+          lastSync: new Date(data[0].created_at).toLocaleDateString('es'),
+          tradesSync: 0,
+          balance: 0,
+        } as Connection]);
+      } else {
+        setConnections([]);
+      }
+    }).catch(() => {});
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [selected, setSelected] = useState<BrokerProvider | null>(null);
   const [query, setQuery] = useState("");

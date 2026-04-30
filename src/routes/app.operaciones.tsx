@@ -10,11 +10,41 @@ export const Route = createFileRoute("/app/operaciones")({
 
 function fmt(n: number, sign = false) {
   const abs = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const handleSaveTrade = async () => {
+    if (!newTrade.instrumento) return setNewTrade(p => ({...p, error: "El instrumento es obligatorio"}));
+    setSaving(true);
+    try {
+      await save({
+        user_id: "",
+        instrumento: newTrade.instrumento!,
+        tipo: (newTrade.tipo as "BUY"|"SELL") || "BUY",
+        fecha: newTrade.fecha || new Date().toISOString().slice(0,10),
+        hora: newTrade.hora || null,
+        cuenta: newTrade.cuenta || null,
+        precio_entrada: newTrade.precio_entrada ?? null,
+        precio_salida: newTrade.precio_salida ?? null,
+        resultado: newTrade.resultado ?? null,
+        lotes: newTrade.lotes ?? null,
+        rr: newTrade.rr ?? null,
+        sesion: newTrade.sesion || null,
+        emocion: null, confianza: null, tags: null, notas: null, imagen_url: null,
+        estado: "Cerrada", estrategia: null, setup: null,
+      });
+      setShowModal(false);
+      setNewTrade({});
+    } catch(e) {
+      setNewTrade(p => ({...p, error: e instanceof Error ? e.message : "Error guardando"}));
+    } finally { setSaving(false); }
+  };
+
   return (sign ? (n >= 0 ? "+" : "-") : (n < 0 ? "-" : "")) + "$" + abs;
 }
 
 function OperacionesPage() {
-  const { trades: { trades, remove, loading } } = useApp();
+  const { trades: { trades, remove, save, loading } } = useApp();
+  const [showModal, setShowModal] = useState(false);
+  const [newTrade, setNewTrade] = useState<Partial<Trade & {error: string}>>({});
+  const [saving, setSaving]     = useState(false);
   const [search, setSearch] = useState("");
   const [side, setSide]     = useState<"Todos" | "BUY" | "SELL">("Todos");
   const [result, setResult] = useState<"Todos" | "Ganadores" | "Perdedores">("Todos");
@@ -52,7 +82,8 @@ function OperacionesPage() {
             </span>
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold shadow-glow hover:brightness-110 transition">
+        <button onClick={() => setShowModal(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold shadow-glow hover:brightness-110 transition">
           <Plus className="h-4 w-4" /> Nueva operación
         </button>
       </div>
@@ -157,5 +188,77 @@ function OperacionesPage() {
         )}
       </div>
     </div>
+      {/* New Trade Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={e => e.target === e.currentTarget && setShowModal(false)}>
+          <div className="bg-card border border-border-strong rounded-2xl w-full shadow-elegant p-6" style={{maxWidth:"480px"}}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="text-lg font-bold">Nueva operación</div>
+              <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface transition text-xl">✕</button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Símbolo *</label>
+                <input value={newTrade.instrumento ?? ""} onChange={e => setNewTrade(p=>({...p,instrumento:e.target.value}))}
+                  placeholder="EURUSD, XAUUSD..." className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Lado</label>
+                <select value={newTrade.tipo ?? "BUY"} onChange={e => setNewTrade(p=>({...p,tipo:e.target.value as "BUY"|"SELL"}))}
+                  className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                  <option value="BUY">BUY</option>
+                  <option value="SELL">SELL</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Fecha</label>
+                <input type="date" value={newTrade.fecha ?? new Date().toISOString().slice(0,10)} onChange={e => setNewTrade(p=>({...p,fecha:e.target.value}))}
+                  className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">P&L ($)</label>
+                <input type="number" value={newTrade.resultado ?? ""} onChange={e => setNewTrade(p=>({...p,resultado:Number(e.target.value)}))}
+                  placeholder="+150 o -80" className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Entrada</label>
+                <input type="number" step="0.00001" value={newTrade.precio_entrada ?? ""} onChange={e => setNewTrade(p=>({...p,precio_entrada:Number(e.target.value)}))}
+                  placeholder="1.08450" className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Salida</label>
+                <input type="number" step="0.00001" value={newTrade.precio_salida ?? ""} onChange={e => setNewTrade(p=>({...p,precio_salida:Number(e.target.value)}))}
+                  placeholder="1.08600" className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Lotes</label>
+                <input type="number" step="0.01" value={newTrade.lotes ?? ""} onChange={e => setNewTrade(p=>({...p,lotes:Number(e.target.value)}))}
+                  placeholder="0.10" className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">R:R</label>
+                <input type="number" step="0.1" value={newTrade.rr ?? ""} onChange={e => setNewTrade(p=>({...p,rr:Number(e.target.value)}))}
+                  placeholder="2.0" className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Sesión</label>
+              <select value={newTrade.sesion ?? ""} onChange={e => setNewTrade(p=>({...p,sesion:e.target.value}))}
+                className="mt-1 w-full bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                <option value="">— Sin sesión —</option>
+                {["Asia","Londres","Nueva York","Tarde"].map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            {newTrade.error && <div className="text-destructive text-xs mb-3">{newTrade.error}</div>}
+            <div className="flex gap-2">
+              <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold hover:bg-surface transition">Cancelar</button>
+              <button onClick={handleSaveTrade} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-semibold shadow-glow hover:brightness-110 transition disabled:opacity-50">
+                {saving ? "Guardando..." : "Guardar operación"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   );
 }
