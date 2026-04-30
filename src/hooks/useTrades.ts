@@ -23,6 +23,8 @@ export function useTrades(userId: string | null) {
       const normalised = (data ?? []).map((t: any) => ({
         ...t,
         tipo: normalizeSide(t.tipo),
+        // Normalize fecha to YYYY-MM-DD (Supabase may return full ISO string)
+        fecha: (t.fecha ?? '').slice(0, 10),
       })) as Trade[]
       setTrades(normalised)
     } catch (e: unknown) {

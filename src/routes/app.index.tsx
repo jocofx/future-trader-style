@@ -18,6 +18,7 @@ function fmt(n: number, sign = false) {
 function fmtPct(n: number) { return (n >= 0 ? "+" : "") + n.toFixed(1) + "%" }
 
 function sessionLabel(t: Trade) {
+  if (t.sesion) return t.sesion;
   const h = parseInt((t.hora ?? "00:00").split(":")[0]);
   if (h >= 1  && h < 8)  return "Asia";
   if (h >= 8  && h < 12) return "Londres";
@@ -77,7 +78,7 @@ function DashboardPage() {
   const monthTrades = useMemo(() => {
     const now = new Date();
     return trades.filter(t => {
-      const d = new Date(t.fecha);
+      const d = new Date((t.fecha ?? "").slice(0, 10) + "T12:00:00");
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
   }, [trades]);

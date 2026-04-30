@@ -23,9 +23,11 @@ function fmt(n: number, sign = false) {
 function filterByPeriod(trades: Trade[], period: Period, account: string): Trade[] {
   const now = new Date();
   return trades.filter(t => {
-    if (account && t.cuenta !== account) return false;
+    // Normalize: compare only the name part, case-insensitive
+    if (account && (t.cuenta ?? "").toLowerCase() !== account.toLowerCase()) return false;
     if (period === "all") return true;
-    const d = new Date(t.fecha);
+    // Normalize fecha: take YYYY-MM-DD part only to avoid timezone issues
+    const d = new Date((t.fecha ?? "").slice(0, 10) + "T12:00:00");
     if (period === "day")    return d.toDateString() === now.toDateString();
     if (period === "week")   { const w = new Date(now); w.setDate(now.getDate()-7); return d >= w; }
     if (period === "month")  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();

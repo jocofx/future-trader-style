@@ -23,8 +23,10 @@ function CalendarioPage() {
   const byDate = useMemo(() => {
     const map: Record<string, Trade[]> = {};
     trades.forEach(t => {
-      if (!map[t.fecha]) map[t.fecha] = [];
-      map[t.fecha].push(t);
+      // Normalize: take only YYYY-MM-DD part (handles ISO timestamps)
+      const dateKey = (t.fecha ?? "").slice(0, 10);
+      if (!map[dateKey]) map[dateKey] = [];
+      map[dateKey].push(t);
     });
     return map;
   }, [trades]);
@@ -38,7 +40,7 @@ function CalendarioPage() {
   // Month totals
   const monthTrades = useMemo(() => {
     const prefix = `${year}-${String(month+1).padStart(2,"0")}`;
-    return trades.filter(t => t.fecha.startsWith(prefix) && t.resultado != null);
+    return trades.filter(t => (t.fecha ?? '').slice(0,10).startsWith(prefix) && t.resultado != null);
   }, [trades, year, month]);
 
   const monthPnl  = monthTrades.reduce((s,t) => s+(t.resultado??0), 0);

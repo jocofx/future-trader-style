@@ -2,7 +2,7 @@ import { Outlet, Link, useRouterState, createFileRoute, redirect } from "@tansta
 import {
   LayoutDashboard, ListOrdered, CalendarDays, BarChart3, ShieldAlert, Wallet, Sunrise,
   CheckCircle2, LineChart, Sparkles, Brain, BookText, Settings2, PlugZap, Trophy, Users2,
-  Bot, ChevronsLeft, ChevronsRight, Search, Bell, LogOut,
+  Bot, ChevronsLeft, ChevronsRight, Search, Bell, LogOut, User,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Logo } from "@/components/Logo";
@@ -54,6 +54,7 @@ const SECTIONS = [
   {
     label: "Cuenta",
     items: [
+      { to: "/app/perfil",    icon: User,    name: "Mi Perfil" },
       { to: "/app/broker",    icon: PlugZap, name: "Conectar Broker" },
       { to: "/app/logros",    icon: Trophy,  name: "Logros" },
       { to: "/app/afiliados", icon: Users2,  name: "Afiliados" },
@@ -99,7 +100,7 @@ function AppShell() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="h-screen flex bg-background overflow-hidden">
       {/* Sidebar */}
       <aside className={`hidden md:flex flex-col border-r border-sidebar-border bg-sidebar/80 backdrop-blur-xl transition-[width] duration-200 ${collapsed ? "w-[68px]" : "w-[248px]"}`}>
         {/* Logo */}
@@ -221,7 +222,7 @@ function AppShell() {
             </button>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>

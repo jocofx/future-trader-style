@@ -17,7 +17,7 @@ function RiesgoPage() {
   const [saved, setSaved] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
-  const todayTrades = useMemo(() => trades.filter(t => t.fecha === today && t.resultado != null), [trades, today]);
+  const todayTrades = useMemo(() => trades.filter(t => (t.fecha ?? '').slice(0,10) === today && t.resultado != null), [trades, today]);
   const todayPnl    = useMemo(() => todayTrades.reduce((s,t) => s+(t.resultado??0), 0), [todayTrades]);
   const todayOps    = todayTrades.length;
 
