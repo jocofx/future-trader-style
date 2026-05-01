@@ -80,20 +80,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     supabase.from('suscripciones')
       .select('plan,estado')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
       .then(({ data }: any) => {
         if (data?.estado === 'active' || data?.estado === 'trialing') {
           setPlan((data.plan ?? 'free') as UserPlan)
         }
       })
-      .then(() => {}).catch(() => {})
+      .catch(() => {})
 
     // Load risk settings from Supabase (overrides localStorage)
     supabase.from('configuracion')
       .select('valor')
       .eq('user_id', user.id)
       .eq('clave', 'riskSettings')
-      .single()
+      .maybeSingle()
       .then(({ data }: any) => {
         if (data?.valor) setRiskSettingsState(prev => ({ ...prev, ...(data.valor as Partial<RiskSettings>) }))
       })

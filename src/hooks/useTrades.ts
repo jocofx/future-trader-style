@@ -17,7 +17,6 @@ export function useTrades(userId: string | null) {
         .select('*')
         .eq('user_id', userId)
         .order('fecha', { ascending: false })
-        .order('created_at', { ascending: false })
       if (error) throw error
       // Normalise tipo (BUY/SELL) — mirrors parseSupabaseRow() from legacy JS
       const normalised = (data ?? []).map((t: any) => ({
@@ -37,34 +36,31 @@ export function useTrades(userId: string | null) {
   const save = async (trade: Omit<Trade, 'id' | 'created_at'>) => {
     if (!userId) throw new Error('Not authenticated')
 
-    // Map React fields → actual Supabase column names
-    // The DB may use 'direccion' instead of 'tipo', 'entrada' instead of 'precio_entrada', etc.
-    // We try inserting with our field names first, fall back to legacy names if needed
-    const row = {
-      user_id:       userId,
-      instrumento:   trade.instrumento,
-      tipo:          trade.tipo,          // BUY/SELL
-      direccion:     trade.tipo,          // legacy alias
-      fecha:         trade.fecha,
-      hora:          trade.hora           ?? null,
-      cuenta:        trade.cuenta         ?? null,
-      precio_entrada: trade.precio_entrada ?? null,
-      entrada:       trade.precio_entrada ?? null, // legacy alias
-      precio_salida: trade.precio_salida  ?? null,
-      resultado:     trade.resultado      ?? null,
-      lotes:         trade.lotes          ?? null,
-      contratos:     trade.lotes          ?? null, // legacy alias
-      rr:            trade.rr             ?? null,
-      sesion:        trade.sesion         ?? null,
-      emocion:       trade.emocion        ?? null,
-      notas:         trade.notas          ?? null,
-      estado:        trade.estado         ?? 'Cerrada',
-      estrategia:    trade.estrategia     ?? null,
-      setup:         trade.setup          ?? null,
-      tags:          trade.tags           ?? null,
-      confianza:     trade.confianza      ?? null,
-      imagen_url:    trade.imagen_url     ?? null,
+    // Build insert row — only include columns confirmed to exist
+    // Original schema uses: instrumento, direccion, entrada, resultado, rr,
+    // contratos, sesion, emocion, notas, estado, setup, cuenta, fecha
+    const row: Record<string, unknown> = {
+      user_id:     userId,
+      instrumento: trade.instrumento,
+      fecha:       trade.fecha,
+      resultado:   trade.resultado    ?? null,
+      sesion:      trade.sesion       ?? null,
+      emocion:     trade.emocion      ?? null,
+      notas:       trade.notas        ?? null,
+      estado:      trade.estado       ?? 'Cerrada',
+      cuenta:      trade.cuenta       ?? null,
+      rr:          trade.rr           ?? null,
     }
+    // Add direction field — try both column names
+    row.tipo      = trade.tipo   // new schema
+    row.direccion = trade.tipo   // legacy schema
+    // Add price fields — try both names
+    if (trade.precio_entrada != null) { row.precio_entrada = trade.precio_entrada; row.entrada = trade.precio_entrada }
+    if (trade.precio_salida  != null) { row.precio_salida  = trade.precio_salida  }
+    if (trade.lotes          != null) { row.lotes = trade.lotes; row.contratos = trade.lotes }
+    if (trade.hora           != null) row.hora = trade.hora
+    if (trade.setup          != null) row.setup = trade.setup
+    if (trade.tags           != null) row.tags = trade.tags
 
     const { data, error } = await supabase
       .from('operaciones')
