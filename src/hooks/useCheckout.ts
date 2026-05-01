@@ -46,8 +46,11 @@ export function useCheckout() {
       window.location.href = data.url;
 
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      const msg = e instanceof Error ? e.message : "Error inesperado";
+      setError(msg);
       setLoading(false);
+      // Show alert so user knows something went wrong
+      alert(`Error al iniciar el checkout: ${msg}\n\nAsegúrate de que la función de pago está activa.`);
     }
   };
 

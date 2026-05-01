@@ -6,6 +6,7 @@ import {
   Calendar, BarChart3, ShieldCheck, ChevronRight, ExternalLink, AlertTriangle,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { useCheckout } from "@/hooks/useCheckout";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/components/theme-provider";
 import { Modal, Field, inputCls, ModalButton } from "@/components/Modal";
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/app/perfil")({
 type Tab = "general" | "seguridad" | "notificaciones" | "facturacion" | "preferencias";
 
 function PerfilPage() {
+  const { startCheckout, loading: checkoutLoading } = useCheckout();
   const { user, plan, trades: { trades } } = useApp();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("general");
@@ -134,10 +136,11 @@ function PerfilPage() {
           {/* Quick actions */}
           <div className="flex flex-col gap-2">
             <button
-              onClick={() => setTab("facturacion")}
-              className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition shadow-[0_0_20px_color-mix(in_oklab,var(--primary)_35%,transparent)] inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
+              onClick={() => startCheckout("basic", "monthly")}
+              disabled={checkoutLoading}
+              className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition shadow-[0_0_20px_color-mix(in_oklab,var(--primary)_35%,transparent)] inline-flex items-center justify-center gap-1.5 whitespace-nowrap disabled:opacity-50"
             >
-              <Sparkles className="h-3.5 w-3.5" /> Mejorar plan
+              <Sparkles className="h-3.5 w-3.5" /> {checkoutLoading ? "Redirigiendo…" : "Mejorar plan"}
             </button>
             <button
               onClick={() => { setEditing(true); setTab("general"); }}
@@ -320,8 +323,11 @@ function PerfilPage() {
                   <div className="mt-3 text-2xl font-bold font-mono">{planMeta.price}</div>
                 </div>
                 <div className="flex flex-col gap-2 min-w-[140px]">
-                  <button className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition">
-                    Mejorar plan
+                  <button
+                    onClick={() => startCheckout(plan === "basic" ? "pro" : "basic", "monthly")}
+                    disabled={checkoutLoading}
+                    className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition disabled:opacity-50">
+                    {checkoutLoading ? "Redirigiendo…" : plan === "basic" ? "Actualizar a Pro" : "Ver planes"}
                   </button>
                   {plan !== "free" && (
                     <button className="h-9 px-4 rounded-lg border border-border bg-surface-2/60 hover:border-destructive/40 hover:text-destructive text-xs font-medium transition">
