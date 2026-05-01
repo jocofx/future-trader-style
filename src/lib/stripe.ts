@@ -1,7 +1,8 @@
 // ── Stripe configuration ──────────────────────────────────────────
 // Price IDs — create these in Stripe Dashboard and paste here
 
-export const STRIPE_PRICES = {
+// ── Live prices (production) ──────────────────────────────────
+export const STRIPE_PRICES_LIVE = {
   basic: {
     monthly: "price_1TS9rU1bty03DSjpMsFoaEoJ",
     yearly:  "price_1TS9uI1bty03DSjpDLTV7ifc",
@@ -11,6 +12,23 @@ export const STRIPE_PRICES = {
     yearly:  "price_1TS9wC1bty03DSjpVZ93271r",
   },
 } as const;
+
+// ── Test prices (development) ─────────────────────────────────
+export const STRIPE_PRICES_TEST = {
+  basic: {
+    monthly: "price_1TSCbsP0m8lsmKp7GaLgCGL7",
+    yearly:  "price_1TSCcDP0m8lsmKp7v5hs3ESe",
+  },
+  pro: {
+    monthly: "price_1TSCd6P0m8lsmKp7XyYkwkho",
+    yearly:  "price_1TSCcqP0m8lsmKp7KJU7P5TB",
+  },
+} as const;
+
+// Active prices — switch to LIVE when ready for production
+export const STRIPE_PRICES = import.meta.env.PROD
+  ? STRIPE_PRICES_LIVE
+  : STRIPE_PRICES_TEST;
 
 // Fallback to env vars if set (for future flexibility)
 // const STRIPE_PRICES_ENV = {
