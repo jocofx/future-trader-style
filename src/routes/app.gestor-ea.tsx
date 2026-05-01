@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Bot, Play, Pause, Square, AlertTriangle, CheckCircle2, Cpu, Activity,
   Plus, Settings, Trash2, Zap, TrendingUp, TrendingDown, Clock, Terminal,
-  RefreshCw, Power, FileCode2, GitBranch, BarChart3, Download, FolderOpen, PlayCircle, Wifi, ChevronDown } from "lucide-react";
+  RefreshCw, Power, FileCode2, GitBranch, BarChart3, Download, FolderOpen, PlayCircle, Wifi, ChevronDown, HelpCircle, Monitor } from "lucide-react";
 import { Modal, Field, inputCls, selectCls, ModalButton } from "@/components/Modal";
 
 export const Route = createFileRoute("/app/gestor-ea")({
@@ -237,6 +237,15 @@ function GestorEAPage() {
               {downloading === "mt4" ? "Descargando..." : "Descargar MT4 (.mq4)"}
             </button>
           </div>
+
+          {/* Instrucciones toggle */}
+          <button
+            onClick={() => setShowInstructions(v => !v)}
+            className="mt-3 flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition">
+            <HelpCircle className="h-3.5 w-3.5" />
+            ¿Cómo instalar el EA?
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showInstructions ? "rotate-180" : ""}`} />
+          </button>
         </div>
         <button
           onClick={() => setModalOpen(true)}
@@ -245,6 +254,96 @@ function GestorEAPage() {
           <Plus className="h-4 w-4" /> Nuevo EA
         </button>
       </div>
+
+      {/* ── INSTRUCCIONES DE INSTALACIÓN ── */}
+      {showInstructions && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 backdrop-blur overflow-hidden">
+          {/* Tab selector */}
+          <div className="flex border-b border-border">
+            {(["mt5","mt4"] as const).map(tab => (
+              <button key={tab} onClick={() => setInstructionTab(tab)}
+                className={`flex-1 py-3 text-sm font-semibold transition ${instructionTab===tab ? "bg-primary/10 text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                {tab === "mt5" ? "MetaTrader 5" : "MetaTrader 4"}
+              </button>
+            ))}
+          </div>
+          <div className="p-6 space-y-5">
+
+            {/* Paso 1 */}
+            <div className="flex gap-4">
+              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">1</div>
+              <div>
+                <div className="font-semibold text-sm mb-1 flex items-center gap-2"><Download className="h-4 w-4 text-primary"/>Descarga el archivo EA</div>
+                <p className="text-sm text-muted-foreground">Haz click en <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">{instructionTab==="mt5"?"Descargar MT5 (.mq5)":"Descargar MT4 (.mq4)"}</span> arriba. Tu token ya está incluido — no necesitas configurar nada más.</p>
+              </div>
+            </div>
+
+            {/* Paso 2 */}
+            <div className="flex gap-4">
+              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">2</div>
+              <div>
+                <div className="font-semibold text-sm mb-1 flex items-center gap-2"><FolderOpen className="h-4 w-4 text-primary"/>Copia el archivo a {instructionTab==="mt5"?"MT5":"MT4"}</div>
+                <p className="text-sm text-muted-foreground mb-2">Abre {instructionTab==="mt5"?"MetaTrader 5":"MetaTrader 4"} y ve a:</p>
+                <div className="bg-surface/80 border border-border rounded-lg p-3 font-mono text-xs mb-2">Archivo → Abrir carpeta de datos → MQL{instructionTab==="mt5"?"5":"4"} → Experts</div>
+                <p className="text-sm text-muted-foreground">Pega el archivo <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">TradyncSync_{instructionTab==="mt5"?"MT5.mq5":"MT4.mq4"}</span> ahí.</p>
+              </div>
+            </div>
+
+            {/* Paso 3 */}
+            <div className="flex gap-4">
+              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">3</div>
+              <div>
+                <div className="font-semibold text-sm mb-1 flex items-center gap-2"><Monitor className="h-4 w-4 text-primary"/>Compila el EA</div>
+                <p className="text-sm text-muted-foreground mb-2">En el menú de {instructionTab==="mt5"?"MT5":"MT4"}:</p>
+                <div className="bg-surface/80 border border-border rounded-lg p-3 font-mono text-xs mb-2">Herramientas → Editor MetaQuotes (o pulsa F4)</div>
+                <p className="text-sm text-muted-foreground">Busca <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">TradyncSync_{instructionTab==="mt5"?"MT5":"MT4"}</span> en el panel izquierdo, doble click y pulsa <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">F7</span> para compilar.</p>
+              </div>
+            </div>
+
+            {/* Paso 4 */}
+            <div className="flex gap-4">
+              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">4</div>
+              <div>
+                <div className="font-semibold text-sm mb-1 flex items-center gap-2"><PlayCircle className="h-4 w-4 text-primary"/>Activa el EA en un gráfico</div>
+                <p className="text-sm text-muted-foreground mb-2">Vuelve a {instructionTab==="mt5"?"MT5":"MT4"}, abre cualquier gráfico (ej. EURUSD M1) y:</p>
+                <ol className="space-y-1.5 text-sm text-muted-foreground list-decimal ml-4">
+                  <li>Panel <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">Navegador</span> → Expertos → <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">TradyncSync_{instructionTab==="mt5"?"MT5":"MT4"}</span></li>
+                  <li>Arrastra el EA al gráfico</li>
+                  <li>Activa <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">Permitir operaciones en vivo</span> → Aceptar</li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Paso 5 */}
+            <div className="flex gap-4">
+              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">5</div>
+              <div>
+                <div className="font-semibold text-sm mb-1 flex items-center gap-2"><Wifi className="h-4 w-4 text-primary"/>Activa WebRequest</div>
+                <p className="text-sm text-muted-foreground mb-2">Para que el EA se comunique con Tradync:</p>
+                <div className="bg-surface/80 border border-border rounded-lg p-3 font-mono text-xs mb-2">Herramientas → Opciones → Asesores Expertos → Permitir WebRequest</div>
+                <p className="text-sm text-muted-foreground mb-2">Añade esta URL:</p>
+                <div className="bg-surface/80 border border-primary/30 rounded-lg p-3 font-mono text-xs text-primary">https://www.tradyncapp.com</div>
+              </div>
+            </div>
+
+            {/* Éxito */}
+            <div className="flex gap-3 rounded-xl bg-success/8 border border-success/20 p-4">
+              <span className="text-2xl">✅</span>
+              <div>
+                <div className="font-semibold text-sm text-success mb-1">¡Listo! El EA está activo</div>
+                <p className="text-xs text-muted-foreground">Verás una carita 🙂 en la esquina superior derecha del gráfico. El EA sincronizará tus operaciones automáticamente cada 3 segundos. Puedes verlo en la pestaña <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">Diario</span> de {instructionTab==="mt5"?"MT5":"MT4"}.</p>
+              </div>
+            </div>
+
+            {/* Aviso */}
+            <div className="flex gap-3 rounded-xl bg-warning/8 border border-warning/20 p-4">
+              <span className="text-lg">⚠️</span>
+              <p className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">Importante:</span> No compartas el archivo descargado. Contiene tu token personal. Si crees que alguien tiene acceso, regenera tu token desde <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">Conectar Broker</span>.</p>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
