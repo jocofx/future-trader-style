@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useApp } from "@/context/AppContext";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bot, Play, Pause, Square, AlertTriangle, CheckCircle2, Cpu, Activity,
@@ -8,13 +10,7 @@ import {
 import { Modal, Field, inputCls, selectCls, ModalButton } from "@/components/Modal";
 
 export const Route = createFileRoute("/app/gestor-ea")({
-  head: () => ({
-    meta: [
-      { title: "Gestor EA · Tradync" },
-      { name: "description", content: "Monitoriza, controla y optimiza tus Expert Advisors de algotrading en tiempo real." },
-    ],
-  }),
-  component: GestorEAPage,
+    component: GestorEAPage,
 });
 
 type EAStatus = "running" | "paused" | "stopped" | "error";
@@ -81,6 +77,8 @@ const fmtUSD = (n: number) =>
   `${n >= 0 ? "+" : "-"}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function GestorEAPage() {
+  const { user } = useApp();
+  const [confirmEaId, setConfirmEaId] = useState<string | null>(null);
   const [eas, setEas] = useState<EA[]>(INITIAL_EAS);
   const [logs, setLogs] = useState<LogEntry[]>(INITIAL_LOGS);
   const [modalOpen, setModalOpen] = useState(false);
@@ -127,7 +125,9 @@ function GestorEAPage() {
   };
 
   const removeEA = (id: string) => {
-    if (!confirm("¿Eliminar este EA? Las operaciones históricas se mantendrán.")) return;
+    setConfirmEaId(id);
+  };
+  const doRemoveEA = (id: string) => {
     setEas((prev) => prev.filter((e) => e.id !== id));
     if (selectedId === id) setSelectedId(null);
   };
@@ -149,6 +149,7 @@ function GestorEAPage() {
   };
 
   return (
+    <>
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -380,6 +381,8 @@ function GestorEAPage() {
 
       <NewEAModal open={modalOpen} onClose={() => setModalOpen(false)} onAdd={handleAdd} />
     </div>
+    <ConfirmModal open={confirmEaId !== null} title="¿Eliminar EA?" message="Las operaciones históricas se mantendrán. Solo se eliminará el EA." confirmLabel="Sí, eliminar" onConfirm={() => { if (confirmEaId) { doRemoveEA(confirmEaId); } setConfirmEaId(null); }} onCancel={() => setConfirmEaId(null)} />
+    </>
   );
 }
 

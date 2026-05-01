@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { useApp } from "@/context/AppContext";
 import { useEffect, useState } from "react";
 import {
@@ -8,13 +9,7 @@ import {
 import { Modal, Field, inputCls, selectCls, ModalButton } from "@/components/Modal";
 
 export const Route = createFileRoute("/app/broker")({
-  head: () => ({
-    meta: [
-      { title: "Conectar Broker · Tradync" },
-      { name: "description", content: "Conecta tu broker o prop firm para sincronizar operaciones automáticamente." },
-    ],
-  }),
-  component: BrokerPage,
+    component: BrokerPage,
 });
 
 type Status = "connected" | "syncing" | "error" | "disconnected";
@@ -69,6 +64,7 @@ const STATUS_META: Record<Status, { label: string; cls: string; Icon: any; dot: 
 const fmtUSD = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 function BrokerPage() {
+  const [confirmDisconnect, setConfirmDisconnect] = useState<string | null>(null);
   const { user } = useApp();
   const [connections, setConnections] = useState<Connection[]>([]);
   
@@ -118,7 +114,7 @@ function BrokerPage() {
   };
 
   const handleDisconnect = (id: string) => {
-    if (!confirm("¿Desconectar este broker? Las operaciones ya importadas se mantendrán.")) return;
+    setConfirmDisconnect(id);
     setConnections((prev) => prev.filter((c) => c.id !== id));
   };
 

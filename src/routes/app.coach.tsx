@@ -6,13 +6,7 @@ import { computeStats } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/app/coach")({
-  head: () => ({
-    meta: [
-      { title: "Coach IA · Tradync" },
-      { name: "description", content: "Coach IA personal de trading basado en tus operaciones reales." },
-    ],
-  }),
-  component: CoachPage,
+    component: CoachPage,
 });
 
 type Msg = { role: "user" | "assistant"; content: string };

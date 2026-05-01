@@ -18,6 +18,7 @@ function CuentasPage() {
   const [form, setForm]           = useState<Partial<Account>>({ activa: true, moneda: "USD" });
   const [saving, setSaving]       = useState(false);
   const [err, setErr]             = useState("");
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const resetForm = () => { setForm({ activa: true, moneda: "USD" }); setErr(""); };
 
@@ -168,7 +169,7 @@ function CuentasPage() {
                     </div>
                     <div className="flex gap-1">
                       <button onClick={() => handleEdit(a)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition"><Edit2 className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => { if(confirm("¿Eliminar esta cuenta?")) remove(a.id); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"><Trash2 className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => { setConfirmId(a.id) }} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   </div>
                 </div>

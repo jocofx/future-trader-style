@@ -11,13 +11,7 @@ import { useTheme } from "@/components/theme-provider";
 import { Modal, Field, inputCls, ModalButton } from "@/components/Modal";
 
 export const Route = createFileRoute("/app/perfil")({
-  head: () => ({
-    meta: [
-      { title: "Perfil · Tradync" },
-      { name: "description", content: "Gestiona tu cuenta, plan, notificaciones y preferencias." },
-    ],
-  }),
-  component: PerfilPage,
+    component: PerfilPage,
 });
 
 type Tab = "general" | "seguridad" | "notificaciones" | "facturacion" | "preferencias";

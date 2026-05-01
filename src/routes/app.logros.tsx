@@ -8,13 +8,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/logros")({
-  head: () => ({
-    meta: [
-      { title: "Logros · Tradync" },
-      { name: "description", content: "Desbloquea logros, sube de nivel y compite por mantener disciplina." },
-    ],
-  }),
-  component: LogrosPage,
+    component: LogrosPage,
 });
 
 type Tier = "bronze" | "silver" | "gold" | "platinum" | "legendary";

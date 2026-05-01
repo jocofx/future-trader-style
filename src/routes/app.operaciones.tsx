@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Filter, Plus, Search, Trash2 } from "lucide-react";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import type { Trade } from "@/lib/types";
@@ -25,6 +26,7 @@ function OperacionesPage() {
     fecha: new Date().toISOString().slice(0, 10),
   });
   const [saving, setSaving]   = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [search, setSearch]   = useState("");
   const [side, setSide]       = useState<"Todos" | "BUY" | "SELL">("Todos");
   const [result, setResult]   = useState<"Todos" | "Ganadores" | "Perdedores">("Todos");
@@ -86,10 +88,8 @@ function OperacionesPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar esta operación?")) return;
-    await remove(id);
-  };
+  const handleDelete = (id: string) => setConfirmDeleteId(id);
+  const doDelete = async () => { if (confirmDeleteId) { await remove(confirmDeleteId); setConfirmDeleteId(null); } };
 
   return (
     <>
@@ -350,6 +350,7 @@ function OperacionesPage() {
         </div>
       </div>
     )}
+    <ConfirmModal open={confirmDeleteId !== null} title="¿Eliminar operación?" message="Se eliminará permanentemente. Esta acción no se puede deshacer." confirmLabel="Sí, eliminar" onConfirm={doDelete} onCancel={() => setConfirmDeleteId(null)} />
     </>
   );
 }

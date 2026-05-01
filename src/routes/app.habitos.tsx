@@ -4,13 +4,7 @@ import { CheckCircle2, ChevronLeft, ChevronRight, Moon, Dumbbell, Brain, Wine, S
 import { useApp } from "@/context/AppContext";
 
 export const Route = createFileRoute("/app/habitos")({
-  head: () => ({
-    meta: [
-      { title: "Hábitos · Tradync" },
-      { name: "description", content: "Seguimiento de hábitos y bienestar para mejorar tu rendimiento." },
-    ],
-  }),
-  component: HabitosPage,
+    component: HabitosPage,
 });
 
 const DAYS    = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];

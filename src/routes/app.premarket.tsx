@@ -4,13 +4,7 @@ import { Sunrise, ChevronLeft, ChevronRight, Check, Save, TrendingUp, TrendingDo
 import { useApp } from "@/context/AppContext";
 
 export const Route = createFileRoute("/app/premarket")({
-  head: () => ({
-    meta: [
-      { title: "Pre-Market · Tradync" },
-      { name: "description", content: "Plan del día y checklist de preparación pre-mercado." },
-    ],
-  }),
-  component: PremarketPage,
+    component: PremarketPage,
 });
 
 const CHECKLIST_ITEMS = [

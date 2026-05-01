@@ -4,13 +4,7 @@ import { Brain, Sparkles, AlertTriangle, TrendingUp, Activity, Target, Flame, Ha
 import { useApp } from "@/context/AppContext";
 
 export const Route = createFileRoute("/app/psicologia")({
-  head: () => ({
-    meta: [
-      { title: "Psicología · Tradync" },
-      { name: "description", content: "Análisis emocional y patrones de comportamiento de tu trading." },
-    ],
-  }),
-  component: PsicologiaPage,
+    component: PsicologiaPage,
 });
 
 const GREEN = "oklch(0.78 0.18 158)";

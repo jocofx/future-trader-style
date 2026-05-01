@@ -4,13 +4,7 @@ import { BookText, ChevronLeft, ChevronRight, Save, Check, Sparkles, Search, Fil
 import { useApp } from "@/context/AppContext";
 
 export const Route = createFileRoute("/app/diario")({
-  head: () => ({
-    meta: [
-      { title: "Diario · Tradync" },
-      { name: "description", content: "Diario de trading: registra emociones, confianza y notas para cada día." },
-    ],
-  }),
-  component: DiarioPage,
+    component: DiarioPage,
 });
 
 const DAYS   = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];

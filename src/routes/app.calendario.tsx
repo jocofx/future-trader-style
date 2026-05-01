@@ -5,13 +5,7 @@ import { useApp } from "@/context/AppContext";
 import type { Trade } from "@/lib/types";
 
 export const Route = createFileRoute("/app/calendario")({
-  head: () => ({
-    meta: [
-      { title: "Calendario · Tradync" },
-      { name: "description", content: "Vista mensual de tus operaciones con P&L diario." },
-    ],
-  }),
-  component: CalendarioPage,
+    component: CalendarioPage,
 });
 
 const DAYS   = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
