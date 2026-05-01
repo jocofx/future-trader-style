@@ -25,10 +25,15 @@ export const STRIPE_PRICES_TEST = {
   },
 } as const;
 
-// Active prices — switch to LIVE when ready for production
-export const STRIPE_PRICES = import.meta.env.PROD
-  ? STRIPE_PRICES_LIVE
-  : STRIPE_PRICES_TEST;
+// ── MODO ACTIVO ──────────────────────────────────────────────
+// TEST = probando con tarjetas de prueba (sk_test_ en Supabase)
+// LIVE = producción real (sk_live_ en Supabase)
+// Cambiar a false cuando todo esté verificado y listo para cobrar
+const USE_TEST_MODE = true;
+
+export const STRIPE_PRICES = USE_TEST_MODE
+  ? STRIPE_PRICES_TEST
+  : STRIPE_PRICES_LIVE;
 
 // Fallback to env vars if set (for future flexibility)
 // const STRIPE_PRICES_ENV = {
