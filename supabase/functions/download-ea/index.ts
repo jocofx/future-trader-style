@@ -334,6 +334,9 @@ string FmtDT(datetime dt){MqlDateTime m;TimeToStruct(dt,m);return StringFormat("
 string EscJ(string s){StringReplace(s,"\\","\\\\");StringReplace(s,"\"","\\\"");StringReplace(s,"\n","\\n");return s;}
 void Log(string msg){if(EnableLogs)Print("TradyncSync: "+msg);}`;
 
+// This function validates its own token (ea_token), not Supabase JWT
+// We still accept the Authorization header to avoid the "missing header" error
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-auth-token",

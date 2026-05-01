@@ -101,14 +101,32 @@ function GestorEAPage() {
         });
       }
 
-      // Download EA from Edge Function
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-ea?platform=${platform}&token=${token}`;
+      // Download EA from Edge Function — need auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-ea?platform=${platform}&token=${token}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message ?? `Error ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const ext  = platform === "mt4" ? "mq4" : "mq5";
+      const objUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = `TradyncSync_${platform.toUpperCase()}.${platform === "mt4" ? "mq4" : "mq5"}`;
+      a.href = objUrl;
+      a.download = `TradyncSync_${platform.toUpperCase()}.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
     } catch (e) {
       alert("Error descargando el EA: " + String(e));
     } finally {
