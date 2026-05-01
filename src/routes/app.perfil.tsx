@@ -51,11 +51,12 @@ function PerfilPage() {
     setEditing(false);
   };
 
-  const planMeta = {
-    free:  { label: "Free",  color: "var(--muted-foreground)", desc: "Funciones básicas", price: "$0" },
-    pro:   { label: "Pro",   color: "var(--primary)",          desc: "Para traders activos", price: "$19/mes" },
-    elite: { label: "Elite", color: "oklch(0.74 0.22 305)",    desc: "Acceso completo + Coach IA", price: "$49/mes" },
-  }[plan];
+  const planMeta = ({
+    free:  { label: "Free",  color: "var(--muted-foreground)", desc: "Plan gratuito",      price: "€0/mes" },
+    basic: { label: "Basic", color: "var(--info)",             desc: "Para traders serios", price: "€9/mes" },
+    pro:   { label: "Pro",   color: "var(--primary)",          desc: "Para profesionales",  price: "€29/mes" },
+  } as Record<string, { label: string; color: string; desc: string; price: string }>)[plan]
+    ?? { label: "Free", color: "var(--muted-foreground)", desc: "Plan gratuito", price: "€0/mes" };
 
   const TABS: { id: Tab; label: string; Icon: any }[] = [
     { id: "general",        label: "General",        Icon: User },

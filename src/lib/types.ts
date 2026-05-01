@@ -109,7 +109,7 @@ export type ChatMessage = {
   created_at: string
 }
 
-export type UserPlan = 'free' | 'pro' | 'elite'
+export type UserPlan = 'free' | 'basic' | 'pro'
 
 export type RiskSettings = {
   maxLoss: number
