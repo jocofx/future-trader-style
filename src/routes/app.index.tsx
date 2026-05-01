@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { ArrowDownRight, ArrowUpRight, TrendingUp, Target, Activity, DollarSign, Sparkles, RefreshCw } from "lucide-react";
 import { useMemo } from "react";
 import { useApp } from "@/context/AppContext";

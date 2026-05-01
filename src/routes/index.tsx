@@ -9,6 +9,7 @@ import { MarketingFooter } from "@/components/MarketingFooter";
 import { HeroDashboardMock } from "@/components/HeroDashboardMock";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useCheckout } from "@/hooks/useCheckout";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -160,7 +161,8 @@ const FAQS = [
 
 // ── Component ─────────────────────────────────────────────────────
 function Landing() {
-  const [yearly, setYearly] = useState(false);
+  const [yearly, setYearly]         = useState(false);
+  const { startCheckout, loading: checkoutLoading } = useCheckout();
 
   return (
     <div className="relative min-h-screen overflow-x-hidden">
@@ -434,12 +436,24 @@ function Landing() {
                     ))}
                   </ul>
 
-                  <Button asChild
-                    variant={plan.featured ? "hero" : plan.name === "Free" ? "glass" : "glass"}
-                    className="mt-7 w-full rounded-xl"
-                    size="lg">
-                    <Link to={plan.ctaLink}>{plan.cta}</Link>
-                  </Button>
+                  {plan.name === "Free" ? (
+                    <Button asChild variant="glass" className="mt-7 w-full rounded-xl" size="lg">
+                      <Link to="/login">{plan.cta}</Link>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant={plan.featured ? "hero" : "glass"}
+                      className="mt-7 w-full rounded-xl"
+                      size="lg"
+                      disabled={checkoutLoading}
+                      onClick={() => startCheckout(
+                        plan.name.toLowerCase() as "basic" | "pro",
+                        yearly ? "yearly" : "monthly"
+                      )}
+                    >
+                      {checkoutLoading ? "Redirigiendo…" : plan.cta}
+                    </Button>
+                  )}
                 </div>
               );
             })}
