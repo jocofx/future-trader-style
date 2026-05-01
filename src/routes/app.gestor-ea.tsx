@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useApp } from "@/context/AppContext";
+import { supabase } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bot, Play, Pause, Square, AlertTriangle, CheckCircle2, Cpu, Activity,
   Plus, Settings, Trash2, Zap, TrendingUp, TrendingDown, Clock, Terminal,
-  RefreshCw, Power, FileCode2, GitBranch, BarChart3,
-} from "lucide-react";
+  RefreshCw, Power, FileCode2, GitBranch, BarChart3, Download } from "lucide-react";
 import { Modal, Field, inputCls, selectCls, ModalButton } from "@/components/Modal";
 
 export const Route = createFileRoute("/app/gestor-ea")({
@@ -77,6 +77,45 @@ const fmtUSD = (n: number) =>
   `${n >= 0 ? "+" : "-"}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function GestorEAPage() {
+  const [downloading, setDownloading] = useState<"mt5"|"mt4"|null>(null);
+
+  const handleDownload = async (platform: "mt5" | "mt4") => {
+    if (!user) return;
+    setDownloading(platform);
+    try {
+      // Get or create API token for user
+      const { data: keys } = await supabase
+        .from("api_keys")
+        .select("token")
+        .eq("user_id", user.id)
+        .limit(1);
+
+      let token = keys?.[0]?.token;
+
+      if (!token) {
+        // Create new token
+        token = crypto.randomUUID().replace(/-/g, "");
+        await supabase.from("api_keys").insert({
+          user_id: user.id,
+          token: token,
+        });
+      }
+
+      // Download EA from Edge Function
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-ea?platform=${platform}&token=${token}`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `TradyncSync_${platform.toUpperCase()}.${platform === "mt4" ? "mq4" : "mq5"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      alert("Error descargando el EA: " + String(e));
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   const { user } = useApp();
   const [confirmEaId, setConfirmEaId] = useState<string | null>(null);
   const [eas, setEas] = useState<EA[]>(INITIAL_EAS);
@@ -162,6 +201,22 @@ function GestorEAPage() {
           <p className="text-sm text-muted-foreground mt-1">
             Monitoriza tus bots en tiempo real, controla su ejecución y analiza su rendimiento.
           </p>
+          <div className="flex gap-2 mt-4 flex-wrap">
+            <button
+              onClick={() => handleDownload("mt5")}
+              disabled={downloading !== null}
+              className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow hover:brightness-110 transition disabled:opacity-50">
+              <Download className="h-4 w-4" />
+              {downloading === "mt5" ? "Descargando..." : "Descargar MT5 (.mq5)"}
+            </button>
+            <button
+              onClick={() => handleDownload("mt4")}
+              disabled={downloading !== null}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface/60 text-foreground px-4 py-2 text-sm font-semibold hover:border-primary/40 transition disabled:opacity-50">
+              <Download className="h-4 w-4" />
+              {downloading === "mt4" ? "Descargando..." : "Descargar MT4 (.mq4)"}
+            </button>
+          </div>
         </div>
         <button
           onClick={() => setModalOpen(true)}
