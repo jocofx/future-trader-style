@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useApp } from "@/context/AppContext";
-import { supabase } from "@/lib/supabase";
-import { useEffect } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   PlugZap, Plus, Search, CheckCircle2, AlertCircle, Loader2, ShieldCheck,
   Zap, RefreshCw, ExternalLink, Lock, Activity, Wifi, WifiOff, Trash2, Settings,
