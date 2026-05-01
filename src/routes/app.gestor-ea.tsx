@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Bot, Play, Pause, Square, AlertTriangle, CheckCircle2, Cpu, Activity,
   Plus, Settings, Trash2, Zap, TrendingUp, TrendingDown, Clock, Terminal,
-  RefreshCw, Power, FileCode2, GitBranch, BarChart3, Download } from "lucide-react";
+  RefreshCw, Power, FileCode2, GitBranch, BarChart3, Download, FolderOpen, PlayCircle, Wifi, ChevronDown } from "lucide-react";
 import { Modal, Field, inputCls, selectCls, ModalButton } from "@/components/Modal";
 
 export const Route = createFileRoute("/app/gestor-ea")({
@@ -77,7 +77,9 @@ const fmtUSD = (n: number) =>
   `${n >= 0 ? "+" : "-"}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function GestorEAPage() {
-  const [downloading, setDownloading] = useState<"mt5"|"mt4"|null>(null);
+  const [downloading, setDownloading]   = useState<"mt5"|"mt4"|null>(null);
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [instructionTab, setInstructionTab]     = useState<"mt5"|"mt4">("mt5");
 
   const handleDownload = async (platform: "mt5" | "mt4") => {
     if (!user) return;
