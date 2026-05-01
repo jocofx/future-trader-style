@@ -1,18 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
-import { Bot, Send, RefreshCw } from "lucide-react";
+import { Bot, Send, RefreshCw, Sparkles, Settings, Zap, AlertCircle, MessageSquare } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { computeStats } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/app/coach")({
+  head: () => ({
+    meta: [
+      { title: "Coach IA · Tradync" },
+      { name: "description", content: "Coach IA personal de trading basado en tus operaciones reales." },
+    ],
+  }),
   component: CoachPage,
 });
 
 type Msg = { role: "user" | "assistant"; content: string };
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPA_KEY     = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 function CoachPage() {
   const { trades: { trades }, user } = useApp();
@@ -21,7 +24,7 @@ function CoachPage() {
   ]);
   const [input, setInput]     = useState("");
   const [loading, setLoading] = useState(false);
-  const [apiKey, setApiKey]   = useState(() => localStorage.getItem("tj_ai_key") ?? "");
+  const [apiKey, setApiKey]   = useState(() => (typeof window !== "undefined" ? localStorage.getItem("tj_ai_key") ?? "" : ""));
   const [showKey, setShowKey] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -43,16 +46,16 @@ ${recent}
 Responde en español. Sé directo, específico y actionable. Usa emojis con moderación.`;
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+  const sendMessage = async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim();
+    if (!text || loading) return;
     if (!apiKey) { setShowKey(true); return; }
 
-    const userMsg: Msg = { role: "user", content: input.trim() };
+    const userMsg: Msg = { role: "user", content: text };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setLoading(true);
 
-    // Save to Supabase
     if (user) {
       await supabase.from("chat_history").insert({ user_id: user.id, role: "user", content: userMsg.content }).catch(() => {});
     }
@@ -90,69 +93,116 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
         await supabase.from("chat_history").insert({ user_id: user.id, role: "assistant", content: reply }).catch(() => {});
       }
     } catch (e) {
-      setMessages(prev => [...prev, { role: "assistant", content: `❌ Error: ${e instanceof Error ? e.message : "Problema de conexión"}` }]);
+      setMessages(prev => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : "Problema de conexión"}` }]);
     } finally {
       setLoading(false);
     }
   };
 
   const QUICK = [
-    "¿Cuál es mi mayor problema de trading?",
-    "Analiza mi psicología de las últimas ops",
-    "¿Qué instrumento me funciona mejor?",
-    "Dame 3 cosas a mejorar esta semana",
+    { icon: "🎯", text: "¿Cuál es mi mayor problema de trading?" },
+    { icon: "🧠", text: "Analiza mi psicología de las últimas ops" },
+    { icon: "📊", text: "¿Qué instrumento me funciona mejor?" },
+    { icon: "🚀", text: "Dame 3 cosas a mejorar esta semana" },
   ];
 
+  const clearChat = () => {
+    setMessages([{ role: "assistant", content: "Conversación reiniciada. ¿En qué te ayudo?" }]);
+  };
+
   return (
-    <div className="max-w-[900px] mx-auto px-4 md:px-8 py-8 h-full flex flex-col space-y-4">
+    <div className="p-6 max-w-[1100px] mx-auto h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 grid place-items-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-glow">
-            <Bot className="h-5 w-5" />
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+        <div>
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            AI Coach · Powered by Claude
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Coach IA</h1>
-            <p className="text-xs text-muted-foreground">Basado en tus {stats.total} operaciones reales</p>
-          </div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Coach Inteligente</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Análisis basado en tus <span className="text-primary font-mono">{stats.total}</span> operaciones reales
+          </p>
         </div>
-        <button onClick={() => setShowKey(k => !k)} className="text-xs text-muted-foreground hover:text-foreground border border-border px-3 py-1.5 rounded-lg transition">
-          {apiKey ? "🔑 API Key configurada" : "⚙️ Configurar API Key"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={clearChat}
+            className="h-9 px-3 rounded-xl border border-border bg-surface/60 text-xs font-semibold hover:border-primary/40 hover:text-primary text-muted-foreground transition flex items-center gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5" /> Reiniciar
+          </button>
+          <button onClick={() => setShowKey(k => !k)}
+            className={`h-9 px-3 rounded-xl border text-xs font-semibold transition flex items-center gap-1.5 ${
+              apiKey
+                ? "border-success/30 bg-success/8 text-success"
+                : "border-warning/30 bg-warning/8 text-warning"
+            }`}>
+            <Settings className="h-3.5 w-3.5" /> {apiKey ? "API conectada" : "Configurar API"}
+          </button>
+        </div>
+      </div>
+
+      {/* Stats strip */}
+      <div className="grid grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+        {[
+          { label: "Total ops",  value: stats.total.toString(),                            tone: "text-info" },
+          { label: "Win rate",   value: `${(stats.winRate*100).toFixed(1)}%`,              tone: stats.winRate >= 0.5 ? "text-success" : "text-warning" },
+          { label: "P&L",        value: `${stats.pnl >= 0 ? "+" : "-"}$${Math.abs(stats.pnl).toFixed(0)}`, tone: stats.pnl >= 0 ? "text-success" : "text-destructive" },
+          { label: "PF",         value: stats.profitFactor.toFixed(2),                     tone: "text-primary" },
+          { label: "Expectancy", value: `$${stats.expectancy.toFixed(2)}`,                 tone: "text-success" },
+        ].map(k => (
+          <div key={k.label} className="rounded-xl border border-border bg-surface/60 backdrop-blur-xl px-3 py-2">
+            <div className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground">{k.label}</div>
+            <div className={`text-sm font-bold font-mono mt-0.5 ${k.tone}`}>{k.value}</div>
+          </div>
+        ))}
       </div>
 
       {/* API Key panel */}
       {showKey && (
-        <div className="rounded-xl border border-border bg-card/60 backdrop-blur p-4">
-          <div className="text-sm font-semibold mb-2">Anthropic API Key</div>
-          <div className="text-xs text-muted-foreground mb-3">
-            Necesitas una API key de <a href="https://console.anthropic.com" target="_blank" rel="noreferrer" className="text-primary underline">console.anthropic.com</a> para usar el Coach IA.
-          </div>
-          <div className="flex gap-2">
-            <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
-              placeholder="sk-ant-..." className="flex-1 bg-surface/80 border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono" />
-            <button onClick={() => { localStorage.setItem("tj_ai_key", apiKey); setShowKey(false); }}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition">
-              Guardar
-            </button>
+        <div className="rounded-2xl border border-warning/30 bg-warning/5 backdrop-blur p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="text-sm font-semibold mb-1">Anthropic API Key</div>
+              <div className="text-xs text-muted-foreground mb-3">
+                Necesitas una API key de <a href="https://console.anthropic.com" target="_blank" rel="noreferrer" className="text-primary underline">console.anthropic.com</a>. Se guarda solo en tu navegador.
+              </div>
+              <div className="flex gap-2">
+                <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
+                  placeholder="sk-ant-…"
+                  className="flex-1 bg-surface/80 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono" />
+                <button onClick={() => { localStorage.setItem("tj_ai_key", apiKey); setShowKey(false); }}
+                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition">
+                  Guardar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Chat */}
-      <div className="flex-1 rounded-2xl border border-border bg-card/60 backdrop-blur overflow-hidden flex flex-col" style={{minHeight:"500px"}}>
+      <div className="flex-1 rounded-2xl border border-border bg-surface/70 backdrop-blur-xl overflow-hidden flex flex-col" style={{minHeight:"500px"}}>
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <div className="text-sm font-semibold flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-primary" /> Conversación
+          </div>
+          <span className="flex items-center gap-1.5 text-[10px] text-success font-medium">
+            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> ONLINE
+          </span>
+        </div>
+
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {messages.map((m, i) => (
             <div key={i} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
               {m.role === "assistant" && (
-                <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_-4px_oklch(var(--primary)/0.6)]">
                   <Bot className="h-4 w-4 text-primary" />
                 </div>
               )}
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                 m.role === "user"
-                  ? "bg-primary text-primary-foreground ml-auto"
-                  : "bg-surface/80 border border-border text-foreground"
+                  ? "bg-primary text-primary-foreground ml-auto shadow-[0_0_16px_-6px_oklch(var(--primary)/0.5)]"
+                  : "bg-surface-2/60 border border-border text-foreground"
               }`}>
                 {m.content.split("\n").map((line, j) => (
                   <span key={j}>{line}{j < m.content.split("\n").length-1 && <br/>}</span>
@@ -162,11 +212,13 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
           ))}
           {loading && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                <Bot className="h-4 w-4 text-primary" />
+              <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                <Bot className="h-4 w-4 text-primary animate-pulse" />
               </div>
-              <div className="bg-surface/80 border border-border rounded-2xl px-4 py-3">
-                <RefreshCw className="h-4 w-4 text-muted-foreground animate-spin" />
+              <div className="bg-surface-2/60 border border-border rounded-2xl px-4 py-3 flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{animationDelay:"0ms"}}/>
+                <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{animationDelay:"150ms"}}/>
+                <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{animationDelay:"300ms"}}/>
               </div>
             </div>
           )}
@@ -175,24 +227,30 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
 
         {/* Quick suggestions */}
         {messages.length <= 1 && (
-          <div className="px-5 pb-3 flex flex-wrap gap-2">
-            {QUICK.map(q => (
-              <button key={q} onClick={() => { setInput(q); }}
-                className="text-xs px-3 py-1.5 rounded-full border border-border bg-surface/60 text-muted-foreground hover:text-foreground hover:border-border-strong transition">
-                {q}
-              </button>
-            ))}
+          <div className="px-5 pb-3">
+            <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground font-semibold mb-2 flex items-center gap-1.5">
+              <Zap className="h-3 w-3 text-primary" /> Sugerencias
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {QUICK.map(q => (
+                <button key={q.text} onClick={() => sendMessage(q.text)}
+                  className="text-left text-xs px-3 py-2 rounded-xl border border-border bg-surface-2/40 text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-surface-2 transition flex items-center gap-2">
+                  <span className="text-base">{q.icon}</span>
+                  <span>{q.text}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
         {/* Input */}
-        <div className="p-4 border-t border-border flex gap-3">
+        <div className="p-4 border-t border-border flex gap-2">
           <input value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();} }}
-            placeholder="Pregunta algo sobre tu trading..."
-            className="flex-1 bg-surface/70 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground" />
-          <button onClick={sendMessage} disabled={loading || !input.trim()}
-            className="w-10 h-10 rounded-xl bg-gradient-primary text-primary-foreground flex items-center justify-center shadow-glow hover:brightness-110 transition disabled:opacity-40">
+            placeholder="Pregunta algo sobre tu trading…"
+            className="flex-1 bg-surface-2/60 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground" />
+          <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
+            className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-[0_0_16px_-4px_oklch(var(--primary)/0.5)] hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed">
             <Send className="h-4 w-4" />
           </button>
         </div>
