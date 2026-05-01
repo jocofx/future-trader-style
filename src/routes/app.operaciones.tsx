@@ -57,27 +57,36 @@ function OperacionesPage() {
     }
     setSaving(true);
     try {
-      await save({
-        user_id: "",                                    // overwritten by useTrades with real userId
-        instrumento:    newTrade.instrumento!.trim(),
-        tipo:           (newTrade.tipo ?? "BUY") as "BUY" | "SELL",
-        fecha:          newTrade.fecha || new Date().toISOString().slice(0, 10),
-        hora:           newTrade.hora           ?? null,
-        cuenta:         newTrade.cuenta         ?? null,
-        precio_entrada: newTrade.precio_entrada  ?? null,
-        precio_salida:  newTrade.precio_salida   ?? null,
-        resultado:      newTrade.resultado       ?? null,
-        lotes:          newTrade.lotes           ?? null,
-        rr:             newTrade.rr              ?? null,
-        sesion:         newTrade.sesion          ?? null,
-        emocion:        newTrade.emocion         ?? null,
-        confianza:      null,
-        tags:           null,
-        notas:          newTrade.notas           ?? null,
-        imagen_url:     null,
-        estado:         "Cerrada",
-        estrategia:     null,
-        setup:          null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (save as any)({
+        user_id:     "",
+        instrumento: newTrade.instrumento!.trim(),
+        tipo:        (newTrade.tipo ?? "BUY") as "BUY" | "SELL",
+        direccion:   newTrade.tipo ?? "BUY",
+        fecha:       newTrade.fecha || new Date().toISOString().slice(0, 10),
+        cuenta:      newTrade.cuenta    ?? null,
+        entrada:     newTrade.precio_entrada ?? null,
+        precio_entrada: newTrade.precio_entrada ?? null,
+        tp:          newTrade.precio_salida  ?? null,
+        precio_salida:  newTrade.precio_salida  ?? null,
+        sl:          null,
+        resultado:   newTrade.resultado  ?? null,
+        contratos:   newTrade.lotes      ?? null,
+        lotes:       newTrade.lotes      ?? null,
+        rr:          newTrade.rr         ?? null,
+        sesion:      newTrade.sesion     ?? null,
+        emocion:     newTrade.emocion    ?? null,
+        notas:       newTrade.notas      ?? null,
+        estado:      "Cerrada",
+        setup:       null,
+        disciplina:  null,
+        impulsos:    null,
+        errores:     null,
+        img_apertura: null,
+        img_cierre:  null,
+        mt_ticket:   null,
+        plataforma:  null,
+        mt_sincronizada: null,
       });
       setShowModal(false);
       setNewTrade({ tipo: "BUY", fecha: new Date().toISOString().slice(0, 10) });

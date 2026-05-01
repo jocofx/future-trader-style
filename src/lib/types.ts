@@ -1,28 +1,44 @@
 // ── App-level types (derived from DB types) ──────────────────────
 
 export type Trade = {
-  id: string
-  user_id: string
-  cuenta: string | null
-  instrumento: string
-  tipo: 'BUY' | 'SELL'
-  fecha: string
-  hora: string | null
-  precio_entrada: number | null
-  precio_salida: number | null
-  resultado: number | null
-  lotes: number | null
-  rr: number | null
-  sesion: string | null
-  emocion: string | null
-  confianza: number | null
-  tags: string[] | null
-  notas: string | null
-  imagen_url: string | null
-  estado: string | null
-  estrategia: string | null
-  setup: string | null
-  created_at: string
+  id:              string
+  user_id:         string
+  fecha:           string        // timestamp → we slice to YYYY-MM-DD
+  instrumento:     string
+  tipo:            'BUY' | 'SELL'
+  direccion:       string | null  // same as tipo, legacy name
+  entrada:         number | null  // open price
+  sl:              number | null
+  tp:              number | null
+  rr:              number | null
+  contratos:       number | null  // lot size
+  resultado:       number | null
+  setup:           string | null
+  emocion:         string | null
+  sesion:          string | null
+  disciplina:      number | null
+  impulsos:        number | null
+  errores:         string | null
+  notas:           string | null
+  estado:          string | null
+  cuenta:          string | null
+  img_apertura:    string | null
+  img_cierre:      string | null
+  created_at:      string
+  updated_at:      string | null
+  mt_ticket:       string | null
+  fecha_cierre:    string | null
+  plataforma:      string | null
+  mt_sincronizada: boolean | null
+  // Virtual fields computed by frontend (not in DB):
+  precio_entrada?: number | null  // alias of entrada
+  precio_salida?:  number | null  // alias of tp (approx)
+  lotes?:          number | null  // alias of contratos
+  hora?:           string | null
+  tags?:           string[] | null
+  confianza?:      number | null
+  imagen_url?:     string | null
+  estrategia?:     string | null
 }
 
 export type Account = {

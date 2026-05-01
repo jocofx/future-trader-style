@@ -21,9 +21,14 @@ export function useTrades(userId: string | null) {
       // Normalise tipo (BUY/SELL) — mirrors parseSupabaseRow() from legacy JS
       const normalised = (data ?? []).map((t: any) => ({
         ...t,
-        tipo: normalizeSide(t.tipo),
-        // Normalize fecha to YYYY-MM-DD (Supabase may return full ISO string)
-        fecha: (t.fecha ?? '').slice(0, 10),
+        // Normalize direction field
+        tipo:          normalizeSide(t.tipo ?? t.direccion),
+        // Normalize fecha to YYYY-MM-DD
+        fecha:         (t.fecha ?? '').slice(0, 10),
+        // Virtual aliases for frontend display
+        precio_entrada: t.entrada    ?? null,
+        precio_salida:  t.tp         ?? null,
+        lotes:          t.contratos  ?? null,
       })) as Trade[]
       setTrades(normalised)
     } catch (e: unknown) {
@@ -33,45 +38,44 @@ export function useTrades(userId: string | null) {
     }
   }, [userId])
 
-  const save = async (trade: Omit<Trade, 'id' | 'created_at'>) => {
+  const save = async (trade: Omit<Trade, 'id' | 'created_at'> & Record<string, unknown>) => {
     if (!userId) throw new Error('Not authenticated')
 
-    // Build insert row — only include columns confirmed to exist
-    // Original schema uses: instrumento, direccion, entrada, resultado, rr,
-    // contratos, sesion, emocion, notas, estado, setup, cuenta, fecha
+    // Build insert row using REAL column names from operaciones table
     const row: Record<string, unknown> = {
-      user_id:     userId,
+      user_id:    userId,
       instrumento: trade.instrumento,
-      fecha:       trade.fecha,
-      resultado:   trade.resultado    ?? null,
-      sesion:      trade.sesion       ?? null,
-      emocion:     trade.emocion      ?? null,
-      notas:       trade.notas        ?? null,
-      estado:      trade.estado       ?? 'Cerrada',
-      cuenta:      trade.cuenta       ?? null,
-      rr:          trade.rr           ?? null,
+      fecha:      new Date(trade.fecha || new Date()).toISOString(),
+      tipo:       trade.tipo,
+      direccion:  trade.tipo,
+      resultado:  trade.resultado   ?? null,
+      rr:         trade.rr          ?? null,
+      sesion:     trade.sesion      ?? null,
+      emocion:    trade.emocion     ?? null,
+      notas:      trade.notas       ?? null,
+      estado:     trade.estado      ?? 'Cerrada',
+      cuenta:     trade.cuenta      ?? null,
+      setup:      trade.setup       ?? null,
+      // Map virtual aliases to real column names
+      entrada:    trade.precio_entrada ?? trade.entrada   ?? null,
+      sl:         null,
+      tp:         trade.precio_salida  ?? trade.tp        ?? null,
+      contratos:  trade.lotes          ?? trade.contratos ?? null,
     }
-    // Add direction field — try both column names
-    row.tipo      = trade.tipo   // new schema
-    row.direccion = trade.tipo   // legacy schema
-    // Add price fields — try both names
-    if (trade.precio_entrada != null) { row.precio_entrada = trade.precio_entrada; row.entrada = trade.precio_entrada }
-    if (trade.precio_salida  != null) { row.precio_salida  = trade.precio_salida  }
-    if (trade.lotes          != null) { row.lotes = trade.lotes; row.contratos = trade.lotes }
-    if (trade.hora           != null) row.hora = trade.hora
-    if (trade.setup          != null) row.setup = trade.setup
-    if (trade.tags           != null) row.tags = trade.tags
 
-    const { data, error } = await supabase
+        const { data, error } = await supabase
       .from('operaciones')
       .insert(row)
       .select()
       .single()
     if (error) throw error
     const normalised = {
-      ...data,
-      tipo: normalizeSide((data as any).tipo ?? (data as any).direccion),
-      fecha: ((data as any).fecha ?? '').slice(0, 10),
+      ...(data as any),
+      tipo:          normalizeSide((data as any).tipo ?? (data as any).direccion),
+      fecha:         ((data as any).fecha ?? '').slice(0, 10),
+      precio_entrada: (data as any).entrada   ?? null,
+      precio_salida:  (data as any).tp        ?? null,
+      lotes:          (data as any).contratos ?? null,
     } as Trade
     setTrades(prev => [normalised, ...prev])
     return normalised

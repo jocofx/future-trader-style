@@ -78,11 +78,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // Load plan
     supabase.from('suscripciones')
-      .select('plan,estado')
+      .select('plan,activa')
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data }: any) => {
-        if (data?.estado === 'active' || data?.estado === 'trialing') {
+        // Schema uses 'activa' boolean (not 'estado' string)
+        if (data?.activa === true) {
           setPlan((data.plan ?? 'free') as UserPlan)
         }
       })

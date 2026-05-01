@@ -51,15 +51,12 @@ Deno.serve(async (req) => {
         if (!uid) { console.warn("No user_id in subscription metadata"); break; }
 
         await supabase.from("suscripciones").upsert({
-          user_id:                 uid,
-          plan:                    plan,
-          stripe_customer_id:      sub.customer as string,
-          stripe_subscription_id:  sub.id,
-          estado:                  estado,
-          trial_end:               sub.trial_end
-            ? new Date(sub.trial_end * 1000).toISOString()
-            : null,
-          updated_at:              new Date().toISOString(),
+          user_id:                uid,
+          plan:                   plan,
+          stripe_customer_id:     sub.customer as string,
+          stripe_subscription_id: sub.id,
+          activa:                 sub.status === "active" || sub.status === "trialing",
+          updated_at:             new Date().toISOString(),
         }, { onConflict: "user_id" });
 
         console.log(`✓ Plan updated: user=${uid} plan=${plan} estado=${estado}`);
@@ -75,7 +72,7 @@ Deno.serve(async (req) => {
         await supabase.from("suscripciones").upsert({
           user_id:  uid,
           plan:     "free",
-          estado:   "canceled",
+          activa:   false,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
 
@@ -90,7 +87,7 @@ Deno.serve(async (req) => {
         if (!uid) break;
 
         await supabase.from("suscripciones")
-          .update({ estado: "active", updated_at: new Date().toISOString() })
+          .update({ activa: true, updated_at: new Date().toISOString() })
           .eq("user_id", uid);
 
         console.log(`✓ Payment succeeded: user=${uid}`);
@@ -105,7 +102,7 @@ Deno.serve(async (req) => {
 
         // Set past_due — Stripe will retry automatically
         await supabase.from("suscripciones")
-          .update({ estado: "past_due", updated_at: new Date().toISOString() })
+          .update({ activa: false, updated_at: new Date().toISOString() })
           .eq("user_id", uid);
 
         // TODO: trigger email notification via Resend/SendGrid
