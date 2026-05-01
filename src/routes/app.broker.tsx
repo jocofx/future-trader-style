@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useApp } from "@/context/AppContext";
-import { supabase } from "@/lib/supabase";
-import { useEffect } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   PlugZap, Plus, Search, CheckCircle2, AlertCircle, Loader2, ShieldCheck,
   Zap, RefreshCw, ExternalLink, Lock, Activity, Wifi, WifiOff, Trash2, Settings,
@@ -74,24 +72,9 @@ function BrokerPage() {
   const { user } = useApp();
   const [connections, setConnections] = useState<Connection[]>([]);
   
-  // Load real API key from Supabase
+  // Seed con conexiones demo (en producción se cargarían desde Supabase)
   useEffect(() => {
-    if (!user) return;
-    supabase.from('api_keys').select('*').eq('user_id', user.id).then(({ data }: any) => {
-      if (data && data.length > 0) {
-        setConnections([{
-          id: data[0].id,
-          providerId: "tradync-ea",
-          status: "connected",
-          accountId: data[0].token.slice(0, 12),
-          lastSync: new Date(data[0].created_at).toLocaleDateString('es'),
-          tradesSync: 0,
-          balance: 0,
-        } as unknown as Connection]);
-      } else {
-        setConnections([]);
-      }
-    }).catch(() => {});
+    setConnections(INITIAL_CONNECTIONS);
   }, [user]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selected, setSelected] = useState<BrokerProvider | null>(null);
