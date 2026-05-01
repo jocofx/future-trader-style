@@ -67,8 +67,18 @@ Deno.serve(async (req) => {
       .single();
 
     if (sub?.stripe_customer_id) {
-      customerId = sub.stripe_customer_id;
-    } else {
+      // Verify customer still exists in Stripe (could be wrong mode)
+      try {
+        await stripe.customers.retrieve(sub.stripe_customer_id);
+        customerId = sub.stripe_customer_id;
+      } catch {
+        // Customer not found in current mode (live vs test) — create new
+        console.warn(`Customer ${sub.stripe_customer_id} not found, creating new one`);
+        customerId = undefined;
+      }
+    }
+
+    if (!customerId) {
       // Create new Stripe customer
       const customer = await stripe.customers.create({
         email: user.email,
@@ -78,6 +88,13 @@ Deno.serve(async (req) => {
         },
       });
       customerId = customer.id;
+
+      // Update stored customer ID
+      await supabase.from("suscripciones").upsert({
+        user_id:           user.id,
+        stripe_customer_id: customer.id,
+        updated_at:        new Date().toISOString(),
+      }, { onConflict: "user_id" });
     }
 
     // ── Create Checkout Session ───────────────────────────────
