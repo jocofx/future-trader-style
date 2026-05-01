@@ -3,14 +3,19 @@
 
 export const STRIPE_PRICES = {
   basic: {
-    monthly: import.meta.env.VITE_STRIPE_PRICE_BASIC_MONTHLY ?? "",
-    yearly:  import.meta.env.VITE_STRIPE_PRICE_BASIC_YEARLY  ?? "",
+    monthly: "price_1TS9rU1bty03DSjpMsFoaEoJ",
+    yearly:  "price_1TS9uI1bty03DSjpDLTV7ifc",
   },
   pro: {
-    monthly: import.meta.env.VITE_STRIPE_PRICE_PRO_MONTHLY ?? "",
-    yearly:  import.meta.env.VITE_STRIPE_PRICE_PRO_YEARLY  ?? "",
+    monthly: "price_1TS9wC1bty03DSjpZ78jfAmG",
+    yearly:  "price_1TS9wC1bty03DSjpVZ93271r",
   },
 } as const;
+
+// Fallback to env vars if set (for future flexibility)
+// const STRIPE_PRICES_ENV = {
+//   basic: { monthly: import.meta.env.VITE_STRIPE_PRICE_BASIC_MONTHLY, ... }
+// }
 
 export type Plan = "free" | "basic" | "pro";
 export type BillingInterval = "monthly" | "yearly";
