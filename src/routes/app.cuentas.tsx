@@ -44,9 +44,9 @@ function CuentasPage() {
     setBroker(a.broker ?? "");
     setTipo(a.tipo ?? "");
     setBalance(a.balance != null ? String(a.balance) : "");
-    setMoneda(a.moneda ?? "USD");
+    setMoneda(a.divisa ?? a.moneda ?? "USD");
     setActiva(a.activa ?? true);
-    setNotas(a.notas ?? "");
+    setNotas(""); // notas not in schema
   };
 
   const handleSave = async () => {
@@ -59,9 +59,9 @@ function CuentasPage() {
         broker:  broker  || null,
         tipo:    tipo    || null,
         balance: balance ? Number(balance) : null,
-        moneda:  moneda  || "USD",
+        divisa:  moneda  || "USD",   // real column name
         activa,
-        notas:   notas   || null,
+        // notas column doesn't exist in schema — skip
       };
 
       if (editing) {
@@ -296,7 +296,7 @@ function CuentasPage() {
                     </div>
                     {a.balance != null && (
                       <div className="mt-3 text-xs text-muted-foreground text-center font-mono">
-                        Balance: ${Number(a.balance).toLocaleString()} {a.moneda}
+                        Balance: ${Number(a.balance).toLocaleString()} {a.divisa ?? a.moneda ?? 'USD'}
                       </div>
                     )}
                     {a.notas && <div className="mt-2 text-xs text-muted-foreground text-center">{a.notas}</div>}

@@ -42,16 +42,34 @@ export type Trade = {
 }
 
 export type Account = {
-  id: string
-  user_id: string
-  nombre: string
-  broker: string | null
-  tipo: string | null
-  balance: number | null
-  moneda: string | null
-  activa: boolean | null
-  notas: string | null
-  created_at: string
+  id:             string
+  user_id:        string
+  nombre:         string
+  tipo:           string | null
+  balance:        number | null
+  broker:         string | null
+  fase:           string | null
+  activa:         boolean | null
+  created_at:     string
+  updated_at:     string | null
+  servidor:       string | null
+  numero_cuenta:  string | null
+  plataforma:     string | null
+  divisa:         string | null   // "moneda" in frontend
+  apalancamiento: number | null
+  mt_conectada:   boolean | null
+  ea_score:       number | null
+  ea_perfil:      string | null
+  ea_disciplina:  number | null
+  ea_violaciones: number | null
+  ea_risk_config: string | null
+  ea_balance:     number | null
+  ea_equity:      number | null
+  ea_pnl_dia:     number | null
+  ea_last_update: string | null
+  // Virtual alias used in frontend
+  moneda?:        string | null
+  notas?:         string | null
 }
 
 export type Habit = {
