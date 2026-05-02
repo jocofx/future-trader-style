@@ -1,5 +1,5 @@
-// Manages custom habits per user — stored in 'configuracion' table
-// clave: 'habitos_config' → valor: { habits: HabitConfig[] }
+// Manages custom habits per user — stored in 'habitos_custom' table
+// habitos_custom.habitos = { config: HabitConfig[], updated_at: string }
 
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -10,19 +10,21 @@ export type HabitConfig = {
   unit:    string
   max:     number
   target:  string
-  inverse: boolean  // true = lower is better (e.g. alcohol)
-  icon:    string   // emoji icon
+  inverse: boolean
+  icon:    string
   order:   number
+  // If 'builtin', maps to a fixed column in habitos table
+  // If 'extra', stored in habitos_extra jsonb
+  type:    'builtin' | 'extra'
+  dbKey:   string   // column name or key in habitos_extra
 }
 
-const DEFAULT_HABITS: HabitConfig[] = [
-  { id: 'sueno',      label: 'Sueño',      unit: 'h',   max: 10,  target: '≥ 7h',    inverse: false, icon: '🌙', order: 0 },
-  { id: 'ejercicio',  label: 'Ejercicio',  unit: 'min', max: 120, target: '≥ 30min', inverse: false, icon: '💪', order: 1 },
-  { id: 'meditacion', label: 'Meditación', unit: 'min', max: 60,  target: '≥ 10min', inverse: false, icon: '🧘', order: 2 },
-  { id: 'alcohol',    label: 'Alcohol',    unit: 'u',   max: 5,   target: '= 0',     inverse: true,  icon: '🍷', order: 3 },
+export const DEFAULT_HABITS: HabitConfig[] = [
+  { id: 'sueno',      label: 'Sueño',      unit: 'h',   max: 10,  target: '≥ 7h',    inverse: false, icon: '🌙', order: 0, type: 'builtin', dbKey: 'sueno'      },
+  { id: 'ejercicio',  label: 'Ejercicio',  unit: 'min', max: 120, target: '≥ 30min', inverse: false, icon: '💪', order: 1, type: 'builtin', dbKey: 'ejercicio'  },
+  { id: 'meditacion', label: 'Meditación', unit: 'min', max: 60,  target: '≥ 10min', inverse: false, icon: '🧘', order: 2, type: 'builtin', dbKey: 'meditacion' },
+  { id: 'alcohol',    label: 'Alcohol',    unit: 'u',   max: 5,   target: '= 0',     inverse: true,  icon: '🍷', order: 3, type: 'builtin', dbKey: 'alcohol'    },
 ]
-
-const CLAVE = 'habitos_config'
 
 export function useHabitosConfig(userId: string | null) {
   const [habits, setHabits]   = useState<HabitConfig[]>(DEFAULT_HABITS)
@@ -33,35 +35,38 @@ export function useHabitosConfig(userId: string | null) {
     setLoading(true)
     try {
       const { data } = await supabase
-        .from('configuracion')
-        .select('valor')
+        .from('habitos_custom')
+        .select('habitos')
         .eq('user_id', userId)
-        .eq('clave', CLAVE)
         .maybeSingle()
 
-      if (data?.valor && (data.valor as any).habits?.length > 0) {
-        setHabits((data.valor as any).habits as HabitConfig[])
+      if (data?.habitos && (data.habitos as any).config?.length > 0) {
+        setHabits((data.habitos as any).config as HabitConfig[])
       }
-    } catch (e) { console.warn(e) }
+      // else keep defaults
+    } catch (e) { console.warn('useHabitosConfig.load:', e) }
     finally { setLoading(false) }
   }, [userId])
 
   const saveAll = async (newHabits: HabitConfig[]) => {
     if (!userId) return
-    await supabase.from('configuracion').upsert({
-      user_id:    userId,
-      clave:      CLAVE,
-      valor:      { habits: newHabits, updated_at: new Date().toISOString() },
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,clave' })
+    const { error } = await supabase
+      .from('habitos_custom')
+      .upsert({
+        user_id:    userId,
+        habitos:    { config: newHabits, updated_at: new Date().toISOString() },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+    if (error) throw error
     setHabits(newHabits)
   }
 
-  const addHabit = async (h: Omit<HabitConfig, 'id' | 'order'>) => {
+  const addHabit = async (h: Omit<HabitConfig, 'id' | 'order' | 'type' | 'dbKey'>) => {
+    const id = crypto.randomUUID().slice(0, 8)
     const next = [...habits, {
-      ...h,
-      id:    crypto.randomUUID().slice(0, 8),
-      order: habits.length,
+      ...h, id, order: habits.length,
+      type:  'extra' as const,
+      dbKey: `custom_${id}`,
     }]
     await saveAll(next)
   }
@@ -72,7 +77,9 @@ export function useHabitosConfig(userId: string | null) {
   }
 
   const removeHabit = async (id: string) => {
-    const next = habits.filter(h => h.id !== id).map((h, i) => ({ ...h, order: i }))
+    const next = habits
+      .filter(h => h.id !== id)
+      .map((h, i) => ({ ...h, order: i }))
     await saveAll(next)
   }
 

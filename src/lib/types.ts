@@ -73,16 +73,20 @@ export type Account = {
 }
 
 export type Habit = {
-  id: string
-  user_id: string
-  fecha: string
-  sueno: number | null
-  ejercicio: number | null
-  meditacion: number | null
-  alcohol: number | null
+  id:            string
+  user_id:       string
+  fecha:         string
+  sueno:         number | null
+  ejercicio:     number | null
+  meditacion:    number | null
+  alcohol:       number | null
   habitos_extra: Record<string, number> | null
-  encuesta: Record<string, unknown> | null
-  created_at: string
+  encuesta:      Record<string, unknown> | null
+  puntuacion:    number | null
+  created_at:    string
+  updated_at:    string | null
+  // Virtual: merged from habitos_extra
+  [key: string]: unknown
 }
 
 export type DiaryEntry = {
