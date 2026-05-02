@@ -42,7 +42,7 @@ input int    DecadenciaPuntosDia       = 2;
 input int    MinutosEntreOpsImpulsivo  = 5;
 
 string TOKEN    = "%%TOKEN%%";
-string ENDPOINT = "https://www.tradyncapp.com/api";
+string ENDPOINT = "https://oeznlehxublyvivzvuab.supabase.co/functions/v1/ea-api";
 
 struct PosCache { ulong ticket; double sl; double tp; double vol; };
 PosCache posCache[];
