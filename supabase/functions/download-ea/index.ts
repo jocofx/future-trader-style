@@ -331,7 +331,7 @@ bool Changed(ulong tk,PosCache &p){for(int i=0;i<ArraySize(posCache);i++)if(posC
 bool Sent(ulong tk){for(int i=0;i<ArraySize(sentTickets);i++)if(sentTickets[i]==tk)return true;return false;}
 void MarkSent(ulong tk){int s=ArraySize(sentTickets);ArrayResize(sentTickets,s+1);sentTickets[s]=tk;}
 string FmtDT(datetime dt){MqlDateTime m;TimeToStruct(dt,m);return StringFormat("%04d-%02d-%02dT%02d:%02d:%02dZ",m.year,m.mon,m.day,m.hour,m.min,m.sec);}
-string EscJ(string s){StringReplace(s,"\\","\\\\");StringReplace(s,"\"","\\\"");StringReplace(s,"\n","\\n");return s;}
+string EscJ(string s){StringReplace(s,"\","\\\");StringReplace(s,"\"","\\"");StringReplace(s,"\n","\\n");return s;}
 void Log(string msg){if(EnableLogs)Print("TradyncSync: "+msg);}`;
 
 // This function validates its own token (ea_token), not Supabase JWT
