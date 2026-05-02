@@ -106,6 +106,7 @@ void MarkSent(ulong tk) {
 string Post(string url, string body) {
    string headers = "Content-Type: application/json\r\n"
                   + "X-Auth-Token: " + TOKEN + "\r\n"
+                  + "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lem5sZWh4dWJseXZpdnp2dWFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNjUzMDQsImV4cCI6MjA5MTc0MTMwNH0.OJQRGgV0W64tJcrgQIos_C5e3RD8gsUtEem09LTtEhpE\r\n"
                   + "Accept: application/json\r\n";
    uchar post[], result[];
    string rh;
