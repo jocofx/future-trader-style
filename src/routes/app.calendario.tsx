@@ -16,10 +16,18 @@ const DAYS   = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 function CalendarioPage() {
-  const { trades: { trades } } = useApp();
+  const { trades: { trades }, diario, premarket, habits } = useApp();
   const [year, setYear]   = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth());
   const [selected, setSelected] = useState<string | null>(null);
+
+  // Cargar datos del mes (premarket + hábitos) cuando cambia mes/año
+  useEffect(() => {
+    premarket.load(year, month);
+    habits.load(year, month);
+    // diario ya se carga global
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, month]);
 
   const today = new Date().toISOString().slice(0, 10);
 
