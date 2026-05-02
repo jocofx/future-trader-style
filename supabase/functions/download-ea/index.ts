@@ -1,7 +1,7 @@
 // Supabase Edge Function — Download EA (MQ5/MQ4)
 // GET /functions/v1/download-ea?platform=mt5&token=xxx
 
-const MT5_TEMPLATE = `//+------------------------------------------------------------------+
+const MT5_TEMPLATE = String.raw`//+------------------------------------------------------------------+
 //|                                           TradyncSync_MT5.mq5    |
 //|          Journal + Gestor de Riesgo + Analisis Conductual        |
 //|                                      https://tradyncapp.com       |
