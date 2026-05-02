@@ -1,48 +1,57 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
-import { Sunrise, ChevronLeft, ChevronRight, Check, Save, TrendingUp, TrendingDown, Minus, Target, ShieldAlert, FileText } from "lucide-react";
+import {
+  Sunrise, ChevronLeft, ChevronRight, Check, Save, TrendingUp, TrendingDown,
+  Minus, Target, ShieldAlert, FileText, Settings, Plus, Pencil, Trash2,
+  X, ArrowUp, ArrowDown,
+} from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { useChecklistConfig } from "@/hooks/useChecklistConfig";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
-export const Route = createFileRoute("/app/premarket")({
-    component: PremarketPage,
-});
-
-const CHECKLIST_ITEMS = [
-  "He revisado el calendario económico",
-  "He identificado niveles clave (soporte/resistencia)",
-  "Conozco mi sesgo del día (alcista/bajista/neutral)",
-  "He definido mi máximo de pérdida del día",
-  "He descansado bien (mínimo 6h de sueño)",
-  "No tengo distracciones ni estrés externo relevante",
-  "He revisado operaciones abiertas (si las hay)",
-  "Tengo claro qué setups voy a buscar hoy",
-];
+export const Route = createFileRoute("/app/premarket")({ component: PremarketPage });
 
 const SESGO_OPTIONS = [
-  { key: "Alcista",  Icon: TrendingUp,   tone: "oklch(0.78 0.18 158)" },
-  { key: "Bajista",  Icon: TrendingDown, tone: "oklch(0.68 0.22 18)" },
-  { key: "Neutral",  Icon: Minus,        tone: "oklch(0.65 0.02 250)" },
+  { key: "Alcista", Icon: TrendingUp,   tone: "oklch(0.78 0.18 158)" },
+  { key: "Bajista", Icon: TrendingDown, tone: "oklch(0.68 0.22 18)" },
+  { key: "Neutral", Icon: Minus,        tone: "oklch(0.65 0.02 250)" },
 ];
-
-const DAYS = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+const DAYS   = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 function PremarketPage() {
-  const { premarket: { plans, checklistState, load, savePlan, saveChecklist, getPlan, getChecklist } } = useApp();
+  const { user, premarket: { plans, checklistState, load, savePlan, saveChecklist, getPlan, getChecklist } } = useApp();
+  const clConfig = useChecklistConfig(user?.id ?? null);
 
   const today = new Date().toISOString().slice(0, 10);
-  const [year, setYear]   = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth());
+  const [year, setYear]         = useState(new Date().getFullYear());
+  const [month, setMonth]       = useState(new Date().getMonth());
   const [selectedDate, setSelectedDate] = useState(today);
-  const [checks, setChecks]   = useState<boolean[]>(Array(CHECKLIST_ITEMS.length).fill(false));
-  const [sesgo, setSesgo]     = useState("");
-  const [niveles, setNiveles] = useState("");
-  const [noHacer, setNoHacer] = useState("");
-  const [notas, setNotas]     = useState("");
-  const [saving, setSaving]   = useState(false);
-  const [saved, setSaved]     = useState(false);
+  const [checks, setChecks]     = useState<boolean[]>([]);
+  const [sesgo, setSesgo]       = useState("");
+  const [niveles, setNiveles]   = useState("");
+  const [noHacer, setNoHacer]   = useState("");
+  const [notas, setNotas]       = useState("");
+  const [saving, setSaving]     = useState(false);
+  const [saved, setSaved]       = useState(false);
 
-  useEffect(() => { load(year, month); }, [year, month]);
+  // Config panel state
+  const [showConfig, setShowConfig]   = useState(false);
+  const [newItemText, setNewItemText] = useState("");
+  const [editingId, setEditingId]     = useState<string | null>(null);
+  const [editText, setEditText]       = useState("");
+  const [deleteId, setDeleteId]       = useState<string | null>(null);
+
+  useEffect(() => {
+    load(year, month);
+    clConfig.load();
+  }, [year, month]);
+
+  // Sync checks array size when config changes
+  useEffect(() => {
+    const cl = getChecklist(selectedDate);
+    setChecks(clConfig.items.map((_, i) => cl[i] ?? false));
+  }, [selectedDate, plans, checklistState, clConfig.items]);
 
   useEffect(() => {
     const plan = getPlan(selectedDate);
@@ -50,9 +59,7 @@ function PremarketPage() {
     setNiveles(plan?.niveles ?? "");
     setNoHacer(plan?.no_hacer ?? "");
     setNotas(plan?.notas ?? "");
-    const cl = getChecklist(selectedDate);
-    setChecks(CHECKLIST_ITEMS.map((_, i) => cl[i] ?? false));
-  }, [selectedDate, plans, checklistState]);
+  }, [selectedDate, plans]);
 
   const toggleCheck = async (i: number) => {
     const next = [...checks];
@@ -65,8 +72,7 @@ function PremarketPage() {
     setSaving(true);
     await savePlan(selectedDate, { sesgo, niveles, no_hacer: noHacer, notas });
     await saveChecklist(selectedDate, checks);
-    setSaving(false);
-    setSaved(true);
+    setSaving(false); setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
@@ -75,18 +81,29 @@ function PremarketPage() {
   const offset = firstDay === 0 ? 6 : firstDay - 1;
   const cells = Array(offset).fill(null).concat(Array.from({ length: daysInMonth }, (_, i) => i + 1));
   const checkedCount = checks.filter(Boolean).length;
-  const progressPct = (checkedCount / CHECKLIST_ITEMS.length) * 100;
+  const totalItems   = clConfig.items.length;
+  const progressPct  = totalItems > 0 ? (checkedCount / totalItems) * 100 : 0;
+  const isReady      = totalItems > 0 && checkedCount === totalItems;
 
-  // Stats del mes
   const monthStats = useMemo(() => {
     const prefix = `${year}-${String(month+1).padStart(2,"0")}`;
-    const monthPlans = Object.values(plans).filter((p: any) => p.fecha?.startsWith(prefix));
-    const monthCl = Object.entries(checklistState).filter(([k]) => k.startsWith(prefix));
-    const fullDays = monthCl.filter(([_, cl]: any) => (cl as boolean[]).filter(Boolean).length === CHECKLIST_ITEMS.length).length;
+    const monthPlans = plans.filter((p: any) => p.fecha?.startsWith(prefix));
+    const monthCl    = Object.entries(checklistState).filter(([k]) => k.startsWith(prefix));
+    const fullDays   = monthCl.filter(([_, cl]: any) => (cl as boolean[]).filter(Boolean).length === totalItems).length;
     return { plans: monthPlans.length, fullDays };
-  }, [plans, checklistState, year, month]);
+  }, [plans, checklistState, year, month, totalItems]);
 
-  const isReady = checkedCount === CHECKLIST_ITEMS.length;
+  const handleAddItem = async () => {
+    if (!newItemText.trim()) return;
+    await clConfig.addItem(newItemText);
+    setNewItemText("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editText.trim()) return;
+    await clConfig.updateItem(editingId, editText);
+    setEditingId(null);
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -94,27 +111,95 @@ function PremarketPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
-            <Sunrise className="h-3.5 w-3.5 text-primary" />
-            Pre-Market Routine
+            <Sunrise className="h-3.5 w-3.5 text-primary" /> Pre-Market Routine
           </div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Plan del Día</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            La diferencia entre operar y especular: tu plan, escrito y verificado.
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">La diferencia entre operar y especular: tu plan, escrito y verificado.</p>
         </div>
-        <button onClick={handleSave} disabled={saving}
-          className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition flex items-center gap-2 shadow-[0_0_20px_-4px_oklch(var(--primary)/0.4)] disabled:opacity-50">
-          {saved ? <><Check className="h-4 w-4" /> Guardado</> : saving ? "Guardando…" : <><Save className="h-4 w-4" /> Guardar plan</>}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowConfig(v => !v)}
+            className={`h-9 px-4 rounded-xl border text-sm font-semibold flex items-center gap-2 transition ${showConfig ? "bg-primary/10 border-primary/30 text-primary" : "border-border hover:bg-surface text-muted-foreground hover:text-foreground"}`}>
+            <Settings className="h-4 w-4" /> Mi checklist
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition flex items-center gap-2 disabled:opacity-50">
+            {saved ? <><Check className="h-4 w-4" />Guardado</> : saving ? "Guardando…" : <><Save className="h-4 w-4" />Guardar plan</>}
+          </button>
+        </div>
       </div>
+
+      {/* ── CHECKLIST CONFIG PANEL ── */}
+      {showConfig && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 backdrop-blur p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="font-semibold text-sm">Personaliza tu checklist pre-market</div>
+            <button onClick={() => setShowConfig(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+          </div>
+
+          <div className="space-y-2">
+            {clConfig.items.map((item, idx) => (
+              <div key={item.id} className="rounded-xl border border-border bg-card/60 p-3">
+                {editingId === item.id ? (
+                  <div className="flex gap-2">
+                    <input value={editText} onChange={e => setEditText(e.target.value)}
+                      className="flex-1 bg-surface/80 border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      onKeyDown={e => e.key === "Enter" && handleSaveEdit()}
+                      autoFocus />
+                    <button onClick={handleSaveEdit} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:brightness-110 transition">Guardar</button>
+                    <button onClick={() => setEditingId(null)} className="px-3 py-1.5 rounded-lg border border-border text-xs hover:bg-surface transition">✕</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span className="text-muted-foreground text-sm font-mono w-5 text-center shrink-0">{idx + 1}</span>
+                    <span className="flex-1 text-sm">{item.text}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => clConfig.moveItem(item.id, 'up')} disabled={idx === 0}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition disabled:opacity-30">
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => clConfig.moveItem(item.id, 'down')} disabled={idx === clConfig.items.length - 1}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition disabled:opacity-30">
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => { setEditingId(item.id); setEditText(item.text); }}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => setDeleteId(item.id)}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Add new item */}
+          <div className="flex gap-2">
+            <input
+              value={newItemText}
+              onChange={e => setNewItemText(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleAddItem()}
+              placeholder="Nuevo ítem del checklist…"
+              className="flex-1 bg-surface/80 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+            />
+            <button onClick={handleAddItem} disabled={!newItemText.trim()}
+              className="px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition disabled:opacity-50 flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Añadir
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Planes este mes",    value: String(monthStats.plans),                    tone: "text-info" },
-          { label: "Días 100% checklist",value: String(monthStats.fullDays),                 tone: "text-success" },
-          { label: "Ítems hoy",          value: `${checkedCount}/${CHECKLIST_ITEMS.length}`, tone: isReady ? "text-success" : "text-warning" },
-          { label: "Estado",             value: isReady ? "READY" : "PENDIENTE",             tone: isReady ? "text-success" : "text-warning" },
+          { label: "Planes este mes",     value: String(monthStats.plans),          tone: "text-info" },
+          { label: "Días 100% checklist", value: String(monthStats.fullDays),       tone: "text-success" },
+          { label: "Ítems hoy",           value: `${checkedCount}/${totalItems}`,   tone: isReady ? "text-success" : "text-warning" },
+          { label: "Estado",              value: isReady ? "READY ✓" : "PENDIENTE", tone: isReady ? "text-success" : "text-warning" },
         ].map(s => (
           <div key={s.label} className="rounded-2xl border border-border bg-surface/60 backdrop-blur-xl p-4">
             <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{s.label}</div>
@@ -127,32 +212,25 @@ function PremarketPage() {
         {/* Calendar */}
         <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl overflow-hidden h-fit">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <button onClick={() => { if (month === 0) { setMonth(11); setYear(y => y-1); } else setMonth(m => m-1); }}
-              className="p-1.5 rounded-lg hover:bg-surface-2 transition text-muted-foreground hover:text-foreground">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
+            <button onClick={() => { if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1); }}
+              className="p-1.5 rounded-lg hover:bg-surface-2 transition text-muted-foreground hover:text-foreground"><ChevronLeft className="h-4 w-4"/></button>
             <div className="text-sm font-semibold">{MONTHS[month]} {year}</div>
-            <button onClick={() => { if (month === 11) { setMonth(0); setYear(y => y+1); } else setMonth(m => m+1); }}
-              className="p-1.5 rounded-lg hover:bg-surface-2 transition text-muted-foreground hover:text-foreground">
-              <ChevronRight className="h-4 w-4" />
-            </button>
+            <button onClick={() => { if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1); }}
+              className="p-1.5 rounded-lg hover:bg-surface-2 transition text-muted-foreground hover:text-foreground"><ChevronRight className="h-4 w-4"/></button>
           </div>
-
           <div className="grid grid-cols-7 px-2 pt-2">
             {DAYS.map(d => <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-1">{d}</div>)}
           </div>
-
           <div className="grid grid-cols-7 gap-1 p-2">
             {cells.map((day, i) => {
               if (!day) return <div key={i} />;
               const dateStr = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-              const hasPlan = !!getPlan(dateStr);
-              const cl = getChecklist(dateStr);
-              const clCount = cl.filter(Boolean).length;
-              const isFull = clCount === CHECKLIST_ITEMS.length;
-              const isToday = dateStr === today;
+              const hasPlan  = !!getPlan(dateStr);
+              const cl       = getChecklist(dateStr);
+              const clCount  = cl.filter(Boolean).length;
+              const isFull   = totalItems > 0 && clCount === totalItems;
+              const isToday    = dateStr === today;
               const isSelected = dateStr === selectedDate;
-
               return (
                 <button key={i} onClick={() => setSelectedDate(dateStr)}
                   className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition relative
@@ -173,16 +251,14 @@ function PremarketPage() {
               );
             })}
           </div>
-
-          {/* Progress */}
           <div className="px-4 pb-4 border-t border-border pt-3">
             <div className="flex justify-between text-xs mb-1.5">
               <span className="text-muted-foreground">Progreso del día</span>
-              <span className="font-mono font-bold">{checkedCount}/{CHECKLIST_ITEMS.length}</span>
+              <span className="font-mono font-bold">{checkedCount}/{totalItems}</span>
             </div>
             <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
               <div className="h-full rounded-full bg-primary transition-all duration-500"
-                style={{ width: `${progressPct}%`, boxShadow: progressPct > 0 ? `0 0 8px oklch(var(--primary))` : "none" }} />
+                style={{ width: `${progressPct}%`, boxShadow: progressPct > 0 ? "0 0 8px oklch(var(--primary))" : "none" }} />
             </div>
           </div>
         </div>
@@ -191,7 +267,7 @@ function PremarketPage() {
         <div className="space-y-4">
           <div className="text-sm font-semibold text-muted-foreground">
             {selectedDate === today && <span className="text-primary">Hoy · </span>}
-            <span className="capitalize">{new Date(selectedDate+"T12:00:00").toLocaleDateString("es", { weekday:"long", day:"numeric", month:"long" })}</span>
+            <span className="capitalize">{new Date(selectedDate+"T12:00:00").toLocaleDateString("es",{weekday:"long",day:"numeric",month:"long"})}</span>
           </div>
 
           {/* Checklist */}
@@ -202,27 +278,33 @@ function PremarketPage() {
               </div>
               <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
                 isReady ? "text-success bg-success/10 border-success/25" : "text-warning bg-warning/10 border-warning/25"
-              }`}>
-                {isReady ? "READY" : `${checkedCount}/${CHECKLIST_ITEMS.length}`}
-              </span>
+              }`}>{isReady ? "READY ✓" : `${checkedCount}/${totalItems}`}</span>
             </div>
-            <div className="space-y-2">
-              {CHECKLIST_ITEMS.map((item, i) => (
-                <button key={i} onClick={() => toggleCheck(i)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition group ${
-                    checks[i] ? "bg-success/8 border-success/25" : "bg-surface-2/40 border-border hover:border-primary/30"
-                  }`}>
-                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${
-                    checks[i] ? "bg-success border-success shadow-[0_0_8px_oklch(0.78_0.18_158/0.5)]" : "border-muted-foreground/40 group-hover:border-primary/60"
-                  }`}>
-                    {checks[i] && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-                  </div>
-                  <span className={`text-sm transition ${checks[i] ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                    {item}
-                  </span>
-                </button>
-              ))}
-            </div>
+
+            {clConfig.items.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground text-sm">
+                <div className="text-3xl mb-2">📋</div>
+                No tienes ítems en el checklist. Pulsa "Mi checklist" para añadir.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {clConfig.items.map((item, i) => (
+                  <button key={item.id} onClick={() => toggleCheck(i)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition group ${
+                      checks[i] ? "bg-success/8 border-success/25" : "bg-surface-2/40 border-border hover:border-primary/30"
+                    }`}>
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${
+                      checks[i] ? "bg-success border-success shadow-[0_0_8px_oklch(0.78_0.18_158/0.5)]" : "border-muted-foreground/40 group-hover:border-primary/60"
+                    }`}>
+                      {checks[i] && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                    </div>
+                    <span className={`text-sm transition ${checks[i] ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                      {item.text}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Plan del día */}
@@ -231,7 +313,6 @@ function PremarketPage() {
               <Target className="h-4 w-4 text-primary" /> Plan del día
             </div>
 
-            {/* Sesgo */}
             <div>
               <label className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground font-semibold">Sesgo del día</label>
               <div className="grid grid-cols-3 gap-2 mt-2">
@@ -243,7 +324,7 @@ function PremarketPage() {
                       className={`h-11 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-2 ${
                         isActive ? "border-primary/50 bg-primary/10" : "border-border bg-surface-2/40 text-muted-foreground hover:border-primary/30"
                       }`}
-                      style={isActive ? { color: s.tone, borderColor: `color-mix(in oklab, ${s.tone} 50%, transparent)`, background: `color-mix(in oklab, ${s.tone} 12%, transparent)` } : undefined}>
+                      style={isActive ? { color: s.tone, borderColor: `color-mix(in oklab,${s.tone} 50%,transparent)`, background: `color-mix(in oklab,${s.tone} 12%,transparent)` } : undefined}>
                       <Icon className="h-3.5 w-3.5" /> {s.key}
                     </button>
                   );
@@ -280,6 +361,15 @@ function PremarketPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        open={deleteId !== null}
+        title="¿Eliminar ítem?"
+        message="Se eliminará este ítem del checklist. Los registros históricos no se borrarán."
+        confirmLabel="Sí, eliminar"
+        onConfirm={async () => { if (deleteId) await clConfig.removeItem(deleteId); setDeleteId(null); }}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }
