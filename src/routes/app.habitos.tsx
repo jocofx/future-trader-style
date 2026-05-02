@@ -14,6 +14,15 @@ export const Route = createFileRoute("/app/habitos")({ component: HabitosPage })
 
 const DAYS   = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+// Parse target string to get the threshold number
+// Examples: "≥ 7h" → 7, "≥ 30min" → 30, "= 0" → 0, "≥ 6 vasos" → 6
+function parseTarget(target: string, max: number): number {
+  if (!target) return max * 0.5;
+  const match = target.match(/[\d]+/);
+  if (match) return Number(match[0]);
+  return max * 0.5;
+}
+
 const ICONS  = ["🌙","💪","🧘","🍷","💧","🥗","📚","🎯","🏃","🛏️","🧠","💊","🚭","☀️","🏋️"];
 
 const EMPTY_HABIT = { label: "", unit: "min", max: 60, target: "", inverse: false, icon: "🎯" };
@@ -57,7 +66,7 @@ function HabitosPage() {
   const getScore = (h: any) => {
     if (!h) return 0;
     return config.habits.filter(c =>
-      c.inverse ? (h[c.id] ?? 0) === 0 : (h[c.id] ?? 0) >= c.max * 0.5
+      c.inverse ? (h[c.id] ?? 0) === 0 : (h[c.id] ?? 0) >= parseTarget(c.target, c.max)
     ).length;
   };
 
@@ -76,7 +85,7 @@ function HabitosPage() {
   }, [habits, config.habits]);
 
   const todayScore = useMemo(() => config.habits.filter(c =>
-    c.inverse ? (values[c.id] ?? 0) === 0 : (values[c.id] ?? 0) >= c.max * 0.5
+    c.inverse ? (values[c.id] ?? 0) === 0 : (values[c.id] ?? 0) >= parseTarget(c.target, c.max)
   ).length, [values, config.habits]);
 
   // Calendar
@@ -366,7 +375,7 @@ function HabitosPage() {
               {config.habits.map(h => {
                 const val = values[h.id] ?? 0;
                 const pct = Math.min(100, (val / h.max) * 100);
-                const good = h.inverse ? val === 0 : val >= h.max * 0.5;
+                const good = h.inverse ? val === 0 : val >= parseTarget(h.target, h.max);
                 return (
                   <div key={h.id} className="rounded-xl border border-border bg-surface-2/40 p-4">
                     <div className="flex items-center justify-between mb-3">
@@ -403,7 +412,7 @@ function HabitosPage() {
               <span className="text-sm text-muted-foreground">Puntuación del día</span>
               <div className="flex items-center gap-1.5">
                 {config.habits.map((h, i) => {
-                  const ok = h.inverse ? (values[h.id]??0) === 0 : (values[h.id]??0) >= h.max * 0.5;
+                  const ok = h.inverse ? (values[h.id]??0) === 0 : (values[h.id]??0) >= parseTarget(h.target, h.max);
                   return (
                     <div key={i} title={h.label} className={`w-6 h-6 rounded-md border flex items-center justify-center text-[11px] transition ${
                       ok ? "bg-success border-success" : "border-border bg-surface-2/40"
