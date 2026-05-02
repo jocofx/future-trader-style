@@ -19,7 +19,11 @@ const json = (data: unknown, status = 200) =>
 
 async function getUser(token: string): Promise<string | null> {
   const { data } = await supabase
-    .from("api_keys").select("user_id").eq("token", token).maybeSingle();
+    .from("api_keys")
+    .select("user_id")
+    .eq("token", token)
+    .eq("activo", true)   // api_keys uses 'activo' boolean
+    .maybeSingle();
   return data?.user_id ?? null;
 }
 

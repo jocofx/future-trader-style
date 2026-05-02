@@ -392,7 +392,12 @@ function GestorEAPage() {
       let token = keys?.[0]?.token;
       if (!token) {
         token = crypto.randomUUID().replace(/-/g, "");
-        await supabase.from("api_keys").insert({ user_id: user.id, token });
+        await supabase.from("api_keys").insert({
+          user_id: user.id,
+          token,
+          nombre: "TradyncSync EA",
+          activo: true,
+        });
       }
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
