@@ -571,7 +571,10 @@ Deno.serve(async (req) => {
   const ext       = platform === "mt4" ? "mq4" : "mq5";
   const filename  = `TradyncSync_${platform.toUpperCase()}.${ext}`;
 
-  return new Response(eaContent, {
+  // MT5 requires Windows CRLF line endings
+  const eaContentCRLF = eaContent.split("\n").join("\r\n");
+
+  return new Response(eaContentCRLF, {
     status: 200,
     headers: {
       ...CORS,
