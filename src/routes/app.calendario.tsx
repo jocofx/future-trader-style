@@ -1,6 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Activity, Target } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import {
+  CalendarDays, ChevronLeft, ChevronRight, TrendingUp, TrendingDown,
+  Activity, Target, BookOpen, ClipboardList, Heart, Brain, CheckCircle2,
+  XCircle, AlertTriangle, Smile, Sparkles, Percent, DollarSign,
+} from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import type { Trade } from "@/lib/types";
 
