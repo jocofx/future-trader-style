@@ -2,263 +2,471 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useApp } from "@/context/AppContext";
 import { supabase } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
-  Bot, Play, Pause, Square, AlertTriangle, CheckCircle2, Cpu, Activity,
-  Plus, Settings, Trash2, Zap, TrendingUp, TrendingDown, Clock, Terminal,
-  RefreshCw, Power, FileCode2, GitBranch, BarChart3, Download, FolderOpen, PlayCircle, Wifi, ChevronDown, HelpCircle, Monitor } from "lucide-react";
-import { Modal, Field, inputCls, selectCls, ModalButton } from "@/components/Modal";
+  Bot, Play, Pause, Square, AlertTriangle, CheckCircle2, Activity,
+  Plus, Trash2, Zap, TrendingUp, TrendingDown, Clock, Terminal,
+  RefreshCw, Power, Download, FolderOpen, PlayCircle, Wifi,
+  ChevronDown, HelpCircle, Monitor, Pencil, Check, X, Settings,
+  Shield, BarChart3, ChevronRight,
+} from "lucide-react";
+import { useGestorEA } from "@/hooks/useGestorEA";
+import type { EAInstance } from "@/hooks/useGestorEA";
 
-export const Route = createFileRoute("/app/gestor-ea")({
-    component: GestorEAPage,
-});
+export const Route = createFileRoute("/app/gestor-ea")({ component: GestorEAPage });
 
-type EAStatus = "running" | "paused" | "stopped" | "error";
-
-type EA = {
-  id: string;
-  name: string;
-  symbol: string;
-  broker: string;
-  version: string;
-  status: EAStatus;
-  pnl: number;
-  pnlPct: number;
-  trades: number;
-  winRate: number;
-  maxDD: number;
-  cpu: number;
-  memory: number;
-  uptime: string;
-  lastSignal: string;
-  strategy: "Scalping" | "Trend" | "Grid" | "Arbitrage" | "ML";
+const STATUS_META = {
+  active:       { label: "Activo",        cls: "text-success bg-success/10 border-success/25",           dot: "bg-success animate-pulse" },
+  paused:       { label: "Pausado",        cls: "text-warning bg-warning/10 border-warning/25",           dot: "bg-warning" },
+  disconnected: { label: "Desconectado",  cls: "text-muted-foreground bg-surface-3 border-border",       dot: "bg-muted-foreground" },
+  error:        { label: "Error",          cls: "text-destructive bg-destructive/10 border-destructive/25", dot: "bg-destructive animate-pulse" },
 };
 
-type LogEntry = {
-  id: string;
-  ts: string;
-  level: "info" | "warn" | "error" | "success";
-  ea: string;
-  msg: string;
+const PROFILE_COLOR: Record<string, string> = {
+  "Disciplinado":        "text-success",
+  "Levemente impulsivo": "text-warning",
+  "Indisciplinado":      "text-orange-400",
+  "Alto riesgo":         "text-destructive",
+  "Trading compulsivo":  "text-destructive",
 };
 
-const INITIAL_EAS: EA[] = [
-  { id: "ea1", name: "Quantum Scalper Pro",  symbol: "EURUSD", broker: "FTMO",       version: "v3.2.1", status: "running", pnl: 1248.50, pnlPct: 4.8,  trades: 142, winRate: 68, maxDD: 3.2, cpu: 12, memory: 84,  uptime: "14d 3h", lastSignal: "hace 12s", strategy: "Scalping" },
-  { id: "ea2", name: "Trend Hunter X",       symbol: "XAUUSD", broker: "IC Markets", version: "v2.0.4", status: "running", pnl: 3420.10, pnlPct: 8.2,  trades: 38,  winRate: 74, maxDD: 5.1, cpu: 6,  memory: 62,  uptime: "8d 11h", lastSignal: "hace 4 min", strategy: "Trend" },
-  { id: "ea3", name: "Grid Master Neo",      symbol: "GBPJPY", broker: "FTMO",       version: "v1.8.0", status: "paused",  pnl: -184.20, pnlPct: -0.9, trades: 87,  winRate: 52, maxDD: 8.4, cpu: 0,  memory: 48,  uptime: "—",      lastSignal: "hace 2 h",  strategy: "Grid" },
-  { id: "ea4", name: "ML Predictor Alpha",   symbol: "BTCUSD", broker: "Binance",    version: "v0.9.2", status: "error",   pnl: 240.00,  pnlPct: 1.2,  trades: 14,  winRate: 64, maxDD: 2.1, cpu: 0,  memory: 0,   uptime: "—",      lastSignal: "Error de conexión", strategy: "ML" },
-];
+function timeAgo(ts: string | null): string {
+  if (!ts) return "nunca";
+  const sec = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (sec < 10)  return "ahora mismo";
+  if (sec < 60)  return `hace ${sec}s`;
+  if (sec < 3600) return `hace ${Math.floor(sec/60)}min`;
+  if (sec < 86400) return `hace ${Math.floor(sec/3600)}h`;
+  return `hace ${Math.floor(sec/86400)}d`;
+}
 
-const INITIAL_LOGS: LogEntry[] = [
-  { id: "l1", ts: "14:32:18", level: "success", ea: "Quantum Scalper Pro", msg: "BUY EURUSD @ 1.08234 · TP +12 pips · SL -8 pips" },
-  { id: "l2", ts: "14:31:02", level: "info",    ea: "Trend Hunter X",      msg: "Análisis H4 completado · señal neutra" },
-  { id: "l3", ts: "14:28:45", level: "warn",    ea: "Grid Master Neo",     msg: "Pausa automática: drawdown >8%" },
-  { id: "l4", ts: "14:25:11", level: "error",   ea: "ML Predictor Alpha",  msg: "Conexión perdida con broker · reintentando…" },
-  { id: "l5", ts: "14:22:08", level: "success", ea: "Quantum Scalper Pro", msg: "CLOSE EURUSD +$48.20 (+0.18%)" },
-  { id: "l6", ts: "14:18:33", level: "info",    ea: "Trend Hunter X",      msg: "Vela H1 cerrada · evaluando entrada" },
-];
+function fmtUSD(n: number) {
+  return `${n >= 0 ? "+" : "-"}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
-const STATUS_META: Record<EAStatus, { label: string; cls: string; dot: string }> = {
-  running: { label: "Activo",    cls: "text-success bg-success/10 border-success/25",                 dot: "bg-success animate-pulse" },
-  paused:  { label: "Pausado",   cls: "text-warning bg-warning/10 border-warning/25",                 dot: "bg-warning" },
-  stopped: { label: "Detenido",  cls: "text-muted-foreground bg-surface-3 border-border",             dot: "bg-muted-foreground" },
-  error:   { label: "Error",     cls: "text-destructive bg-destructive/10 border-destructive/25",     dot: "bg-destructive animate-pulse" },
-};
+// ── Sub-component: EA Card ─────────────────────────────────────────
+function EACard({
+  ea, onSelect, onCommand, onRename, onDelete,
+}: {
+  ea: EAInstance;
+  onSelect: () => void;
+  onCommand: (type: string) => void;
+  onRename: (name: string) => void;
+  onDelete: () => void;
+}) {
+  const [renaming, setRenaming] = useState(false);
+  const [nameVal, setNameVal]   = useState(ea.name ?? "");
+  const meta = STATUS_META[ea.status] ?? STATUS_META.disconnected;
 
-const STRATEGY_COLOR: Record<EA["strategy"], string> = {
-  Scalping:  "oklch(0.78 0.18 158)",
-  Trend:     "oklch(0.70 0.16 250)",
-  Grid:      "oklch(0.80 0.16 75)",
-  Arbitrage: "oklch(0.74 0.18 305)",
-  ML:        "oklch(0.72 0.18 35)",
-};
+  const limitAlerts = [];
+  if (ea.limite_perdida > 0 && ea.pnl_dia <= -ea.limite_perdida)
+    limitAlerts.push("Límite de pérdida alcanzado");
+  if (ea.limite_ganancia > 0 && ea.pnl_dia >= ea.limite_ganancia)
+    limitAlerts.push("Límite de ganancia alcanzado");
+  if (ea.max_ops_dia > 0 && ea.trades_hoy >= ea.max_ops_dia)
+    limitAlerts.push("Máximo de operaciones alcanzado");
 
-const fmtUSD = (n: number) =>
-  `${n >= 0 ? "+" : "-"}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return (
+    <div className={`rounded-2xl border bg-card/70 backdrop-blur overflow-hidden hover:border-primary/20 transition ${limitAlerts.length ? "border-destructive/30" : "border-border"}`}>
+      {/* Alert banner */}
+      {limitAlerts.length > 0 && (
+        <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2 flex items-center gap-2">
+          <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+          <span className="text-xs text-destructive font-semibold">{limitAlerts[0]}</span>
+        </div>
+      )}
 
+      <div className="p-5">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className={`h-9 w-9 rounded-xl border grid place-items-center shrink-0 ${ea.status === "active" ? "bg-success/10 border-success/20" : "bg-surface border-border"}`}>
+              <Bot className={`h-4.5 w-4.5 ${ea.status === "active" ? "text-success" : "text-muted-foreground"}`} />
+            </div>
+            <div className="min-w-0">
+              {renaming ? (
+                <div className="flex items-center gap-1">
+                  <input value={nameVal} onChange={e => setNameVal(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { onRename(nameVal); setRenaming(false); } if (e.key === "Escape") setRenaming(false); }}
+                    className="text-sm font-semibold bg-surface border border-border rounded px-2 py-0.5 w-32 focus:outline-none focus:ring-1 focus:ring-ring"
+                    autoFocus />
+                  <button onClick={() => { onRename(nameVal); setRenaming(false); }} className="text-success hover:brightness-110"><Check className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setRenaming(false)} className="text-muted-foreground"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <div className="text-sm font-bold truncate">{ea.name ?? `EA ${ea.platform} #${ea.account_number?.slice(-4) ?? "????"}`}</div>
+                  <button onClick={() => { setNameVal(ea.name ?? ""); setRenaming(true); }} className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition">
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] text-muted-foreground font-mono">{ea.platform}</span>
+                {ea.broker && <><span className="text-muted-foreground/40">·</span><span className="text-[10px] text-muted-foreground">{ea.broker}</span></>}
+                {ea.account_number && <><span className="text-muted-foreground/40">·</span><span className="text-[10px] font-mono text-muted-foreground">#{ea.account_number}</span></>}
+              </div>
+            </div>
+          </div>
+          <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border flex items-center gap-1.5 shrink-0 ${meta.cls}`}>
+            <div className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+            {meta.label}
+          </div>
+        </div>
+
+        {/* Metrics grid */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="rounded-xl bg-surface/40 border border-border/60 p-2.5 text-center">
+            <div className="text-[9px] uppercase tracking-wider text-muted-foreground">P&L Día</div>
+            <div className={`text-sm font-bold font-mono mt-0.5 ${ea.pnl_dia >= 0 ? "text-success" : "text-destructive"}`}>
+              {fmtUSD(ea.pnl_dia)}
+            </div>
+          </div>
+          <div className="rounded-xl bg-surface/40 border border-border/60 p-2.5 text-center">
+            <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Trades hoy</div>
+            <div className="text-sm font-bold font-mono mt-0.5">{ea.trades_hoy}</div>
+          </div>
+          <div className="rounded-xl bg-surface/40 border border-border/60 p-2.5 text-center">
+            <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Balance</div>
+            <div className="text-sm font-bold font-mono mt-0.5">
+              {ea.balance != null ? `$${ea.balance.toLocaleString()}` : "—"}
+            </div>
+          </div>
+        </div>
+
+        {/* Behavioral score bar */}
+        {ea.score >= 0 && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Disciplina</span>
+              <span className={`text-[10px] font-semibold ${PROFILE_COLOR[ea.perfil] ?? "text-muted-foreground"}`}>
+                {ea.perfil} · {ea.disciplina}/100
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${ea.disciplina}%`,
+                  background: ea.disciplina >= 80 ? "oklch(0.78 0.18 158)" : ea.disciplina >= 50 ? "oklch(0.80 0.16 75)" : "oklch(0.68 0.22 18)"
+                }} />
+            </div>
+          </div>
+        )}
+
+        {/* Risk limits visual */}
+        {(ea.limite_perdida > 0 || ea.limite_ganancia > 0 || ea.max_ops_dia > 0) && (
+          <div className="mb-4 p-2.5 rounded-xl bg-surface/30 border border-border/40 space-y-1.5">
+            {ea.limite_perdida > 0 && (
+              <div className="flex justify-between text-[10px]">
+                <span className="text-muted-foreground">Límite pérdida</span>
+                <span className={`font-mono font-semibold ${ea.pnl_dia <= -ea.limite_perdida ? "text-destructive" : "text-foreground"}`}>
+                  {fmtUSD(ea.pnl_dia)} / -${ea.limite_perdida}
+                </span>
+              </div>
+            )}
+            {ea.limite_ganancia > 0 && (
+              <div className="flex justify-between text-[10px]">
+                <span className="text-muted-foreground">Límite ganancia</span>
+                <span className={`font-mono font-semibold ${ea.pnl_dia >= ea.limite_ganancia ? "text-success" : "text-foreground"}`}>
+                  {fmtUSD(ea.pnl_dia)} / +${ea.limite_ganancia}
+                </span>
+              </div>
+            )}
+            {ea.max_ops_dia > 0 && (
+              <div className="flex justify-between text-[10px]">
+                <span className="text-muted-foreground">Operaciones</span>
+                <span className={`font-mono font-semibold ${ea.trades_hoy >= ea.max_ops_dia ? "text-warning" : "text-foreground"}`}>
+                  {ea.trades_hoy} / {ea.max_ops_dia}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Last ping */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            {timeAgo(ea.last_ping)}
+          </div>
+          {ea.pnl_total !== 0 && (
+            <div className={`text-[10px] font-mono font-semibold ${ea.pnl_total >= 0 ? "text-success" : "text-destructive"}`}>
+              Total: {fmtUSD(ea.pnl_total)}
+            </div>
+          )}
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          {ea.status === "active" ? (
+            <button onClick={() => onCommand("pause")}
+              className="flex-1 h-8 rounded-lg border border-warning/30 text-warning bg-warning/8 hover:bg-warning/15 transition text-xs font-semibold flex items-center justify-center gap-1.5">
+              <Pause className="h-3.5 w-3.5" /> Pausar
+            </button>
+          ) : (
+            <button onClick={() => onCommand("start")}
+              className="flex-1 h-8 rounded-lg border border-success/30 text-success bg-success/8 hover:bg-success/15 transition text-xs font-semibold flex items-center justify-center gap-1.5">
+              <Play className="h-3.5 w-3.5" /> Activar
+            </button>
+          )}
+          <button onClick={onSelect}
+            className="flex-1 h-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition text-xs font-semibold flex items-center justify-center gap-1.5">
+            <Settings className="h-3.5 w-3.5" /> Configurar
+          </button>
+          <button onClick={onDelete}
+            className="h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 transition flex items-center justify-center">
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Sub-component: EA Detail Panel ─────────────────────────────────
+function EADetailPanel({ ea, onClose, onUpdateRisk, onCommand }: {
+  ea: EAInstance;
+  onClose: () => void;
+  onUpdateRisk: (config: Partial<EAInstance>) => Promise<void>;
+  onCommand: (type: string) => void;
+}) {
+  const [config, setConfig] = useState({
+    max_ops_dia:      ea.max_ops_dia,
+    limite_perdida:   ea.limite_perdida,
+    limite_ganancia:  ea.limite_ganancia,
+    hora_inicio:      ea.hora_inicio,
+    hora_fin:         ea.hora_fin,
+    modo_restrictivo: ea.modo_restrictivo,
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved,  setSaved]  = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onUpdateRisk(config);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const numInput = (label: string, key: keyof typeof config, placeholder = "0 = sin límite") => (
+    <div>
+      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</label>
+      <input type="number" min="0" value={config[key] as number}
+        onChange={e => setConfig(c => ({ ...c, [key]: Number(e.target.value) }))}
+        placeholder={placeholder}
+        className="mt-1 w-full bg-surface/80 border border-border rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+    </div>
+  );
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-card/80 backdrop-blur overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Bot className="h-5 w-5 text-primary" />
+          <div className="font-semibold text-sm">
+            {ea.name ?? `EA ${ea.platform}`}
+          </div>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${STATUS_META[ea.status]?.cls}`}>
+            {STATUS_META[ea.status]?.label}
+          </span>
+        </div>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="p-5 space-y-6">
+        {/* Quick stats */}
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { label: "P&L Total",    value: fmtUSD(ea.pnl_total),  color: ea.pnl_total >= 0 ? "text-success" : "text-destructive" },
+            { label: "Trades total", value: String(ea.trades_total), color: "text-foreground" },
+            { label: "Win Rate",     value: ea.win_rate != null ? `${ea.win_rate.toFixed(0)}%` : "—", color: "text-primary" },
+            { label: "Disciplina",   value: `${ea.disciplina}/100`, color: ea.disciplina >= 80 ? "text-success" : "text-warning" },
+          ].map(s => (
+            <div key={s.label} className="rounded-xl bg-surface/40 border border-border/60 p-3 text-center">
+              <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{s.label}</div>
+              <div className={`text-base font-bold font-mono mt-1 ${s.color}`}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Behavioral */}
+        <div className="rounded-xl border border-border bg-surface/30 p-4">
+          <div className="text-xs font-semibold mb-3 flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" /> Análisis Conductual
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <div className="text-[10px] text-muted-foreground">Score impulsividad</div>
+              <div className="text-lg font-bold font-mono text-primary mt-0.5">{ea.score.toFixed(0)}</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-muted-foreground">Perfil</div>
+              <div className={`text-sm font-semibold mt-0.5 ${PROFILE_COLOR[ea.perfil] ?? "text-foreground"}`}>{ea.perfil}</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-muted-foreground">Violaciones hoy</div>
+              <div className={`text-lg font-bold font-mono mt-0.5 ${ea.violaciones_hoy > 0 ? "text-warning" : "text-success"}`}>{ea.violaciones_hoy}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Risk config */}
+        <div>
+          <div className="text-xs font-semibold mb-3 flex items-center gap-2">
+            <Shield className="h-4 w-4 text-primary" /> Gestor de Riesgo
+            <span className="text-[10px] text-muted-foreground font-normal">(se aplica al EA en tiempo real)</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {numInput("Máx. operaciones/día", "max_ops_dia")}
+            {numInput("Límite pérdida ($)", "limite_perdida")}
+            {numInput("Límite ganancia ($)", "limite_ganancia")}
+            {numInput("Hora inicio (0-23)", "hora_inicio", "0 = sin límite")}
+            {numInput("Hora fin (0-23)", "hora_fin", "0 = sin límite")}
+            <div className="flex items-center gap-2 mt-4">
+              <button onClick={() => setConfig(c => ({ ...c, modo_restrictivo: !c.modo_restrictivo }))}
+                className={`w-10 h-5 rounded-full transition-colors relative ${config.modo_restrictivo ? "bg-destructive" : "bg-surface-3"}`}>
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${config.modo_restrictivo ? "translate-x-5" : "translate-x-0.5"}`} />
+              </button>
+              <div>
+                <div className="text-xs font-semibold">Modo restrictivo</div>
+                <div className="text-[10px] text-muted-foreground">Bloquea ops cuando score es alto</div>
+              </div>
+            </div>
+          </div>
+          <button onClick={handleSave} disabled={saving}
+            className="mt-4 w-full h-9 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition disabled:opacity-50 flex items-center justify-center gap-2">
+            {saved ? <><Check className="h-4 w-4" />Configuración aplicada</> : saving ? "Aplicando…" : <><Zap className="h-4 w-4" />Aplicar cambios al EA</>}
+          </button>
+        </div>
+
+        {/* Remote commands */}
+        <div>
+          <div className="text-xs font-semibold mb-3 flex items-center gap-2">
+            <Terminal className="h-4 w-4 text-primary" /> Control remoto
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <button onClick={() => onCommand("start")}
+              className="h-9 rounded-xl border border-success/30 text-success bg-success/8 hover:bg-success/15 transition text-xs font-semibold flex items-center justify-center gap-1.5">
+              <Play className="h-3.5 w-3.5" /> Activar
+            </button>
+            <button onClick={() => onCommand("pause")}
+              className="h-9 rounded-xl border border-warning/30 text-warning bg-warning/8 hover:bg-warning/15 transition text-xs font-semibold flex items-center justify-center gap-1.5">
+              <Pause className="h-3.5 w-3.5" /> Pausar
+            </button>
+            <button onClick={() => onCommand("reset_limits")}
+              className="h-9 rounded-xl border border-info/30 text-info bg-info/8 hover:bg-info/15 transition text-xs font-semibold flex items-center justify-center gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5" /> Reset límites
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ──────────────────────────────────────────────────────
 function GestorEAPage() {
-  const [downloading, setDownloading]   = useState<"mt5"|"mt4"|null>(null);
-  const [showInstructions, setShowInstructions] = useState(false);
-  const [instructionTab, setInstructionTab]     = useState<"mt5"|"mt4">("mt5");
+  const { user } = useApp();
+  const ea = useGestorEA(user?.id ?? null);
 
+  const [selectedEA,       setSelectedEA]       = useState<EAInstance | null>(null);
+  const [deleteId,         setDeleteId]          = useState<string | null>(null);
+  const [downloading,      setDownloading]       = useState<"mt5"|"mt4"|null>(null);
+  const [showInstructions, setShowInstructions]  = useState(false);
+  const [instructionTab,   setInstructionTab]    = useState<"mt5"|"mt4">("mt5");
+
+  // Download EA
   const handleDownload = async (platform: "mt5" | "mt4") => {
     if (!user) return;
     setDownloading(platform);
     try {
-      // Get or create API token for user
       const { data: keys } = await supabase
-        .from("api_keys")
-        .select("token")
-        .eq("user_id", user.id)
-        .limit(1);
-
+        .from("api_keys").select("token").eq("user_id", user.id).limit(1);
       let token = keys?.[0]?.token;
-
       if (!token) {
-        // Create new token
         token = crypto.randomUUID().replace(/-/g, "");
-        await supabase.from("api_keys").insert({
-          user_id: user.id,
-          token: token,
-        });
+        await supabase.from("api_keys").insert({ user_id: user.id, token });
       }
-
-      // Download EA from Edge Function — need auth header
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-ea?platform=${platform}&token=${token}`,
-        {
-          headers: {
-            "Authorization": `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-        }
+        { headers: { "Authorization": `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}` } }
       );
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? `Error ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? `Error ${res.status}`);
       const blob = await res.blob();
-      const ext  = platform === "mt4" ? "mq4" : "mq5";
+      const ext = platform === "mt4" ? "mq4" : "mq5";
       const objUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = objUrl;
-      a.download = `TradyncSync_${platform.toUpperCase()}.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      a.href = objUrl; a.download = `TradyncSync_${platform.toUpperCase()}.${ext}`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(objUrl);
-    } catch (e) {
-      alert("Error descargando el EA: " + String(e));
-    } finally {
-      setDownloading(null);
-    }
+    } catch (e) { alert("Error descargando el EA: " + String(e)); }
+    finally { setDownloading(null); }
   };
 
-  const { user } = useApp();
-  const [confirmEaId, setConfirmEaId] = useState<string | null>(null);
-  const [eas, setEas] = useState<EA[]>(INITIAL_EAS);
-  const [logs, setLogs] = useState<LogEntry[]>(INITIAL_LOGS);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  // Pulso CPU para EAs activos
-  useEffect(() => {
-    const t = setInterval(() => {
-      setEas((prev) =>
-        prev.map((e) =>
-          e.status === "running"
-            ? { ...e, cpu: Math.max(2, Math.min(40, e.cpu + (Math.random() * 6 - 3))) }
-            : e
-        )
-      );
-    }, 2200);
-    return () => clearInterval(t);
-  }, []);
-
-  const stats = useMemo(() => {
-    const running = eas.filter((e) => e.status === "running").length;
-    const totalPnl = eas.reduce((s, e) => s + e.pnl, 0);
-    const totalTrades = eas.reduce((s, e) => s + e.trades, 0);
-    const avgWin = eas.length ? Math.round(eas.reduce((s, e) => s + e.winRate, 0) / eas.length) : 0;
-    return { running, totalPnl, totalTrades, avgWin };
-  }, [eas]);
-
-  const selected = selectedId ? eas.find((e) => e.id === selectedId) ?? null : eas[0] ?? null;
-
-  const setStatus = (id: string, status: EAStatus) => {
-    setEas((prev) => prev.map((e) => (e.id === id ? { ...e, status, cpu: status === "running" ? 8 : 0 } : e)));
-    const ea = eas.find((x) => x.id === id);
-    if (ea) {
-      const map: Record<EAStatus, LogEntry["level"]> = { running: "success", paused: "warn", stopped: "info", error: "error" };
-      const labels: Record<EAStatus, string> = { running: "iniciado", paused: "pausado", stopped: "detenido", error: "error" };
-      setLogs((prev) => [{
-        id: `l${Date.now()}`,
-        ts: new Date().toLocaleTimeString("es", { hour12: false }),
-        level: map[status],
-        ea: ea.name,
-        msg: `EA ${labels[status]} manualmente`,
-      }, ...prev.slice(0, 49)]);
-    }
+  const handleCommand = async (eaId: string, type: string) => {
+    try { await ea.sendCommand(eaId, { type: type as any }); }
+    catch (e) { console.error("Command error:", e); }
   };
 
-  const removeEA = (id: string) => {
-    setConfirmEaId(id);
-  };
-  const doRemoveEA = (id: string) => {
-    setEas((prev) => prev.filter((e) => e.id !== id));
-    if (selectedId === id) setSelectedId(null);
-  };
-
-  const handleAdd = (data: { name: string; symbol: string; broker: string; strategy: EA["strategy"] }) => {
-    const newEA: EA = {
-      id: `ea${Date.now()}`,
-      name: data.name,
-      symbol: data.symbol,
-      broker: data.broker,
-      version: "v1.0.0",
-      status: "stopped",
-      pnl: 0, pnlPct: 0, trades: 0, winRate: 0, maxDD: 0, cpu: 0, memory: 0,
-      uptime: "—", lastSignal: "Nunca",
-      strategy: data.strategy,
-    };
-    setEas((prev) => [newEA, ...prev]);
-    setModalOpen(false);
-  };
+  // Summary stats
+  const totalPnL    = ea.instances.reduce((s, e) => s + e.pnl_dia, 0);
+  const activeCount = ea.instances.filter(e => e.status === "active").length;
+  const alertCount  = ea.instances.filter(e =>
+    (e.limite_perdida > 0 && e.pnl_dia <= -e.limite_perdida) ||
+    (e.limite_ganancia > 0 && e.pnl_dia >= e.limite_ganancia) ||
+    (e.max_ops_dia > 0 && e.trades_hoy >= e.max_ops_dia)
+  ).length;
 
   return (
-    <>
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
-            <Bot className="h-3.5 w-3.5 text-primary" />
-            Algotrading · v2026
+            <Bot className="h-3.5 w-3.5 text-primary" /> Algotrading
           </div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Gestor de Expert Advisors</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Monitoriza tus bots en tiempo real, controla su ejecución y analiza su rendimiento.
+            Controla tus bots en tiempo real desde Tradync.
           </p>
-          <div className="flex gap-2 mt-4 flex-wrap">
-            <button
-              onClick={() => handleDownload("mt5")}
-              disabled={downloading !== null}
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow hover:brightness-110 transition disabled:opacity-50">
-              <Download className="h-4 w-4" />
-              {downloading === "mt5" ? "Descargando..." : "Descargar MT5 (.mq5)"}
-            </button>
-            <button
-              onClick={() => handleDownload("mt4")}
-              disabled={downloading !== null}
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface/60 text-foreground px-4 py-2 text-sm font-semibold hover:border-primary/40 transition disabled:opacity-50">
-              <Download className="h-4 w-4" />
-              {downloading === "mt4" ? "Descargando..." : "Descargar MT4 (.mq4)"}
-            </button>
-          </div>
-
-          {/* Instrucciones toggle */}
-          <button
-            onClick={() => setShowInstructions(v => !v)}
-            className="mt-3 flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition">
-            <HelpCircle className="h-3.5 w-3.5" />
-            ¿Cómo instalar el EA?
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showInstructions ? "rotate-180" : ""}`} />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={() => ea.load()}
+            className="h-9 px-3 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-surface transition flex items-center gap-1.5 text-sm">
+            <RefreshCw className={`h-4 w-4 ${ea.loading ? "animate-spin" : ""}`} />
+          </button>
+          <button onClick={() => handleDownload("mt5")} disabled={downloading !== null}
+            className="h-9 px-4 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-semibold shadow-glow hover:brightness-110 transition disabled:opacity-50 flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            {downloading === "mt5" ? "Descargando…" : "Descargar MT5"}
+          </button>
+          <button onClick={() => handleDownload("mt4")} disabled={downloading !== null}
+            className="h-9 px-4 rounded-xl border border-border bg-surface/60 text-sm font-semibold hover:border-primary/40 transition disabled:opacity-50 flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            {downloading === "mt4" ? "Descargando…" : "Descargar MT4"}
           </button>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition flex items-center gap-2 shadow-[0_0_20px_-4px_oklch(var(--primary)/0.4)]"
-        >
-          <Plus className="h-4 w-4" /> Nuevo EA
-        </button>
       </div>
 
-      {/* ── INSTRUCCIONES DE INSTALACIÓN ── */}
+      {/* Instructions toggle */}
+      <button onClick={() => setShowInstructions(v => !v)}
+        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition">
+        <HelpCircle className="h-3.5 w-3.5" />
+        ¿Cómo instalar el EA?
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showInstructions ? "rotate-180" : ""}`} />
+      </button>
+
+      {/* Instructions panel */}
       {showInstructions && (
         <div className="rounded-2xl border border-primary/20 bg-primary/5 backdrop-blur overflow-hidden">
-          {/* Tab selector */}
           <div className="flex border-b border-border">
             {(["mt5","mt4"] as const).map(tab => (
               <button key={tab} onClick={() => setInstructionTab(tab)}
@@ -268,413 +476,97 @@ function GestorEAPage() {
             ))}
           </div>
           <div className="p-6 space-y-5">
-
-            {/* Paso 1 */}
-            <div className="flex gap-4">
-              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">1</div>
-              <div>
-                <div className="font-semibold text-sm mb-1 flex items-center gap-2"><Download className="h-4 w-4 text-primary"/>Descarga el archivo EA</div>
-                <p className="text-sm text-muted-foreground">Haz click en <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">{instructionTab==="mt5"?"Descargar MT5 (.mq5)":"Descargar MT4 (.mq4)"}</span> arriba. Tu token ya está incluido — no necesitas configurar nada más.</p>
+            {[
+              { n:1, icon: <Download className="h-4 w-4 text-primary"/>, title:"Descarga el archivo EA", desc:`Haz click en "Descargar ${instructionTab==="mt5"?"MT5":"MT4"}" arriba. Tu token ya está incluido.` },
+              { n:2, icon: <FolderOpen className="h-4 w-4 text-primary"/>, title:`Copia a la carpeta MQL${instructionTab==="mt5"?"5":"4"}/Experts`, desc:`Abre ${instructionTab==="mt5"?"MT5":"MT4"} → Archivo → Abrir carpeta de datos → MQL${instructionTab==="mt5"?"5":"4"} → Experts` },
+              { n:3, icon: <Monitor className="h-4 w-4 text-primary"/>, title:"Compila el EA", desc:`Herramientas → Editor MetaQuotes (F4) → busca TradyncSync_${instructionTab==="mt5"?"MT5":"MT4"} → F7` },
+              { n:4, icon: <PlayCircle className="h-4 w-4 text-primary"/>, title:"Activa en un gráfico", desc:`Navegador → Expertos → TradyncSync_${instructionTab==="mt5"?"MT5":"MT4"} → arrastra al gráfico → activa "Permitir operaciones en vivo"` },
+              { n:5, icon: <Wifi className="h-4 w-4 text-primary"/>, title:"Activa WebRequest", desc:`Herramientas → Opciones → Asesores Expertos → Permitir WebRequest → añade: https://www.tradyncapp.com` },
+            ].map(s => (
+              <div key={s.n} className="flex gap-4">
+                <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">{s.n}</div>
+                <div>
+                  <div className="font-semibold text-sm mb-1 flex items-center gap-2">{s.icon}{s.title}</div>
+                  <p className="text-sm text-muted-foreground">{s.desc}</p>
+                </div>
               </div>
-            </div>
-
-            {/* Paso 2 */}
-            <div className="flex gap-4">
-              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">2</div>
-              <div>
-                <div className="font-semibold text-sm mb-1 flex items-center gap-2"><FolderOpen className="h-4 w-4 text-primary"/>Copia el archivo a {instructionTab==="mt5"?"MT5":"MT4"}</div>
-                <p className="text-sm text-muted-foreground mb-2">Abre {instructionTab==="mt5"?"MetaTrader 5":"MetaTrader 4"} y ve a:</p>
-                <div className="bg-surface/80 border border-border rounded-lg p-3 font-mono text-xs mb-2">Archivo → Abrir carpeta de datos → MQL{instructionTab==="mt5"?"5":"4"} → Experts</div>
-                <p className="text-sm text-muted-foreground">Pega el archivo <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">TradyncSync_{instructionTab==="mt5"?"MT5.mq5":"MT4.mq4"}</span> ahí.</p>
-              </div>
-            </div>
-
-            {/* Paso 3 */}
-            <div className="flex gap-4">
-              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">3</div>
-              <div>
-                <div className="font-semibold text-sm mb-1 flex items-center gap-2"><Monitor className="h-4 w-4 text-primary"/>Compila el EA</div>
-                <p className="text-sm text-muted-foreground mb-2">En el menú de {instructionTab==="mt5"?"MT5":"MT4"}:</p>
-                <div className="bg-surface/80 border border-border rounded-lg p-3 font-mono text-xs mb-2">Herramientas → Editor MetaQuotes (o pulsa F4)</div>
-                <p className="text-sm text-muted-foreground">Busca <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">TradyncSync_{instructionTab==="mt5"?"MT5":"MT4"}</span> en el panel izquierdo, doble click y pulsa <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">F7</span> para compilar.</p>
-              </div>
-            </div>
-
-            {/* Paso 4 */}
-            <div className="flex gap-4">
-              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">4</div>
-              <div>
-                <div className="font-semibold text-sm mb-1 flex items-center gap-2"><PlayCircle className="h-4 w-4 text-primary"/>Activa el EA en un gráfico</div>
-                <p className="text-sm text-muted-foreground mb-2">Vuelve a {instructionTab==="mt5"?"MT5":"MT4"}, abre cualquier gráfico (ej. EURUSD M1) y:</p>
-                <ol className="space-y-1.5 text-sm text-muted-foreground list-decimal ml-4">
-                  <li>Panel <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">Navegador</span> → Expertos → <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">TradyncSync_{instructionTab==="mt5"?"MT5":"MT4"}</span></li>
-                  <li>Arrastra el EA al gráfico</li>
-                  <li>Activa <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">Permitir operaciones en vivo</span> → Aceptar</li>
-                </ol>
-              </div>
-            </div>
-
-            {/* Paso 5 */}
-            <div className="flex gap-4">
-              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">5</div>
-              <div>
-                <div className="font-semibold text-sm mb-1 flex items-center gap-2"><Wifi className="h-4 w-4 text-primary"/>Activa WebRequest</div>
-                <p className="text-sm text-muted-foreground mb-2">Para que el EA se comunique con Tradync:</p>
-                <div className="bg-surface/80 border border-border rounded-lg p-3 font-mono text-xs mb-2">Herramientas → Opciones → Asesores Expertos → Permitir WebRequest</div>
-                <p className="text-sm text-muted-foreground mb-2">Añade esta URL:</p>
-                <div className="bg-surface/80 border border-primary/30 rounded-lg p-3 font-mono text-xs text-primary">https://www.tradyncapp.com</div>
-              </div>
-            </div>
-
-            {/* Éxito */}
+            ))}
             <div className="flex gap-3 rounded-xl bg-success/8 border border-success/20 p-4">
               <span className="text-2xl">✅</span>
               <div>
-                <div className="font-semibold text-sm text-success mb-1">¡Listo! El EA está activo</div>
-                <p className="text-xs text-muted-foreground">Verás una carita 🙂 en la esquina superior derecha del gráfico. El EA sincronizará tus operaciones automáticamente cada 3 segundos. Puedes verlo en la pestaña <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">Diario</span> de {instructionTab==="mt5"?"MT5":"MT4"}.</p>
+                <div className="font-semibold text-sm text-success mb-1">¡Listo! El EA aparecerá aquí automáticamente</div>
+                <p className="text-xs text-muted-foreground">Verás una carita 🙂 en la esquina del gráfico. En unos segundos aparecerá en esta página como "Activo".</p>
               </div>
             </div>
-
-            {/* Aviso */}
-            <div className="flex gap-3 rounded-xl bg-warning/8 border border-warning/20 p-4">
-              <span className="text-lg">⚠️</span>
-              <p className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">Importante:</span> No compartas el archivo descargado. Contiene tu token personal. Si crees que alguien tiene acceso, regenera tu token desde <span className="font-mono bg-surface px-1.5 py-0.5 rounded text-xs">Conectar Broker</span>.</p>
-            </div>
-
           </div>
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: "EAs activos",    value: `${stats.running}/${eas.length}`,                              Icon: Zap,        tone: "text-success" },
-          { label: "P&L acumulado",  value: fmtUSD(stats.totalPnl),                                        Icon: TrendingUp, tone: stats.totalPnl >= 0 ? "text-success" : "text-destructive" },
-          { label: "Trades totales", value: stats.totalTrades.toLocaleString(),                            Icon: Activity,   tone: "text-info" },
-          { label: "Winrate medio",  value: `${stats.avgWin}%`,                                            Icon: BarChart3,  tone: "text-primary" },
-        ].map((k) => (
-          <div key={k.label} className="rounded-2xl border border-border bg-surface/60 backdrop-blur-xl p-4 flex items-center gap-3">
-            <div className={`h-10 w-10 grid place-items-center rounded-xl bg-primary/10 border border-primary/20 ${k.tone}`}>
-              <k.Icon className="h-4 w-4" />
+      {/* Summary stats */}
+      {ea.instances.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: "EAs activos",   value: `${activeCount}/${ea.instances.length}`, color: "text-success" },
+            { label: "P&L total hoy", value: fmtUSD(totalPnL), color: totalPnL >= 0 ? "text-success" : "text-destructive" },
+            { label: "Alertas",       value: String(alertCount), color: alertCount > 0 ? "text-destructive" : "text-muted-foreground" },
+            { label: "Actualización", value: "Cada 10s", color: "text-info" },
+          ].map(s => (
+            <div key={s.label} className="rounded-2xl border border-border bg-surface/60 backdrop-blur p-4">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.label}</div>
+              <div className={`text-xl font-bold font-mono mt-1 ${s.color}`}>{s.value}</div>
             </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{k.label}</div>
-              <div className={`text-xl font-bold font-mono ${k.tone}`}>{k.value}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Lista de EAs */}
-        <section className="lg:col-span-2 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold flex items-center gap-2">
-              <FileCode2 className="h-4 w-4 text-primary" /> Expert Advisors
-            </h2>
-            <span className="text-[11px] text-muted-foreground">{eas.length} bot{eas.length !== 1 ? "s" : ""}</span>
-          </div>
-
-          <div className="space-y-2">
-            {eas.map((ea) => {
-              const meta = STATUS_META[ea.status];
-              const isSelected = selected?.id === ea.id;
-              return (
-                <div
-                  key={ea.id}
-                  onClick={() => setSelectedId(ea.id)}
-                  className={`group rounded-2xl border bg-surface/70 backdrop-blur-xl p-4 cursor-pointer transition ${
-                    isSelected ? "border-primary/50 shadow-[0_0_20px_-8px_oklch(var(--primary)/0.5)]" : "border-border hover:border-primary/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div
-                      className="h-11 w-11 rounded-xl grid place-items-center font-bold text-[10px] shrink-0 border relative"
-                      style={{
-                        background: `color-mix(in oklab, ${STRATEGY_COLOR[ea.strategy]} 18%, transparent)`,
-                        borderColor: `color-mix(in oklab, ${STRATEGY_COLOR[ea.strategy]} 30%, transparent)`,
-                        color: STRATEGY_COLOR[ea.strategy],
-                      }}
-                    >
-                      {ea.strategy.slice(0, 3).toUpperCase()}
-                      <span className={`absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full border-2 border-surface ${meta.dot}`} />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="font-semibold text-sm truncate">{ea.name}</div>
-                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${meta.cls}`}>
-                          {meta.label}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 border border-border text-muted-foreground font-mono">{ea.version}</span>
-                      </div>
-                      <div className="text-[11px] text-muted-foreground mt-0.5 font-mono flex items-center gap-2 flex-wrap">
-                        <span>{ea.symbol}</span>
-                        <span className="opacity-50">·</span>
-                        <span>{ea.broker}</span>
-                        <span className="opacity-50">·</span>
-                        <Clock className="h-3 w-3 inline" /> {ea.lastSignal}
-                      </div>
-                    </div>
-
-                    <div className="hidden sm:flex items-center gap-5 text-right">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">P&L</div>
-                        <div className={`text-sm font-mono font-semibold ${ea.pnl >= 0 ? "text-success" : "text-destructive"}`}>
-                          {fmtUSD(ea.pnl)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">CPU</div>
-                        <div className="text-sm font-mono font-semibold flex items-center gap-1">
-                          <Cpu className="h-3 w-3 text-muted-foreground" /> {Math.round(ea.cpu)}%
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition" onClick={(e) => e.stopPropagation()}>
-                      {ea.status === "running" ? (
-                        <button onClick={() => setStatus(ea.id, "paused")} title="Pausar"
-                          className="h-8 w-8 grid place-items-center rounded-lg border border-border bg-surface-2/50 hover:border-warning/40 hover:text-warning text-muted-foreground transition">
-                          <Pause className="h-3.5 w-3.5" />
-                        </button>
-                      ) : (
-                        <button onClick={() => setStatus(ea.id, "running")} title="Iniciar"
-                          className="h-8 w-8 grid place-items-center rounded-lg border border-border bg-surface-2/50 hover:border-success/40 hover:text-success text-muted-foreground transition">
-                          <Play className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                      <button onClick={() => setStatus(ea.id, "stopped")} title="Detener"
-                        className="h-8 w-8 grid place-items-center rounded-lg border border-border bg-surface-2/50 hover:border-primary/40 hover:text-primary text-muted-foreground transition">
-                        <Square className="h-3.5 w-3.5" />
-                      </button>
-                      <button title="Configuración"
-                        className="h-8 w-8 grid place-items-center rounded-lg border border-border bg-surface-2/50 hover:border-primary/40 hover:text-primary text-muted-foreground transition">
-                        <Settings className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => removeEA(ea.id)} title="Eliminar"
-                        className="h-8 w-8 grid place-items-center rounded-lg border border-border bg-surface-2/50 hover:border-destructive/40 hover:text-destructive text-muted-foreground transition">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Mini barra CPU */}
-                  {ea.status === "running" && (
-                    <div className="mt-3 h-1 rounded-full bg-surface-2 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-primary to-success transition-all duration-700"
-                        style={{ width: `${Math.min(100, ea.cpu * 2.5)}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {eas.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-border bg-surface/40 p-10 text-center">
-                <Bot className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-                <div className="text-sm text-muted-foreground">No tienes Expert Advisors configurados</div>
-                <button
-                  onClick={() => setModalOpen(true)}
-                  className="mt-3 text-xs font-semibold text-primary hover:underline"
-                >
-                  Añadir tu primer EA →
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Detalle + Logs */}
-        <aside className="space-y-4">
-          {selected && (
-            <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl p-5 space-y-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Detalle</div>
-                <div className="font-bold text-base mt-0.5 truncate">{selected.name}</div>
-                <div className="text-[11px] text-muted-foreground font-mono">{selected.symbol} · {selected.strategy}</div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <Metric label="Trades"    value={selected.trades.toString()} />
-                <Metric label="Winrate"   value={`${selected.winRate}%`} tone="text-success" />
-                <Metric label="Max DD"    value={`${selected.maxDD}%`}   tone="text-warning" />
-                <Metric label="Uptime"    value={selected.uptime} />
-                <Metric label="Memoria"   value={`${selected.memory} MB`} />
-                <Metric label="P&L %"     value={`${selected.pnlPct >= 0 ? "+" : ""}${selected.pnlPct}%`} tone={selected.pnlPct >= 0 ? "text-success" : "text-destructive"} />
-              </div>
-
-              <div className="flex gap-2 pt-2 border-t border-border">
-                {selected.status === "running" ? (
-                  <button onClick={() => setStatus(selected.id, "paused")}
-                    className="flex-1 h-8 rounded-lg border border-warning/30 bg-warning/10 text-warning text-xs font-semibold hover:bg-warning/15 transition flex items-center justify-center gap-1.5">
-                    <Pause className="h-3.5 w-3.5" /> Pausar
-                  </button>
-                ) : (
-                  <button onClick={() => setStatus(selected.id, "running")}
-                    className="flex-1 h-8 rounded-lg border border-success/30 bg-success/10 text-success text-xs font-semibold hover:bg-success/15 transition flex items-center justify-center gap-1.5">
-                    <Play className="h-3.5 w-3.5" /> Iniciar
-                  </button>
-                )}
-                <button onClick={() => setStatus(selected.id, "stopped")}
-                  className="h-8 px-3 rounded-lg border border-border bg-surface-2/50 text-xs font-semibold hover:border-primary/40 hover:text-primary text-muted-foreground transition flex items-center gap-1.5">
-                  <Power className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Logs */}
-          <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Terminal className="h-4 w-4 text-primary" /> Log en vivo
-              </h3>
-              <span className="flex items-center gap-1.5 text-[10px] text-success font-medium">
-                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> LIVE
-              </span>
-            </div>
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-border/40">
-              {logs.map((log) => (
-                <LogRow key={log.id} log={log} />
-              ))}
-            </div>
-          </div>
-        </aside>
-      </div>
-
-      {/* Info estratégica */}
-      <div className="rounded-2xl border border-border bg-surface/40 backdrop-blur p-4 flex items-start gap-3">
-        <GitBranch className="h-4 w-4 text-info shrink-0 mt-0.5" />
-        <div className="text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">Versionado de estrategias.</span> Cada EA mantiene historial de versiones y métricas comparativas. Puedes revertir cambios o ejecutar A/B testing entre versiones desde el panel de configuración.
+          ))}
         </div>
-      </div>
+      )}
 
-      <NewEAModal open={modalOpen} onClose={() => setModalOpen(false)} onAdd={handleAdd} />
+      {/* EA Detail panel */}
+      {selectedEA && (
+        <EADetailPanel
+          ea={ea.instances.find(e => e.id === selectedEA.id) ?? selectedEA}
+          onClose={() => setSelectedEA(null)}
+          onUpdateRisk={async (config) => { await ea.updateRisk(selectedEA.id, config); }}
+          onCommand={(type) => handleCommand(selectedEA.id, type)}
+        />
+      )}
+
+      {/* EA Grid */}
+      {ea.loading && ea.instances.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground text-sm">Cargando EAs…</div>
+      ) : ea.instances.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border p-12 text-center">
+          <div className="text-5xl mb-4">🤖</div>
+          <div className="text-lg font-semibold mb-2">Sin EAs conectados</div>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
+            Descarga el EA, instálalo en tu MetaTrader y aparecerá aquí automáticamente cuando se conecte.
+          </p>
+          <button onClick={() => setShowInstructions(true)}
+            className="inline-flex items-center gap-2 text-sm text-primary hover:underline">
+            Ver instrucciones <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {ea.instances.map(instance => (
+            <EACard
+              key={instance.id}
+              ea={instance}
+              onSelect={() => setSelectedEA(instance)}
+              onCommand={(type) => handleCommand(instance.id, type)}
+              onRename={(name) => ea.rename(instance.id, name)}
+              onDelete={() => setDeleteId(instance.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      <ConfirmModal
+        open={deleteId !== null}
+        title="¿Eliminar EA?"
+        message="Se eliminará el EA de Tradync. Las operaciones sincronizadas se mantendrán en tu journal."
+        confirmLabel="Sí, eliminar"
+        onConfirm={async () => { if (deleteId) await ea.remove(deleteId); setDeleteId(null); }}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
-    <ConfirmModal open={confirmEaId !== null} title="¿Eliminar EA?" message="Las operaciones históricas se mantendrán. Solo se eliminará el EA." confirmLabel="Sí, eliminar" onConfirm={() => { if (confirmEaId) { doRemoveEA(confirmEaId); } setConfirmEaId(null); }} onCancel={() => setConfirmEaId(null)} />
-    </>
-  );
-}
-
-function Metric({ label, value, tone = "text-foreground" }: { label: string; value: string; tone?: string }) {
-  return (
-    <div className="rounded-lg bg-surface-2/40 border border-border p-2">
-      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`text-sm font-mono font-semibold ${tone}`}>{value}</div>
-    </div>
-  );
-}
-
-function LogRow({ log }: { log: LogEntry }) {
-  const meta = {
-    info:    { Icon: Activity,      cls: "text-muted-foreground" },
-    success: { Icon: CheckCircle2,  cls: "text-success" },
-    warn:    { Icon: AlertTriangle, cls: "text-warning" },
-    error:   { Icon: AlertTriangle, cls: "text-destructive" },
-  }[log.level];
-  const Icon = meta.Icon;
-  return (
-    <div className="px-4 py-2.5 hover:bg-surface-2/30 transition">
-      <div className="flex items-start gap-2">
-        <Icon className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${meta.cls}`} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
-            <span>{log.ts}</span>
-            <span className="opacity-50">·</span>
-            <span className="truncate">{log.ea}</span>
-          </div>
-          <div className={`text-xs mt-0.5 font-mono ${meta.cls}`}>{log.msg}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NewEAModal({ open, onClose, onAdd }: {
-  open: boolean;
-  onClose: () => void;
-  onAdd: (data: { name: string; symbol: string; broker: string; strategy: EA["strategy"] }) => void;
-}) {
-  const [name, setName] = useState("");
-  const [symbol, setSymbol] = useState("EURUSD");
-  const [broker, setBroker] = useState("FTMO");
-  const [strategy, setStrategy] = useState<EA["strategy"]>("Scalping");
-  const [loading, setLoading] = useState(false);
-
-  const reset = () => { setName(""); setSymbol("EURUSD"); setBroker("FTMO"); setStrategy("Scalping"); setLoading(false); };
-  const close = () => { onClose(); reset(); };
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => { onAdd({ name, symbol, broker, strategy }); reset(); }, 500);
-  };
-
-  return (
-    <Modal
-      open={open}
-      onClose={close}
-      title="Nuevo Expert Advisor"
-      subtitle="Configura un nuevo bot de algotrading"
-      size="md"
-      footer={
-        <>
-          <ModalButton type="button" onClick={close}>Cancelar</ModalButton>
-          <ModalButton type="submit" form="ea-form" variant="primary" disabled={!name || loading}>
-            {loading ? <><RefreshCw className="h-3.5 w-3.5 inline mr-1 animate-spin" /> Creando…</> : <><Plus className="h-3.5 w-3.5 inline mr-1" /> Crear EA</>}
-          </ModalButton>
-        </>
-      }
-    >
-      <form id="ea-form" onSubmit={submit} className="space-y-4">
-        <Field label="Nombre del EA">
-          <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Quantum Scalper Pro" required maxLength={50} />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Símbolo">
-            <input className={inputCls} value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} placeholder="EURUSD" required maxLength={10} />
-          </Field>
-          <Field label="Broker">
-            <select className={selectCls} value={broker} onChange={(e) => setBroker(e.target.value)}>
-              <option>FTMO</option>
-              <option>IC Markets</option>
-              <option>Binance</option>
-              <option>Bybit</option>
-              <option>Interactive Brokers</option>
-            </select>
-          </Field>
-        </div>
-
-        <Field label="Estrategia">
-          <div className="grid grid-cols-5 gap-1.5">
-            {(["Scalping", "Trend", "Grid", "Arbitrage", "ML"] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStrategy(s)}
-                className={`h-9 rounded-lg border text-[11px] font-semibold transition ${
-                  strategy === s
-                    ? "border-primary/50 bg-primary/15 text-primary"
-                    : "border-border bg-surface-2/40 text-muted-foreground hover:border-primary/30"
-                }`}
-                style={strategy === s ? { color: STRATEGY_COLOR[s], borderColor: `color-mix(in oklab, ${STRATEGY_COLOR[s]} 40%, transparent)`, background: `color-mix(in oklab, ${STRATEGY_COLOR[s]} 12%, transparent)` } : undefined}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </Field>
-
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-info/5 border border-info/20 text-[11px] text-muted-foreground">
-          <TrendingDown className="h-3.5 w-3.5 text-info shrink-0 mt-0.5" />
-          <span>El EA se creará en estado <span className="font-semibold text-foreground">Detenido</span>. Podrás iniciarlo cuando termines la configuración avanzada.</span>
-        </div>
-      </form>
-    </Modal>
   );
 }
