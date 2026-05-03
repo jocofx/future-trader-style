@@ -26,7 +26,7 @@ function CalendarioPage() {
   useEffect(() => {
     premarket.load(year, month);
     habits.load(year, month);
-    // diario ya se carga global
+    diario.load(90); // load 90 days to cover current month
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
 
