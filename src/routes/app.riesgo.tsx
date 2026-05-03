@@ -282,6 +282,36 @@ function RiesgoPage() {
         </button>
       </div>
 
+      {/* ── INFO BANNER ── */}
+      <div className="rounded-2xl border border-info/20 bg-info/5 p-5">
+        <div className="flex gap-4">
+          <div className="text-2xl shrink-0 mt-0.5">💡</div>
+          <div className="space-y-2">
+            <div className="font-semibold text-sm text-foreground">
+              ¿Para qué sirve este apartado?
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Aquí defines tus <span className="text-foreground font-semibold">reglas personales de trading</span> —
+              los límites que tú mismo te pones para mantener la disciplina.
+              Esta información la usan <span className="text-foreground font-semibold">Insights</span> y el módulo de
+              <span className="text-foreground font-semibold"> Psicología</span> para analizar si estás respetando tus
+              propias normas, detectar sobreoperación, revenge trading y otros patrones de conducta.
+            </p>
+            <div className="flex items-start gap-2 pt-1 p-3 rounded-xl bg-warning/8 border border-warning/20">
+              <span className="text-base shrink-0">⚠️</span>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-semibold text-foreground">Este apartado no bloquea operaciones en tu terminal.</span>{" "}
+                Si quieres que los límites se apliquen de forma automática y en tiempo real
+                — cerrando posiciones, bloqueando nuevas entradas y aplicando el gestor de riesgo —
+                configúralos en el{" "}
+                <span className="font-semibold text-foreground">Gestor EA → Configurar → Gestor de Riesgo</span>.
+                El EA es quien ejecuta los límites directamente en MetaTrader.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Alerts */}
       {(maxLossHit || maxOpsHit || accountAlerts.length > 0) && (
         <div className="space-y-2">
