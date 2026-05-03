@@ -1,6 +1,6 @@
-// Supabase Edge Function — EA API
-// Receives data from MT4/MT5 EA → saves to Supabase
-// Serves risk config and commands back to EA
+// Supabase Edge Function — EA API v2
+// Fix 1: /mt-register también crea/actualiza fila en tabla 'cuentas'
+// Fix 2: risk_config se devuelve en CADA respuesta para que el EA lo aplique
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -19,11 +19,8 @@ const json = (data: unknown, status = 200) =>
 
 async function getUser(token: string): Promise<string | null> {
   const { data } = await supabase
-    .from("api_keys")
-    .select("user_id")
-    .eq("token", token)
-    .eq("activo", true)   // api_keys uses 'activo' boolean
-    .maybeSingle();
+    .from("api_keys").select("user_id")
+    .eq("token", token).eq("activo", true).maybeSingle();
   return data?.user_id ?? null;
 }
 
@@ -47,10 +44,58 @@ async function getEAId(userId: string, token: string, body: Record<string,unknow
   return data?.id ?? null;
 }
 
+// Sync EA data to cuentas table
+async function syncCuenta(userId: string, body: Record<string,unknown>) {
+  const accountNumber = String(body.account_number ?? "");
+  if (!accountNumber) return;
+
+  const nombre = `${body.broker ?? "MT"} #${accountNumber}`;
+
+  // Check if account already exists by numero_cuenta
+  const { data: existing } = await supabase
+    .from("cuentas")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("numero_cuenta", accountNumber)
+    .maybeSingle();
+
+  if (existing?.id) {
+    // Update existing account with latest data
+    await supabase.from("cuentas").update({
+      balance:        body.balance ?? null,
+      broker:         body.broker  ?? null,
+      servidor:       body.server  ?? null,
+      plataforma:     body.platform ?? "MT5",
+      divisa:         body.currency ?? "USD",
+      apalancamiento: body.leverage ?? null,
+      mt_conectada:   true,
+      updated_at:     new Date().toISOString(),
+    }).eq("id", existing.id);
+  } else {
+    // Create new account
+    await supabase.from("cuentas").insert({
+      user_id:        userId,
+      nombre,
+      tipo:           body.account_type === "demo" ? "Demo" : "Real",
+      balance:        body.balance ?? null,
+      broker:         body.broker  ?? null,
+      servidor:       body.server  ?? null,
+      numero_cuenta:  accountNumber,
+      plataforma:     body.platform ?? "MT5",
+      divisa:         body.currency ?? "USD",
+      apalancamiento: body.leverage ?? null,
+      activa:         true,
+      mt_conectada:   true,
+    });
+  }
+  console.log(`✓ Cuenta synced: ${nombre}`);
+}
+
 async function pendingCmds(eaId: string) {
   const { data } = await supabase
     .from("ea_commands").select("id,type,payload")
-    .eq("ea_instance_id", eaId).eq("executed", false);
+    .eq("ea_instance_id", eaId).eq("executed", false)
+    .order("created_at", { ascending: true });
   if (data?.length) {
     await supabase.from("ea_commands")
       .update({ executed: true, executed_at: new Date().toISOString() })
@@ -85,28 +130,48 @@ Deno.serve(async (req) => {
     if (path === "/mt-register") {
       const eaId = await getEAId(userId, token, body);
       if (!eaId) return json({ error: "Error creando instancia" }, 500);
+
       await supabase.from("ea_instances").update({
-        platform: body.platform ?? "MT5",
+        platform:       body.platform ?? "MT5",
         account_number: String(body.account_number ?? ""),
-        broker: body.broker ?? null, server: body.server ?? null,
-        balance: body.balance ?? null, status: "active",
-        last_ping: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        broker:         body.broker ?? null,
+        server:         body.server ?? null,
+        balance:        body.balance ?? null,
+        status:         "active",
+        last_ping:      new Date().toISOString(),
+        updated_at:     new Date().toISOString(),
       }).eq("id", eaId);
+
+      // ✅ FIX 1: Create/update account in cuentas table
+      await syncCuenta(userId, body);
+
+      // Return risk config so EA applies it immediately on startup
       const cfg = await riskConfig(eaId);
-      console.log(`✓ Register: user=${userId} ea=${eaId}`);
+      console.log(`✓ Register: user=${userId} ea=${eaId} account=${body.account_number}`);
       return json({ ok: true, ea_id: eaId, risk_config: cfg });
     }
 
     // ── /mt-sync ──────────────────────────────────────────────────
     if (path === "/mt-sync") {
       const eaId = await getEAId(userId, token, {});
-      if (!eaId) return json({ ok: true });
+      if (!eaId) return json({ ok: true, commands: [], risk_config: null });
+
       await supabase.from("ea_instances")
         .update({ last_ping: new Date().toISOString(), status: "active", updated_at: new Date().toISOString() })
         .eq("id", eaId);
-      const cmds = await pendingCmds(eaId);
-      return json({ ok: true, commands: cmds.map((c:any) => c.type) });
+
+      const [cfg, cmds] = await Promise.all([riskConfig(eaId), pendingCmds(eaId)]);
+
+      // ✅ FIX 2: Build command list including risk_config update if changed
+      const cmdTypes = cmds.map((c:any) => c.type);
+      const riskPayload = cmds.find((c:any) => c.type === "update_risk")?.payload ?? null;
+
+      return json({
+        ok: true,
+        commands: cmdTypes,
+        risk_config: cfg,          // Always return current config
+        risk_update: riskPayload,  // Explicit payload if dashboard changed something
+      });
     }
 
     // ── /mt-trade ─────────────────────────────────────────────────
@@ -118,15 +183,21 @@ Deno.serve(async (req) => {
         if (dup) return json({ ok: true, duplicate: true });
       }
       await supabase.from("operaciones").insert({
-        user_id: userId,
-        instrumento: body.symbol ?? "UNKNOWN",
-        tipo: body.type ?? "BUY", direccion: body.type ?? "BUY",
-        fecha: ((body.close_time ?? new Date().toISOString()) as string).slice(0, 10),
-        entrada: body.open_price ?? null, tp: body.close_price ?? null, sl: null,
-        contratos: body.volume ?? null, resultado: body.profit ?? null,
-        estado: "Cerrada", mt_ticket: ticket || null,
-        mt_sincronizada: true, plataforma: body.platform ?? "MT5",
-        cuenta: body.account ? String(body.account) : null,
+        user_id:         userId,
+        instrumento:     body.symbol ?? "UNKNOWN",
+        tipo:            body.type ?? "BUY",
+        direccion:       body.type ?? "BUY",
+        fecha:           ((body.close_time ?? new Date().toISOString()) as string).slice(0, 10),
+        entrada:         body.open_price ?? null,
+        tp:              body.close_price ?? null,
+        sl:              null,
+        contratos:       body.volume ?? null,
+        resultado:       body.profit ?? null,
+        estado:          "Cerrada",
+        mt_ticket:       ticket || null,
+        mt_sincronizada: true,
+        plataforma:      body.platform ?? "MT5",
+        cuenta:          body.account ? String(body.account) : null,
       });
       console.log(`✓ Trade: user=${userId} ${body.symbol} profit=${body.profit}`);
       return json({ ok: true });
@@ -136,23 +207,48 @@ Deno.serve(async (req) => {
     if (path === "/mt-score") {
       const eaId = await getEAId(userId, token, {});
       if (!eaId) return json({ ok: true });
+
       await supabase.from("ea_instances").update({
-        score: body.score ?? 0, perfil: body.perfil ?? "Disciplinado",
-        disciplina: body.disciplina ?? 100, violaciones_hoy: body.violaciones_hoy ?? 0,
-        balance: body.balance ?? null, equity: body.equity ?? null,
-        pnl_dia: body.pnl_dia ?? 0,
-        last_ping: new Date().toISOString(), updated_at: new Date().toISOString(),
+        score:           body.score ?? 0,
+        perfil:          body.perfil ?? "Disciplinado",
+        disciplina:      body.disciplina ?? 100,
+        violaciones_hoy: body.violaciones_hoy ?? 0,
+        balance:         body.balance ?? null,
+        equity:          body.equity ?? null,
+        pnl_dia:         body.pnl_dia ?? 0,
+        last_ping:       new Date().toISOString(),
+        updated_at:      new Date().toISOString(),
       }).eq("id", eaId);
+
+      // Also update balance in cuentas table
+      const { data: inst } = await supabase.from("ea_instances")
+        .select("account_number").eq("id", eaId).single();
+      if (inst?.account_number && body.balance) {
+        await supabase.from("cuentas")
+          .update({ balance: body.balance, ea_balance: body.balance, ea_equity: body.equity ?? null, ea_pnl_dia: body.pnl_dia ?? 0, ea_score: body.score ?? 0, ea_last_update: new Date().toISOString() })
+          .eq("user_id", userId)
+          .eq("numero_cuenta", inst.account_number);
+      }
+
       const [cfg, cmds] = await Promise.all([riskConfig(eaId), pendingCmds(eaId)]);
-      return json({ ok: true, risk_config: cfg, commands: cmds.map((c:any) => c.type) });
+      const riskPayload = cmds.find((c:any) => c.type === "update_risk")?.payload ?? null;
+
+      return json({
+        ok: true,
+        risk_config:  cfg,
+        risk_update:  riskPayload,
+        commands:     cmds.map((c:any) => c.type),
+      });
     }
 
     // ── /mt-commands (GET) ────────────────────────────────────────
     if (path === "/mt-commands") {
       const eaId = await getEAId(userId, token, {});
       if (!eaId) return json({ commands: [], risk_config: null });
+
       await supabase.from("ea_instances")
         .update({ last_ping: new Date().toISOString() }).eq("id", eaId);
+
       const [cfg, cmds] = await Promise.all([riskConfig(eaId), pendingCmds(eaId)]);
       return json({ commands: cmds, risk_config: cfg });
     }

@@ -20,11 +20,11 @@ input bool   EnableLogs            = true;
 
 input group "=== GESTOR DE RIESGO ==="
 input bool   EnableRiskManager     = true;
-input int    MaxOperacionesDiarias = 0;
-input double LimiteGananciaDiaria  = 0;
-input double LimitePerdidaDiaria   = 0;
-input int    HoraInicio            = 0;
-input int    HoraFin               = 0;
+input int    MaxOps_Inicial      = 0;    // Max operaciones/dia (0=sin limite)
+input double LimGanancia_Inicial = 0;    // Limite ganancia $ (0=sin limite)
+input double LimPerdida_Inicial  = 0;    // Limite perdida $ (0=sin limite)
+input int    HoraInicio_Inicial  = 0;    // Hora inicio (0=sin limite)
+input int    HoraFin_Inicial     = 0;    // Hora fin (0=sin limite)
 
 input group "=== ANALISIS CONDUCTUAL ==="
 input bool   ActivarAnalisisConductual = true;
@@ -56,6 +56,15 @@ string GV_SCORE      = "TRADYNC_SCORE";
 string GV_LAST_CLOSE = "TRADYNC_LAST_CLOSE";
 string GV_LAST_DECAY = "TRADYNC_LAST_DECAY";
 string GV_LAST_BLOCK = "TRADYNC_LAST_BLOCK";
+
+// Mutable runtime copies of input parameters (input vars are read-only)
+int    MaxOperacionesDiarias;
+double LimiteGananciaDiaria;
+double LimitePerdidaDiaria;
+int    HoraInicio;
+int    HoraFin;
+bool   ModoRestrictivo;
+
 
 double scoreActual;
 int    violacionesHoy;
@@ -260,7 +269,53 @@ bool CerrarPosicion(ulong ticket, string motivo) {
    rq.comment   = "TradyncApp: " + motivo;
    bool ok = OrderSend(rq, rs);
    if(ok) Log("Cerrado: " + IntegerToString(ticket) + " | " + motivo);
-   else   Log("Error cerrando " + IntegerToString(ticket));
+   else   Log("Error cer// Apply risk config received from Tradyncapp dashboard
+void AplicarRiskConfig(string resp) {
+   if(StringLen(resp) < 20) return;
+   int idx;
+
+   idx = StringFind(resp, "max_ops_dia");
+   if(idx >= 0) {
+      string s = StringSubstr(resp, idx+12, 6);
+      StringReplace(s,""",""); StringReplace(s,",",""); StringReplace(s,"}","");
+      int v = (int)StringToInteger(StringTrimLeft(StringTrimRight(s)));
+      if(v >= 0) { MaxOperacionesDiarias = v; }
+   }
+   idx = StringFind(resp, "limite_perdida");
+   if(idx >= 0) {
+      string s = StringSubstr(resp, idx+15, 10);
+      StringReplace(s,""",""); StringReplace(s,",",""); StringReplace(s,"}","");
+      double v = StringToDouble(StringTrimLeft(StringTrimRight(s)));
+      if(v >= 0) LimitePerdidaDiaria = v;
+   }
+   idx = StringFind(resp, "limite_ganancia");
+   if(idx >= 0) {
+      string s = StringSubstr(resp, idx+16, 10);
+      StringReplace(s,""",""); StringReplace(s,",",""); StringReplace(s,"}","");
+      double v = StringToDouble(StringTrimLeft(StringTrimRight(s)));
+      if(v >= 0) LimiteGananciaDiaria = v;
+   }
+   idx = StringFind(resp, "hora_inicio");
+   if(idx >= 0) {
+      string s = StringSubstr(resp, idx+12, 4);
+      StringReplace(s,""",""); StringReplace(s,",",""); StringReplace(s,"}","");
+      int v = (int)StringToInteger(StringTrimLeft(StringTrimRight(s)));
+      if(v >= 0) HoraInicio = v;
+   }
+   idx = StringFind(resp, "hora_fin");
+   if(idx >= 0) {
+      string s = StringSubstr(resp, idx+9, 4);
+      StringReplace(s,""",""); StringReplace(s,",",""); StringReplace(s,"}","");
+      int v = (int)StringToInteger(StringTrimLeft(StringTrimRight(s)));
+      if(v >= 0) HoraFin = v;
+   }
+   Log("Config aplicada: MaxOps=" + IntegerToString(MaxOperacionesDiarias)
+       + " LimPerdida=" + DoubleToString(LimitePerdidaDiaria,0)
+       + " LimGanancia=" + DoubleToString(LimiteGananciaDiaria,0)
+       + " Horario=" + IntegerToString(HoraInicio) + "-" + IntegerToString(HoraFin));
+}
+
+rando " + IntegerToString(ticket));
    return ok;
 }
 
@@ -289,7 +344,9 @@ void RegisterAccount() {
       + "\"score\":"          + DoubleToString(scoreActual, 1) + ","
       + "\"perfil\":\""       + GetPerfil() + "\""
       + "}";
-   Log("Registrando cuenta: " + Post(ENDPOINT + "/mt-register", j));
+   string respReg = Post(ENDPOINT + "/mt-register", j);
+   Log("Registrando cuenta: " + respReg);
+   AplicarRiskConfig(respReg);
 }
 
 void SendPos(ulong tk) {
@@ -311,6 +368,8 @@ void SendPos(ulong tk) {
    string resp = Post(ENDPOINT + "/mt-sync", j);
    if(StringFind(resp, "stop") >= 0 || StringFind(resp, "close_all") >= 0)
       CerrarTodas("Solicitud servidor");
+   if(StringFind(resp, "risk_config") >= 0)
+      AplicarRiskConfig(resp);
    Log("Sync " + IntegerToString(tk));
 }
 
@@ -395,7 +454,9 @@ void SyncScore() {
       + "\"equity\":"           + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2) + ","
       + "\"pnl_dia\":"          + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY) - balanceInicio, 2)
       + "}";
-   Post(ENDPOINT + "/mt-score", j);
+   string respScore = Post(ENDPOINT + "/mt-score", j);
+   if(StringFind(respScore, "risk_config") >= 0)
+      AplicarRiskConfig(respScore);
 }
 
 void ActualizarConductual() {
@@ -486,6 +547,14 @@ int OnInit() {
       Alert("Token no valido. Descarga el EA desde TradyncApp > Gestor EA.");
       return INIT_FAILED;
    }
+   // Initialize mutable runtime vars from input params
+   MaxOperacionesDiarias = MaxOps_Inicial;
+   LimiteGananciaDiaria  = LimGanancia_Inicial;
+   LimitePerdidaDiaria   = LimPerdida_Inicial;
+   HoraInicio            = HoraInicio_Inicial;
+   HoraFin               = HoraFin_Inicial;
+   ModoRestrictivo       = ActivarModoRestrictivo;
+
    if(SensibilidadSistema == "low")       multScore = 0.5;
    else if(SensibilidadSistema == "high") multScore = 2.0;
    else                                    multScore = 1.0;
