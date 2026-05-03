@@ -116,9 +116,10 @@ function DiarioPage() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-[280px_1fr_280px] gap-6">
-        {/* Calendar */}
-        <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl overflow-hidden h-fit">
+      <div className="grid lg:grid-cols-[300px_1fr_300px] gap-6">
+        {/* Left column: Calendar + emotion distribution */}
+        <div className="space-y-4">
+        <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <button onClick={() => { if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1); }}
               className="p-1.5 rounded-lg hover:bg-surface-2 transition text-muted-foreground hover:text-foreground">
@@ -156,6 +157,42 @@ function DiarioPage() {
               );
             })}
           </div>
+        </div>
+
+        {/* Emotion distribution */}
+        {(() => {
+          const monthEntries = entries.filter(e => e.fecha.startsWith(`${year}-${String(month+1).padStart(2,"0")}`));
+          const map: Record<string, number> = {};
+          monthEntries.forEach(e => { if (e.emocion) map[e.emocion] = (map[e.emocion] ?? 0) + 1; });
+          const total = Object.values(map).reduce((s,v)=>s+v,0);
+          const sorted = Object.entries(map).sort((a,b)=>b[1]-a[1]);
+          if (sorted.length === 0) return null;
+          return (
+            <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl p-4">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground font-semibold mb-3">Distribución emocional · {MONTHS[month].slice(0,3)}</div>
+              <div className="space-y-2">
+                {sorted.map(([key, count]) => {
+                  const emo = EMOCIONES.find(e => e.key === key);
+                  const pct = (count / total) * 100;
+                  return (
+                    <div key={key}>
+                      <div className="flex items-center justify-between text-[11px] mb-1">
+                        <span className="flex items-center gap-1.5">
+                          <span>{emo?.emoji ?? "·"}</span>
+                          <span className="capitalize text-foreground">{key}</span>
+                        </span>
+                        <span className="font-mono text-muted-foreground">{count} · {pct.toFixed(0)}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: emo?.tone ?? "var(--primary)" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
         </div>
 
         {/* Editor */}
