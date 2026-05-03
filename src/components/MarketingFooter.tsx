@@ -22,8 +22,8 @@ export function MarketingFooter() {
           <div className="flex items-center gap-2.5">
             <Logo className="h-9 w-9" />
             <div>
-              <div className="font-bold tracking-tight">Tradync</div>
-              <div className="text-xs text-muted-foreground">© {new Date().getFullYear()} Tradync. All rights reserved.</div>
+              <div className="font-bold tracking-tight">TradyncApp</div>
+              <div className="text-xs text-muted-foreground">© {new Date().getFullYear()} TradyncApp. All rights reserved.</div>
             </div>
           </div>
           <p className="mt-4 max-w-sm text-sm text-muted-foreground">

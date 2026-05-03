@@ -440,7 +440,7 @@ function GestorEAPage() {
           </div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Gestor de Expert Advisors</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Controla tus bots en tiempo real desde Tradync.
+            Controla tus bots en tiempo real desde TradyncApp.
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -567,7 +567,7 @@ function GestorEAPage() {
       <ConfirmModal
         open={deleteId !== null}
         title="¿Eliminar EA?"
-        message="Se eliminará el EA de Tradync. Las operaciones sincronizadas se mantendrán en tu journal."
+        message="Se eliminará el EA de TradyncApp. Las operaciones sincronizadas se mantendrán en tu journal."
         confirmLabel="Sí, eliminar"
         onConfirm={async () => { if (deleteId) await ea.remove(deleteId); setDeleteId(null); }}
         onCancel={() => setDeleteId(null)}

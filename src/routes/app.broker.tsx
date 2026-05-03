@@ -305,7 +305,7 @@ function BrokerPage() {
       <div className="rounded-2xl border border-border bg-surface/40 backdrop-blur p-4 flex items-start gap-3">
         <Lock className="h-4 w-4 text-success shrink-0 mt-0.5" />
         <div className="text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">Conexiones de solo lectura.</span> Tradync nunca puede operar en tu broker;
+          <span className="font-semibold text-foreground">Conexiones de solo lectura.</span> TradyncApp nunca puede operar en tu broker;
           solo lee historiales y balance. Las credenciales se cifran con AES-256.
         </div>
       </div>

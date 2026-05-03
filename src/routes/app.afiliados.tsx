@@ -87,12 +87,12 @@ function AfiliadosPage() {
   };
 
   const share = (network: "twitter" | "telegram" | "email") => {
-    const text = encodeURIComponent("Llevo meses usando Tradync para mi journal de trading y mi disciplina ha cambiado por completo. Pruébalo gratis:");
+    const text = encodeURIComponent("Llevo meses usando TradyncApp para mi journal de trading y mi disciplina ha cambiado por completo. Pruébalo gratis:");
     const url = encodeURIComponent(referralUrl);
     const links = {
       twitter:  `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
       telegram: `https://t.me/share/url?url=${url}&text=${text}`,
-      email:    `mailto:?subject=${encodeURIComponent("Te recomiendo Tradync")}&body=${text}%20${url}`,
+      email:    `mailto:?subject=${encodeURIComponent("Te recomiendo TradyncApp")}&body=${text}%20${url}`,
     };
     window.open(links[network], "_blank", "noopener,noreferrer");
   };

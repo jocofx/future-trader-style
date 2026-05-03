@@ -20,7 +20,7 @@ const PLANS = [
   {
     name: "Free",
     price: { monthly: 0, yearly: 0 },
-    desc: "Para explorar Tradync y registrar tus primeras operaciones.",
+    desc: "Para explorar TradyncApp y registrar tus primeras operaciones.",
     badge: null,
     featured: false,
     cta: "Empezar gratis",
@@ -147,7 +147,7 @@ const FAQS = [
   },
   {
     q: "¿Compatible con mi broker?",
-    a: "Tradync es compatible con MetaTrader 4/5, cTrader, TradingView, Binance, Bybit, Interactive Brokers y más. También puedes añadir trades manualmente.",
+    a: "TradyncApp es compatible con MetaTrader 4/5, cTrader, TradingView, Binance, Bybit, Interactive Brokers y más. También puedes añadir trades manualmente.",
   },
   {
     q: "¿Es seguro guardar mis datos aquí?",
@@ -188,7 +188,7 @@ function Landing() {
           </h1>
 
           <p className="mt-6 max-w-2xl mx-auto text-base md:text-lg text-muted-foreground leading-relaxed">
-            Tradync es el journal de trading en español que analiza tus operaciones, mide tu psicología
+            TradyncApp es el journal de trading en español que analiza tus operaciones, mide tu psicología
             y te entrena con un Coach IA personal para que no repitas los mismos fallos.
           </p>
 
@@ -258,7 +258,7 @@ function Landing() {
                 <span className="text-gradient">cada trade que has hecho</span>
               </h2>
               <p className="mt-5 text-muted-foreground leading-relaxed">
-                El Coach IA de Tradync no es un chatbot genérico. Analiza tu historial real — tus emociones,
+                El Coach IA de TradyncApp no es un chatbot genérico. Analiza tu historial real — tus emociones,
                 tus peores rachas, tus mejores sesiones — y te da feedback accionable en español.
               </p>
               <ul className="mt-6 space-y-3">
@@ -287,7 +287,7 @@ function Landing() {
                   <div className="h-7 w-7 rounded-lg bg-gradient-primary grid place-items-center">
                     <Bot className="h-4 w-4 text-primary-foreground" />
                   </div>
-                  <span className="text-sm font-semibold">Coach IA · Tradync</span>
+                  <span className="text-sm font-semibold">Coach IA · TradyncApp</span>
                   <span className="ml-auto text-[10px] text-success flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-success" /> Online
                   </span>
@@ -482,7 +482,7 @@ function Landing() {
               { name: "Lucía R.", role: "Cripto · Prop Firm FTMO", avatar: "L",
                 text: "Pasé el challenge de FTMO en 3 semanas usando el control de riesgo en tiempo real. Las reglas automáticas me salvaron 3 veces de un blown." },
               { name: "Marcos D.", role: "Futuros NQ", avatar: "M",
-                text: "Probé TradeZella, Edgewonk y otros. Tradync es el único en español y 10x más rápido de registrar. El diario diario cambió mi mentalidad." },
+                text: "Probé TradeZella, Edgewonk y otros. TradyncApp es el único en español y 10x más rápido de registrar. El diario diario cambió mi mentalidad." },
             ].map(t => (
               <div key={t.name} className="rounded-2xl glass p-6 hover:border-primary/20 transition border border-transparent">
                 <div className="flex gap-0.5 text-warning">

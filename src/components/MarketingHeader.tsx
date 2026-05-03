@@ -20,7 +20,7 @@ export function MarketingHeader() {
           <Link to="/" className="flex items-center gap-2.5 group">
             <Logo className="h-8 w-8" />
             <div className="leading-tight">
-              <div className="text-[15px] font-bold tracking-tight">Tradync</div>
+              <div className="text-[15px] font-bold tracking-tight">TradyncApp</div>
               <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Trading Journal</div>
             </div>
           </Link>

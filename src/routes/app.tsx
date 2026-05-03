@@ -122,7 +122,7 @@ function AppShell() {
         <Logo className="h-7 w-7 shrink-0" />
         {(!collapsed || inDrawer) && (
           <div className="leading-tight min-w-0 flex-1">
-            <div className="text-[14px] font-bold tracking-tight truncate">Tradync</div>
+            <div className="text-[14px] font-bold tracking-tight truncate">TradyncApp</div>
             <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Trading Journal</div>
           </div>
         )}
@@ -251,7 +251,7 @@ function AppShell() {
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 min-w-0">
             <Logo className="h-6 w-6 shrink-0" />
-            <span className="text-sm font-bold tracking-tight truncate">Tradync</span>
+            <span className="text-sm font-bold tracking-tight truncate">TradyncApp</span>
           </div>
 
           {/* Desktop search */}

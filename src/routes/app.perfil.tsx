@@ -297,7 +297,7 @@ function PerfilPage() {
               { id: "n2", label: "Alerta de regla rota", desc: "Cuando se incumpla una regla de riesgo", email: true,  push: true },
               { id: "n3", label: "Logros desbloqueados", desc: "Cada vez que ganes una medalla", email: false, push: true },
               { id: "n4", label: "Pre-Market diario", desc: "Eventos del calendario económico", email: true,  push: false },
-              { id: "n5", label: "Newsletter Tradync", desc: "Tips y novedades semanales", email: true,  push: false },
+              { id: "n5", label: "Newsletter TradyncApp", desc: "Tips y novedades semanales", email: true,  push: false },
             ].map((n) => <NotificationRow key={n.id} item={n} />)}
           </div>
         </Section>
@@ -378,7 +378,7 @@ function PerfilPage() {
 
       {tab === "preferencias" && (
         <>
-          <Section title="Apariencia" subtitle="Elige cómo se ve Tradync">
+          <Section title="Apariencia" subtitle="Elige cómo se ve TradyncApp">
             <ThemeSelector />
           </Section>
 
