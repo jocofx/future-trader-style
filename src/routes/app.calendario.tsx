@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import type { Trade } from "@/lib/types";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/app/calendario")({
     component: CalendarioPage,
