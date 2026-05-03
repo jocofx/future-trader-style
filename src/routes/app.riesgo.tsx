@@ -358,7 +358,7 @@ function RiesgoPage() {
       {section === "global" && (
         <>
           {/* Status cards */}
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-3 gap-4">
             {[
               { label: "Pérdida total hoy", val: fmt(lossUsed),    pct: lossUsedPct, limit: fmt(form.maxLoss),  hit: maxLossHit, inverse: true,  color: maxLossHit ? "text-destructive" : "text-foreground" },
               { label: "Operaciones hoy",   val: String(todayOps), pct: opsUsedPct,  limit: `${form.maxOps} ops`, hit: maxOpsHit, inverse: true, color: maxOpsHit ? "text-warning" : "text-foreground" },
@@ -375,54 +375,63 @@ function RiesgoPage() {
             ))}
           </div>
 
-          {/* Global config */}
-          <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5">
-            <div className="text-sm font-semibold mb-1">Límites globales — todas las cuentas combinadas</div>
-            <p className="text-xs text-muted-foreground mb-5">Se activan cuando la suma de TODAS tus cuentas supera el límite</p>
-            <div className="grid md:grid-cols-2 gap-5">
-              <NumInput label="Pérdida máxima diaria ($)" desc="Suma de pérdidas de todas las cuentas"
-                value={form.maxLoss} onChange={v => setForm(f => ({ ...f, maxLoss: v }))} />
-              <NumInput label="Máx. operaciones/día" desc="Total de ops entre todas las cuentas"
-                value={form.maxOps} onChange={v => setForm(f => ({ ...f, maxOps: v }))} />
-              <NumInput label="Objetivo de ganancia ($)" desc="P&L total de todas las cuentas"
-                value={form.objetivo} onChange={v => setForm(f => ({ ...f, objetivo: v }))} />
-              <NumInput label="Riesgo por operación (%)" desc="Referencia general de riesgo" step="0.1" placeholder="1"
-                value={form.riskPct} onChange={v => setForm(f => ({ ...f, riskPct: v }))} />
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Global config */}
+            <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5 h-fit">
+              <div className="text-sm font-semibold mb-1">Límites globales — todas las cuentas combinadas</div>
+              <p className="text-xs text-muted-foreground mb-5">Se activan cuando la suma de TODAS tus cuentas supera el límite</p>
+              <div className="grid grid-cols-2 gap-5">
+                <NumInput label="Pérdida máxima diaria ($)" desc="Suma de pérdidas de todas las cuentas"
+                  value={form.maxLoss} onChange={v => setForm(f => ({ ...f, maxLoss: v }))} />
+                <NumInput label="Máx. operaciones/día" desc="Total de ops entre todas las cuentas"
+                  value={form.maxOps} onChange={v => setForm(f => ({ ...f, maxOps: v }))} />
+                <NumInput label="Objetivo de ganancia ($)" desc="P&L total de todas las cuentas"
+                  value={form.objetivo} onChange={v => setForm(f => ({ ...f, objetivo: v }))} />
+                <NumInput label="Riesgo por operación (%)" desc="Referencia general de riesgo" step="0.1" placeholder="1"
+                  value={form.riskPct} onChange={v => setForm(f => ({ ...f, riskPct: v }))} />
+              </div>
             </div>
-          </div>
 
-          {/* Today's trades */}
-          {todayTrades.length > 0 && (
-            <div className="rounded-2xl border border-border bg-card/60 backdrop-blur overflow-hidden">
+            {/* Today's trades */}
+            <div className="rounded-2xl border border-border bg-card/60 backdrop-blur overflow-hidden h-fit">
               <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
                 <span className="text-sm font-semibold">Operaciones de hoy</span>
                 <span className="text-xs text-muted-foreground">{todayTrades.length} ops · {todayPnl >= 0 ? "+" : ""}{fmt(Math.abs(todayPnl))}</span>
               </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border bg-surface/30">
-                    {["Símbolo", "Cuenta", "Lado", "P&L"].map(h => <th key={h} className="text-left font-medium py-2 px-4">{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {todayTrades.map(t => (
-                    <tr key={t.id} className="border-b border-border/60 hover:bg-surface/40 transition">
-                      <td className="py-2.5 px-4 font-semibold">{t.instrumento}</td>
-                      <td className="py-2.5 px-4 text-muted-foreground text-xs">{t.cuenta ?? "—"}</td>
-                      <td className="py-2.5 px-4">
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md border ${t.tipo === "BUY" ? "text-success border-success/30 bg-success/10" : "text-info border-info/30 bg-info/10"}`}>
-                          {t.tipo ?? "—"}
-                        </span>
-                      </td>
-                      <td className={`py-2.5 px-4 font-mono font-bold ${(t.resultado ?? 0) >= 0 ? "text-success" : "text-destructive"}`}>
-                        {(t.resultado ?? 0) >= 0 ? "+" : "-"}${Math.abs(t.resultado ?? 0).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {todayTrades.length === 0 ? (
+                <div className="px-5 py-12 text-center text-sm text-muted-foreground">
+                  <div className="text-3xl mb-2">📊</div>
+                  Sin operaciones registradas hoy
+                </div>
+              ) : (
+                <div className="max-h-[420px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-surface/80 backdrop-blur">
+                      <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border">
+                        {["Símbolo", "Cuenta", "Lado", "P&L"].map(h => <th key={h} className="text-left font-medium py-2 px-4">{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {todayTrades.map(t => (
+                        <tr key={t.id} className="border-b border-border/60 hover:bg-surface/40 transition">
+                          <td className="py-2.5 px-4 font-semibold">{t.instrumento}</td>
+                          <td className="py-2.5 px-4 text-muted-foreground text-xs">{t.cuenta ?? "—"}</td>
+                          <td className="py-2.5 px-4">
+                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md border ${t.tipo === "BUY" ? "text-success border-success/30 bg-success/10" : "text-info border-info/30 bg-info/10"}`}>
+                              {t.tipo ?? "—"}
+                            </span>
+                          </td>
+                          <td className={`py-2.5 px-4 font-mono font-bold ${(t.resultado ?? 0) >= 0 ? "text-success" : "text-destructive"}`}>
+                            {(t.resultado ?? 0) >= 0 ? "+" : "-"}${Math.abs(t.resultado ?? 0).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </>
       )}
 
