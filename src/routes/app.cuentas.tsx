@@ -20,9 +20,15 @@ function fmt(n: number) {
 }
 
 // ── Account stats helper ───────────────────────────────────────────
-function useAccountStats(trades: Trade[], nombre: string) {
+function useAccountStats(trades: Trade[], nombre: string, numeroCuenta?: string | null) {
   return useMemo(() => {
-    const t = trades.filter(tr => (tr.cuenta ?? "") === nombre && tr.resultado != null);
+    const num = numeroCuenta?.trim().toLowerCase();
+    const ac  = nombre.trim().toLowerCase();
+    const t = trades.filter(tr => {
+      const tc = (tr.cuenta ?? "").trim().toLowerCase();
+      const matches = tc === ac || (num ? tc === num : false) || ac.includes(tc);
+      return matches && tr.resultado != null;
+    });
     const wins = t.filter(tr => (tr.resultado ?? 0) > 0);
     const losses = t.filter(tr => (tr.resultado ?? 0) < 0);
     const pnl = t.reduce((s, tr) => s + (tr.resultado ?? 0), 0);
@@ -45,7 +51,7 @@ function AccountDetailModal({ account, trades, onClose, onEdit, onDelete }: {
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const stats = useAccountStats(trades, account.nombre);
+  const stats = useAccountStats(trades, account.nombre, account.numero_cuenta);
   const [tab, setTab] = useState<"overview"|"trades"|"config">("overview");
 
   const recentTrades = useMemo(() =>
@@ -315,8 +321,13 @@ function CuentasPage() {
   const detailAccount = detailId ? accounts.find(a => a.id === detailId) : null;
 
   // Stats per account for card preview
-  const cardStats = (nombre: string) => {
-    const t = trades.filter(tr => tr.cuenta === nombre && tr.resultado != null);
+  const cardStats = (a: Account) => {
+    const num = a.numero_cuenta?.trim().toLowerCase();
+    const ac = a.nombre.trim().toLowerCase();
+    const t = trades.filter(tr => {
+      const tc = (tr.cuenta ?? "").trim().toLowerCase();
+      return (tc === ac || (num ? tc === num : false) || (num ? ac.includes(tc) : false)) && tr.resultado != null;
+    });
     const wins = t.filter(tr => (tr.resultado ?? 0) > 0);
     const pnl = t.reduce((s, tr) => s + (tr.resultado ?? 0), 0);
     return { total: t.length, wr: t.length ? Math.round(wins.length / t.length * 100) : null, pnl };
@@ -430,7 +441,7 @@ function CuentasPage() {
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {accounts.map(a => {
-            const s = cardStats(a.nombre);
+            const s = cardStats(a);
             return (
               <button key={a.id} onClick={() => setDetailId(a.id)}
                 className={`text-left rounded-2xl border bg-card/60 backdrop-blur overflow-hidden hover:border-primary/30 hover:shadow-lg transition group ${a.activa ? "border-border" : "border-border/50 opacity-60"}`}>

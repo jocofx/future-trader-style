@@ -20,14 +20,23 @@ function fmt(n: number, sign = false) {
   return (sign ? (n >= 0 ? "+" : "-") : (n < 0 ? "-" : "")) + "$" + abs;
 }
 
-function filterByPeriod(trades: Trade[], period: Period, account: string): Trade[] {
+function matchesCuenta(tradeCuenta: string | null, accountNombre: string, accountNumero?: string | null): boolean {
+  if (!tradeCuenta) return false;
+  const tc = tradeCuenta.trim().toLowerCase();
+  const ac = accountNombre.trim().toLowerCase();
+  if (tc === ac) return true;
+  // Match by numero_cuenta (EA stores raw account number)
+  if (accountNumero && tc === accountNumero.trim().toLowerCase()) return true;
+  // Match if account name contains the trade cuenta value
+  if (ac.includes(tc)) return true;
+  return false;
+}
+
+function filterByPeriod(trades: Trade[], period: Period, account: string, accountNumero?: string | null): Trade[] {
   const now = new Date();
   return trades.filter(t => {
-    // Normalize: compare only the name part, case-insensitive
     if (account) {
-      const tc = (t.cuenta ?? "").trim();
-      const ac = account.trim();
-      if (tc !== ac && tc.toLowerCase() !== ac.toLowerCase()) return false;
+      if (!matchesCuenta(t.cuenta, account, accountNumero)) return false;
     }
     if (period === "all") return true;
     // Normalize fecha: take YYYY-MM-DD part only to avoid timezone issues
@@ -76,7 +85,8 @@ function EstadisticasPage() {
     return accounts.filter(a => a.activa !== false);
   }, [accounts]);
 
-  const filtered = useMemo(() => filterByPeriod(trades, period, account), [trades, period, account]);
+  const selectedAccount = useMemo(() => accounts.find(a => a.nombre === account), [accounts, account]);
+  const filtered = useMemo(() => filterByPeriod(trades, period, account, selectedAccount?.numero_cuenta), [trades, period, account, selectedAccount]);
   const stats     = useMemo(() => computeStats(filtered), [filtered]);
 
   // Equity curve data
