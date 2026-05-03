@@ -290,10 +290,24 @@ function EstadisticasPage() {
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={weekdayData} barSize={20}>
                   <CartesianGrid stroke="oklch(1 0 0 / 0.05)" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickFormatter={v => `$${v}`} />
-                  <Tooltip formatter={(v: number) => [fmt(v, true), "P&L"]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }} />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  <XAxis dataKey="name"
+                    tick={{ fontSize: 10, fill: "oklch(0.65 0.02 250)" }}
+                    axisLine={{ stroke: "oklch(0.65 0.02 250 / 0.3)" }}
+                    tickLine={{ stroke: "oklch(0.65 0.02 250 / 0.3)" }}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "oklch(0.65 0.02 250)" }}
+                    tickFormatter={v => `$${v}`}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    formatter={(v: number) => [fmt(v, true), "P&L"]}
+                    contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--foreground)" }}
+                    labelStyle={{ color: "var(--foreground)", fontWeight: 600, fontSize: 11 }}
+                    itemStyle={{ color: "var(--foreground)" }}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} label={{ position: "top", fontSize: 9, fill: "var(--muted-foreground)", formatter: (v: number) => v !== 0 ? `$${v.toFixed(0)}` : "" }}>
                     {weekdayData.map((d, i) => <Cell key={i} fill={d.value >= 0 ? GREEN : RED} />)}
                   </Bar>
                 </BarChart>
