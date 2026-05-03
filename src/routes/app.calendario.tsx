@@ -119,7 +119,7 @@ function CalendarioPage() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Calendar */}
         <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl overflow-hidden">
           {/* Nav */}
