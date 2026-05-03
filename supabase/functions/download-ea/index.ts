@@ -269,49 +269,41 @@ bool CerrarPosicion(ulong ticket, string motivo) {
    rq.comment   = "TradyncApp: " + motivo;
    bool ok = OrderSend(rq, rs);
    if(ok) Log("Cerrado: " + IntegerToString(ticket) + " | " + motivo);
-   else   Log("Error cer// Apply risk config received from Tradyncapp dashboard
+   else   Log("Error cer// Extrae un valor numerico de un JSON string por clave
+string ExtraerValorJSON(string json, string clave) {
+   int pos = StringFind(json, "\"" + clave + "\":");
+   if(pos < 0) return "";
+   pos += StringLen(clave) + 3; // skip "key":
+   string raw = StringSubstr(json, pos, 15);
+   // Remove unwanted chars
+   StringReplace(raw, "\"", "");
+   StringReplace(raw, ",",  "");
+   StringReplace(raw, "}",  "");
+   StringReplace(raw, " ",  "");
+   StringReplace(raw, "\n", "");
+   return StringTrimLeft(StringTrimRight(raw));
+}
+
+// Apply risk config received from Tradyncapp dashboard
 void AplicarRiskConfig(string resp) {
    if(StringLen(resp) < 20) return;
-   int idx;
+   if(StringFind(resp, "risk_config") < 0) return;
 
-   idx = StringFind(resp, "max_ops_dia");
-   if(idx >= 0) {
-      string s = StringSubstr(resp, idx+12, 6);
-      StringReplace(s,""",""); StringReplace(s,",",""); StringReplace(s,"}","");
-      int v = (int)StringToInteger(StringTrimLeft(StringTrimRight(s)));
-      if(v >= 0) { MaxOperacionesDiarias = v; }
-   }
-   idx = StringFind(resp, "limite_perdida");
-   if(idx >= 0) {
-      string s = StringSubstr(resp, idx+15, 10);
-      StringReplace(s,""",""); StringReplace(s,",",""); StringReplace(s,"}","");
-      double v = StringToDouble(StringTrimLeft(StringTrimRight(s)));
-      if(v >= 0) LimitePerdidaDiaria = v;
-   }
-   idx = StringFind(resp, "limite_ganancia");
-   if(idx >= 0) {
-      string s = StringSubstr(resp, idx+16, 10);
-      StringReplace(s,""",""); StringReplace(s,",",""); StringReplace(s,"}","");
-      double v = StringToDouble(StringTrimLeft(StringTrimRight(s)));
-      if(v >= 0) LimiteGananciaDiaria = v;
-   }
-   idx = StringFind(resp, "hora_inicio");
-   if(idx >= 0) {
-      string s = StringSubstr(resp, idx+12, 4);
-      StringReplace(s,""",""); StringReplace(s,",",""); StringReplace(s,"}","");
-      int v = (int)StringToInteger(StringTrimLeft(StringTrimRight(s)));
-      if(v >= 0) HoraInicio = v;
-   }
-   idx = StringFind(resp, "hora_fin");
-   if(idx >= 0) {
-      string s = StringSubstr(resp, idx+9, 4);
-      StringReplace(s,""",""); StringReplace(s,",",""); StringReplace(s,"}","");
-      int v = (int)StringToInteger(StringTrimLeft(StringTrimRight(s)));
-      if(v >= 0) HoraFin = v;
-   }
-   Log("Config aplicada: MaxOps=" + IntegerToString(MaxOperacionesDiarias)
-       + " LimPerdida=" + DoubleToString(LimitePerdidaDiaria,0)
-       + " LimGanancia=" + DoubleToString(LimiteGananciaDiaria,0)
+   string sMaxOps    = ExtraerValorJSON(resp, "max_ops_dia");
+   string sLimPerd   = ExtraerValorJSON(resp, "limite_perdida");
+   string sLimGan    = ExtraerValorJSON(resp, "limite_ganancia");
+   string sHoraIni   = ExtraerValorJSON(resp, "hora_inicio");
+   string sHoraFin   = ExtraerValorJSON(resp, "hora_fin");
+
+   if(StringLen(sMaxOps)  > 0) MaxOperacionesDiarias = (int)StringToInteger(sMaxOps);
+   if(StringLen(sLimPerd) > 0) LimitePerdidaDiaria   = StringToDouble(sLimPerd);
+   if(StringLen(sLimGan)  > 0) LimiteGananciaDiaria  = StringToDouble(sLimGan);
+   if(StringLen(sHoraIni) > 0) HoraInicio            = (int)StringToInteger(sHoraIni);
+   if(StringLen(sHoraFin) > 0) HoraFin               = (int)StringToInteger(sHoraFin);
+
+   Log("Config Tradyncapp: MaxOps=" + IntegerToString(MaxOperacionesDiarias)
+       + " LimPerdida=" + DoubleToString(LimitePerdidaDiaria, 0)
+       + " LimGanancia=" + DoubleToString(LimiteGananciaDiaria, 0)
        + " Horario=" + IntegerToString(HoraInicio) + "-" + IntegerToString(HoraFin));
 }
 
