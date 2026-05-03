@@ -90,16 +90,19 @@ export type Habit = {
 }
 
 export type DiaryEntry = {
-  id: string
-  user_id: string
-  fecha: string
-  contenido: string | null
-  emocion: string | null
-  confianza: number | null
-  imagen_url: string | null
-  tags: string[] | null
+  id:         string
+  user_id:    string
+  fecha:      string        // date YYYY-MM-DD
+  texto:      string | null // main journal text
+  leccion:    string | null // lesson learned
+  energia:    number | null // energy/confidence 1-10
+  emociones:  string[] | null // ["💪 Motivado", ...]
   created_at: string
   updated_at: string
+  // Virtual aliases for backward compat
+  contenido?: string | null
+  emocion?:   string | null
+  confianza?: number | null
 }
 
 export type DayPlan = {

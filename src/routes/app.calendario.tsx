@@ -370,30 +370,28 @@ function CalendarioPage() {
                     {!diaryEntry ? (
                       <div className="text-[11px] text-muted-foreground italic">Sin entrada de diario</div>
                     ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {diaryEntry.emocion && (
-                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">
-                              {diaryEntry.emocion}
-                            </span>
-                          )}
-                          {diaryEntry.confianza != null && (
-                            <span className="text-[10px] font-mono text-muted-foreground">
-                              Confianza: <span className="text-foreground font-bold">{diaryEntry.confianza}/10</span>
-                            </span>
-                          )}
-                        </div>
-                        {diaryEntry.contenido && (
-                          <div className="rounded-lg border border-border bg-surface/40 p-2.5 text-[11px] text-foreground/90 leading-relaxed whitespace-pre-wrap line-clamp-6">
-                            {diaryEntry.contenido}
-                          </div>
-                        )}
-                        {diaryEntry.tags && diaryEntry.tags.length > 0 && (
+                      <div className="space-y-1.5">
+                        {diaryEntry.emociones && diaryEntry.emociones.length > 0 && (
                           <div className="flex flex-wrap gap-1">
-                            {diaryEntry.tags.map((t,i) => (
-                              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 border border-border text-muted-foreground">#{t}</span>
+                            {(diaryEntry.emociones as string[]).map((em: string, i: number) => (
+                              <span key={i} className="text-xs px-2 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">
+                                {em}
+                              </span>
                             ))}
                           </div>
+                        )}
+                        {diaryEntry.energia != null && (
+                          <div className="text-[11px] text-muted-foreground">
+                            Energía: <span className="text-foreground font-bold">{diaryEntry.energia}/10</span>
+                          </div>
+                        )}
+                        {diaryEntry.texto && (
+                          <div className="rounded-lg border border-border bg-surface/40 p-2.5 text-[11px] text-foreground/90 leading-relaxed whitespace-pre-wrap line-clamp-6">
+                            {diaryEntry.texto}
+                          </div>
+                        )}
+                        {diaryEntry.leccion && (
+                          <div className="text-[11px] italic text-primary/70">💡 {diaryEntry.leccion}</div>
                         )}
                       </div>
                     )}
