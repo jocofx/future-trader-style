@@ -263,12 +263,13 @@ function PremarketPage() {
           </div>
         </div>
 
-        {/* Right panel */}
-        <div className="space-y-4">
-          <div className="text-sm font-semibold text-muted-foreground">
+        {/* Right panels */}
+        <div className="space-y-4 xl:contents">
+          <div className="text-sm font-semibold text-muted-foreground xl:col-span-2">
             {selectedDate === today && <span className="text-primary">Hoy · </span>}
             <span className="capitalize">{new Date(selectedDate+"T12:00:00").toLocaleDateString("es",{weekday:"long",day:"numeric",month:"long"})}</span>
           </div>
+          <div className="space-y-4 xl:space-y-0">
 
           {/* Checklist */}
           <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl p-5">
