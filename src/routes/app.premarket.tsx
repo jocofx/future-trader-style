@@ -208,7 +208,7 @@ function PremarketPage() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-[340px_1fr] gap-6">
+      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
         {/* Calendar */}
         <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl overflow-hidden h-fit">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -269,6 +269,7 @@ function PremarketPage() {
             {selectedDate === today && <span className="text-primary">Hoy · </span>}
             <span className="capitalize">{new Date(selectedDate+"T12:00:00").toLocaleDateString("es",{weekday:"long",day:"numeric",month:"long"})}</span>
           </div>
+          <div className="grid xl:grid-cols-2 gap-4">
 
           {/* Checklist */}
           <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl p-5">
@@ -361,6 +362,7 @@ function PremarketPage() {
           </div>
         </div>
       </div>
+    </div>
 
       <ConfirmModal
         open={deleteId !== null}

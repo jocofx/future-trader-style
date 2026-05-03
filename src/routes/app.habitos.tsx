@@ -371,7 +371,7 @@ function HabitosPage() {
               No tienes hábitos configurados. Pulsa "Mis hábitos" para añadir.
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid xl:grid-cols-2 gap-3">
               {config.habits.map(h => {
                 const val = values[h.id] ?? 0;
                 const pct = Math.min(100, (val / h.max) * 100);

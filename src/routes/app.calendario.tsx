@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import type { Trade } from "@/lib/types";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/app/calendario")({
     component: CalendarioPage,
@@ -118,7 +119,7 @@ function CalendarioPage() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Calendar */}
         <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl overflow-hidden">
           {/* Nav */}
@@ -185,19 +186,12 @@ function CalendarioPage() {
           </div>
         </div>
 
-        {/* Side panel — Day Detail */}
-        <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl overflow-hidden h-fit max-h-[calc(100vh-180px)] flex flex-col">
-          {!selected ? (
-            <div className="p-8 text-center">
-              <div className="h-12 w-12 mx-auto mb-3 grid place-items-center rounded-2xl bg-primary/10 border border-primary/20">
-                <CalendarDays className="h-5 w-5 text-primary" />
-              </div>
-              <div className="text-sm font-semibold mb-1">Selecciona un día</div>
-              <div className="text-xs text-muted-foreground">
-                Para ver el detalle completo: operaciones, diario, premarket, hábitos y psicología.
-              </div>
-            </div>
-          ) : (() => {
+      </div>
+
+      {/* Day Detail Modal */}
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-3xl p-0 gap-0 bg-surface/95 backdrop-blur-xl border-border max-h-[90vh] overflow-hidden flex flex-col">
+          {selected && (() => {
             const closed = selectedTrades.filter(t => t.resultado != null);
             const dayPnl = closed.reduce((s,t)=>s+(t.resultado??0),0);
             const dayWins = closed.filter(t => (t.resultado??0) > 0).length;
@@ -212,7 +206,6 @@ function CalendarioPage() {
             const checklistState = premarket.getChecklist(selected);
             const habitEntry = habits.getForDate(selected);
 
-            // Emociones agregadas
             const emoCount: Record<string, number> = {};
             const emoPnl: Record<string, number> = {};
             closed.forEach(t => {
@@ -226,41 +219,41 @@ function CalendarioPage() {
             return (
               <>
                 {/* Header */}
-                <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3 sticky top-0 bg-surface/95 backdrop-blur-xl z-10">
+                <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-3 shrink-0">
                   <div className="min-w-0">
-                    <div className="font-semibold text-sm capitalize truncate">
-                      {new Date(selected+"T12:00:00").toLocaleDateString("es",{weekday:"long",day:"numeric",month:"long"})}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                    <DialogTitle className="font-semibold text-base capitalize truncate">
+                      {new Date(selected+"T12:00:00").toLocaleDateString("es",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
+                    </DialogTitle>
+                    <DialogDescription className="text-[11px] text-muted-foreground mt-0.5">
                       {closed.length} op · {selectedTrades.length - closed.length > 0 ? `${selectedTrades.length - closed.length} abierta(s)` : "todas cerradas"}
-                    </div>
+                    </DialogDescription>
                   </div>
-                  <div className={`text-right shrink-0`}>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">P&L</div>
-                    <div className={`font-mono font-bold text-sm ${dayPnl>=0?"text-success":"text-destructive"}`}>
+                  <div className="text-right shrink-0 pr-8">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">P&L del día</div>
+                    <div className={`font-mono font-bold text-lg ${dayPnl>=0?"text-success":"text-destructive"}`}>
                       {dayPnl>=0?"+":"-"}${Math.abs(dayPnl).toFixed(2)}
                     </div>
                   </div>
                 </div>
 
-                <div className="overflow-y-auto flex-1 divide-y divide-border">
+                <div className="overflow-y-auto flex-1 p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* === STATS DEL DÍA === */}
                   {closed.length > 0 && (
-                    <section className="p-4">
+                    <section className="md:col-span-2 rounded-xl border border-border bg-surface-2/30 p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <Activity className="h-3.5 w-3.5 text-info" />
                         <span className="text-[11px] uppercase tracking-[0.16em] font-semibold text-muted-foreground">Stats del día</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                         {[
                           { l: "Win rate", v: `${dayWR}%`, Icon: Target, tone: dayWR>=50?"text-success":"text-warning" },
                           { l: "Avg RR", v: `${avgRR>=0?"+":""}${avgRR.toFixed(2)}R`, Icon: Percent, tone: avgRR>=0?"text-success":"text-destructive" },
                           { l: "Mejor", v: `+$${bestT.toFixed(0)}`, Icon: TrendingUp, tone: "text-success" },
                           { l: "Peor", v: `-$${Math.abs(worstT).toFixed(0)}`, Icon: TrendingDown, tone: "text-destructive" },
                           { l: "Disciplina", v: avgConf ? `${avgConf.toFixed(1)}/10` : "—", Icon: Sparkles, tone: "text-primary" },
-                          { l: "Wins/Loss", v: `${dayWins}/${closed.length-dayWins}`, Icon: DollarSign, tone: "text-info" },
+                          { l: "W/L", v: `${dayWins}/${closed.length-dayWins}`, Icon: DollarSign, tone: "text-info" },
                         ].map(s => (
-                          <div key={s.l} className="rounded-xl border border-border bg-surface-2/40 p-2.5">
+                          <div key={s.l} className="rounded-lg border border-border bg-surface/40 p-2.5">
                             <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
                               <s.Icon className="h-3 w-3" />{s.l}
                             </div>
@@ -273,7 +266,7 @@ function CalendarioPage() {
 
                   {/* === OPERACIONES === */}
                   {selectedTrades.length > 0 && (
-                    <section className="p-4">
+                    <section className="rounded-xl border border-border bg-surface-2/30 p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <Activity className="h-3.5 w-3.5 text-primary" />
@@ -281,11 +274,11 @@ function CalendarioPage() {
                         </div>
                         <Link to="/app/operaciones" className="text-[10px] text-primary hover:underline">Ver todas →</Link>
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 max-h-[260px] overflow-y-auto pr-1">
                         {selectedTrades.map(t => {
                           const pos = (t.resultado??0) >= 0;
                           return (
-                            <div key={t.id} className="rounded-xl border border-border bg-surface-2/30 px-3 py-2 hover:bg-surface-2/60 transition">
+                            <div key={t.id} className="rounded-lg border border-border bg-surface/40 px-3 py-2 hover:bg-surface/60 transition">
                               <div className="flex items-center justify-between mb-0.5">
                                 <div className="flex items-center gap-2 min-w-0">
                                   <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
@@ -313,7 +306,7 @@ function CalendarioPage() {
                   )}
 
                   {/* === PRE-MARKET === */}
-                  <section className="p-4">
+                  <section className="rounded-xl border border-border bg-surface-2/30 p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <ClipboardList className="h-3.5 w-3.5 text-info" />
@@ -366,7 +359,7 @@ function CalendarioPage() {
                   </section>
 
                   {/* === DIARIO === */}
-                  <section className="p-4">
+                  <section className="rounded-xl border border-border bg-surface-2/30 p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <BookOpen className="h-3.5 w-3.5 text-accent" />
@@ -391,7 +384,7 @@ function CalendarioPage() {
                           )}
                         </div>
                         {diaryEntry.contenido && (
-                          <div className="rounded-lg border border-border bg-surface-2/40 p-2.5 text-[11px] text-foreground/90 leading-relaxed whitespace-pre-wrap line-clamp-6">
+                          <div className="rounded-lg border border-border bg-surface/40 p-2.5 text-[11px] text-foreground/90 leading-relaxed whitespace-pre-wrap line-clamp-6">
                             {diaryEntry.contenido}
                           </div>
                         )}
@@ -407,7 +400,7 @@ function CalendarioPage() {
                   </section>
 
                   {/* === HÁBITOS === */}
-                  <section className="p-4">
+                  <section className="rounded-xl border border-border bg-surface-2/30 p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Heart className="h-3.5 w-3.5 text-destructive" />
@@ -434,14 +427,14 @@ function CalendarioPage() {
                           ].map(h => {
                             const v = (habitEntry as any)[h.k];
                             return (
-                              <div key={h.k} className="rounded-lg border border-border bg-surface-2/40 px-2 py-1.5">
+                              <div key={h.k} className="rounded-lg border border-border bg-surface/40 px-2 py-1.5">
                                 <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{h.l}</div>
                                 <div className="font-mono text-xs font-semibold">{v ?? 0} <span className="text-[9px] text-muted-foreground">{h.u}</span></div>
                               </div>
                             );
                           })}
                           {habitEntry.habitos_extra && Object.entries(habitEntry.habitos_extra).map(([k,v]) => (
-                            <div key={k} className="rounded-lg border border-border bg-surface-2/40 px-2 py-1.5">
+                            <div key={k} className="rounded-lg border border-border bg-surface/40 px-2 py-1.5">
                               <div className="text-[9px] uppercase tracking-wider text-muted-foreground truncate">{k}</div>
                               <div className="font-mono text-xs font-semibold">{String(v)}</div>
                             </div>
@@ -453,7 +446,7 @@ function CalendarioPage() {
 
                   {/* === PSICOLOGÍA === */}
                   {(emociones.length > 0 || avgConf > 0) && (
-                    <section className="p-4">
+                    <section className="rounded-xl border border-border bg-surface-2/30 p-4 md:col-span-2">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <Brain className="h-3.5 w-3.5 text-primary" />
@@ -467,11 +460,11 @@ function CalendarioPage() {
                             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
                               <Smile className="h-3 w-3" />Emociones operadas
                             </div>
-                            <div className="space-y-1">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                               {emociones.map(([emo, count]) => {
                                 const pnl = emoPnl[emo] ?? 0;
                                 return (
-                                  <div key={emo} className="flex items-center justify-between rounded-lg border border-border bg-surface-2/40 px-2.5 py-1.5">
+                                  <div key={emo} className="flex items-center justify-between rounded-lg border border-border bg-surface/40 px-2.5 py-1.5">
                                     <div className="flex items-center gap-2">
                                       <span className="text-[11px] font-semibold">{emo}</span>
                                       <span className="text-[10px] text-muted-foreground">×{count}</span>
@@ -498,8 +491,8 @@ function CalendarioPage() {
               </>
             );
           })()}
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
