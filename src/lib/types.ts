@@ -154,6 +154,10 @@ export type RiskSettings = {
   maxOps: number
   objetivo: number
   riskPct: number
+  // "total" = all accounts combined, "per_account" = each account individually
+  maxLossMode:  'total' | 'per_account'
+  maxOpsMode:   'total' | 'per_account'
+  objetivoMode: 'total' | 'per_account'
 }
 
 // ── Computed types ───────────────────────────────────────────────

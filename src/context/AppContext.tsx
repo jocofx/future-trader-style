@@ -29,6 +29,9 @@ const AppContext = createContext<AppContextType | null>(null)
 const DEFAULT_RISK: RiskSettings = {
   maxLoss: 100,
   maxOps: 5,
+  maxLossMode:  'total',
+  maxOpsMode:   'total',
+  objetivoMode: 'total',
   objetivo: 200,
   riskPct: 1,
 }
