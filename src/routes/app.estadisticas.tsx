@@ -71,12 +71,10 @@ function EstadisticasPage() {
   const [period, setPeriod]   = useState<Period>("month");
   const [account, setAccount] = useState("");
 
-  // Cuentas that actually appear in trades (guaranteed match)
-  const cuentasEnTrades = useMemo(() => {
-    const set = new Set<string>();
-    trades.forEach(t => { if (t.cuenta) set.add(t.cuenta); });
-    return Array.from(set).sort();
-  }, [trades]);
+  // Only show accounts currently registered (activa=true) in the selector
+  const cuentasActivas = useMemo(() => {
+    return accounts.filter(a => a.activa !== false);
+  }, [accounts]);
 
   const filtered = useMemo(() => filterByPeriod(trades, period, account), [trades, period, account]);
   const stats     = useMemo(() => computeStats(filtered), [filtered]);
@@ -154,10 +152,9 @@ function EstadisticasPage() {
           <select value={account} onChange={e => setAccount(e.target.value)}
             className="h-9 px-3 rounded-lg bg-surface/70 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring text-foreground">
             <option value="">Todas las cuentas</option>
-            {cuentasEnTrades.length > 0
-              ? cuentasEnTrades.map(c => <option key={c} value={c}>{c}</option>)
-              : accounts.map(a => <option key={a.id} value={a.nombre}>{a.nombre}</option>)
-            }
+            {cuentasActivas.map(a => (
+              <option key={a.id} value={a.nombre}>{a.nombre}</option>
+            ))}
           </select>
           {/* Period pills */}
           <div className="flex bg-surface/60 border border-border rounded-xl p-1 gap-0.5">
