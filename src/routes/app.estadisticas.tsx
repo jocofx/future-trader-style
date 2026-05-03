@@ -20,23 +20,32 @@ function fmt(n: number, sign = false) {
   return (sign ? (n >= 0 ? "+" : "-") : (n < 0 ? "-" : "")) + "$" + abs;
 }
 
+import type { Account } from "@/lib/types";
+
 function matchesCuenta(tradeCuenta: string | null, accountNombre: string, accountNumero?: string | null): boolean {
   if (!tradeCuenta) return false;
   const tc = tradeCuenta.trim().toLowerCase();
   const ac = accountNombre.trim().toLowerCase();
   if (tc === ac) return true;
-  // Match by numero_cuenta (EA stores raw account number)
   if (accountNumero && tc === accountNumero.trim().toLowerCase()) return true;
-  // Match if account name contains the trade cuenta value
   if (ac.includes(tc)) return true;
   return false;
 }
 
-function filterByPeriod(trades: Trade[], period: Period, account: string, accountNumero?: string | null): Trade[] {
+function tradeMatchesAnyAccount(tradeCuenta: string | null, accounts: Account[]): boolean {
+  if (!tradeCuenta) return false;
+  return accounts.some(a => matchesCuenta(tradeCuenta, a.nombre, a.numero_cuenta ?? undefined));
+}
+
+function filterByPeriod(trades: Trade[], period: Period, account: string, accounts: Account[], accountNumero?: string | null): Trade[] {
   const now = new Date();
   return trades.filter(t => {
+    // When filtering by specific account
     if (account) {
       if (!matchesCuenta(t.cuenta, account, accountNumero)) return false;
+    } else {
+      // "Todas las cuentas" — only show trades from registered accounts
+      if (!tradeMatchesAnyAccount(t.cuenta, accounts)) return false;
     }
     if (period === "all") return true;
     // Normalize fecha: take YYYY-MM-DD part only to avoid timezone issues
@@ -86,7 +95,7 @@ function EstadisticasPage() {
   }, [accounts]);
 
   const selectedAccount = useMemo(() => accounts.find(a => a.nombre === account), [accounts, account]);
-  const filtered = useMemo(() => filterByPeriod(trades, period, account, selectedAccount?.numero_cuenta), [trades, period, account, selectedAccount]);
+  const filtered = useMemo(() => filterByPeriod(trades, period, account, cuentasActivas, selectedAccount?.numero_cuenta), [trades, period, account, cuentasActivas, selectedAccount]);
   const stats     = useMemo(() => computeStats(filtered), [filtered]);
 
   // Equity curve data
