@@ -208,7 +208,7 @@ function PremarketPage() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-[340px_1fr] gap-6">
+      <div className="grid lg:grid-cols-[320px_1fr] xl:grid-cols-[320px_1fr_1fr] gap-6">
         {/* Calendar */}
         <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl overflow-hidden h-fit">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
