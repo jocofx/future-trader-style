@@ -41,10 +41,12 @@ function PsicologiaPage() {
   }, [closedTrades]);
 
   // Confianza vs resultado
+  // Disciplina vs resultado — uses t.disciplina (0-100) bucketed into 10 levels
   const confData = useMemo(() => {
     const map: Record<number,{pnl:number;count:number;wins:number}> = {};
-    closedTrades.filter(t => t.confianza).forEach(t => {
-      const c = t.confianza!;
+    closedTrades.filter(t => t.disciplina != null).forEach(t => {
+      // Convert 0-100 scale to 1-10 buckets
+      const c = Math.min(10, Math.max(1, Math.ceil((t.disciplina ?? 50) / 10)));
       if (!map[c]) map[c] = { pnl:0, count:0, wins:0 };
       map[c].pnl += t.resultado ?? 0;
       map[c].count++;
@@ -91,26 +93,40 @@ function PsicologiaPage() {
     return a;
   }, [closedTrades, emoData]);
 
+  // Diary emotions — uses e.emociones (real array field)
   const diaryEmoStats = useMemo(() => {
     const map: Record<string,number> = {};
-    entries.forEach(e => { if(e.emocion) map[e.emocion] = (map[e.emocion]??0)+1; });
-    return EMOCIONES_ORDER.filter(k => map[k]).map(k => ({ key:k, count:map[k] }));
+    entries.forEach(e => {
+      // emociones is a jsonb array like ["💪 Motivado", "😰 Ansioso"]
+      const emos = Array.isArray(e.emociones) ? e.emociones : (e.emociones ? [e.emociones] : []);
+      emos.forEach((em: string) => {
+        const key = em.trim();
+        if (key) map[key] = (map[key]??0)+1;
+      });
+    });
+    // Sort by frequency
+    return Object.entries(map)
+      .map(([key, count]) => ({ key, count }))
+      .sort((a,b) => b.count - a.count)
+      .slice(0, 8);
   }, [entries]);
 
+  // Setup/tag performance — uses t.setup (real column)
   const tagData = useMemo(() => {
     const map: Record<string,{pnl:number;count:number;wins:number}> = {};
     closedTrades.forEach(t => {
-      (t.tags??[]).forEach(tag => {
-        if (!map[tag]) map[tag] = {pnl:0,count:0,wins:0};
-        map[tag].pnl += t.resultado??0;
-        map[tag].count++;
-        if((t.resultado??0)>0) map[tag].wins++;
-      });
+      // Use setup field (real column in DB)
+      const tag = t.setup?.trim();
+      if (!tag) return;
+      if (!map[tag]) map[tag] = {pnl:0,count:0,wins:0};
+      map[tag].pnl += t.resultado??0;
+      map[tag].count++;
+      if((t.resultado??0)>0) map[tag].wins++;
     });
     return Object.entries(map).map(([name,d]) => ({
       name, pnl: parseFloat(d.pnl.toFixed(2)),
       wr: Math.round(d.wins/d.count*100), count: d.count,
-    })).sort((a,b) => b.count-a.count).slice(0,6);
+    })).sort((a,b) => b.count-a.count).slice(0,8);
   }, [closedTrades]);
 
   // Wellness score (0-100): basado en racha sin emociones tóxicas + winrate
@@ -141,6 +157,35 @@ function PsicologiaPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+
+      {/* ── INFO BANNER ── */}
+      <div className="rounded-2xl border border-info/20 bg-info/5 p-5">
+        <div className="flex gap-4">
+          <div className="text-2xl shrink-0 mt-0.5">🧠</div>
+          <div className="space-y-2 flex-1">
+            <div className="font-semibold text-sm">¿Qué analiza este apartado?</div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Psicología cruza tus <span className="font-semibold text-foreground">emociones, disciplina y setups</span> con
+              tus resultados reales para detectar patrones: cuándo operas mejor o peor según tu estado mental,
+              señales de <span className="font-semibold text-foreground">revenge trading, overtrading o sobreconfianza</span>.
+            </p>
+            <div className="grid sm:grid-cols-3 gap-2 pt-1">
+              {([
+                { icon: "😌", title: "Registra emociones", desc: "Al añadir operaciones en el Journal, selecciona cómo te sentías. Cuantos más datos, mejor el análisis." },
+                { icon: "✍️", title: "Escribe el diario", desc: "Las entradas del Diario alimentan el gráfico 'Emociones en el diario' y el análisis de bienestar." },
+                { icon: "🎯", title: "Añade el setup", desc: "Al registrar operaciones indica el setup utilizado para ver qué setups son más rentables para ti." },
+              ] as const).map(s => (
+                <div key={s.title} className="rounded-xl bg-surface/40 border border-border/60 p-3">
+                  <div className="text-base mb-1">{s.icon}</div>
+                  <div className="text-xs font-semibold text-foreground">{s.title}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{s.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -275,12 +320,12 @@ function PsicologiaPage() {
           )}
         </div>
 
-        {/* Confianza vs Resultado - bars custom con eje cero */}
+        {/* Disciplina vs Resultado - bars custom con eje cero */}
         <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="text-sm font-semibold flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" /> Confianza vs Resultado
+                <TrendingUp className="h-4 w-4 text-primary" /> Disciplina vs Resultado
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">P&L medio según tu nivel de confianza (1–10)</div>
             </div>
@@ -352,7 +397,7 @@ function PsicologiaPage() {
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-border bg-surface/70 backdrop-blur-xl p-5">
           <div className="text-sm font-semibold flex items-center gap-2 mb-4">
-            <Hash className="h-4 w-4 text-primary" /> Rendimiento por tag/setup
+            <Hash className="h-4 w-4 text-primary" /> Rendimiento por Setup
           </div>
           {tagData.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">Añade tags a tus operaciones para ver patrones</div>
