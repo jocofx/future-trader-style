@@ -149,15 +149,22 @@ export type ChatMessage = {
 
 export type UserPlan = 'free' | 'basic' | 'pro'
 
-export type RiskSettings = {
-  maxLoss: number
-  maxOps: number
+export type AccountRiskConfig = {
+  maxLoss:  number   // 0 = sin límite
+  maxOps:   number
   objetivo: number
-  riskPct: number
-  // "total" = all accounts combined, "per_account" = each account individually
-  maxLossMode:  'total' | 'per_account'
-  maxOpsMode:   'total' | 'per_account'
-  objetivoMode: 'total' | 'per_account'
+  riskPct:  number
+  enabled:  boolean
+}
+
+export type RiskSettings = {
+  // Global limits (all accounts combined)
+  maxLoss:  number
+  maxOps:   number
+  objetivo: number
+  riskPct:  number
+  // Per-account overrides: key = account id
+  accounts: Record<string, AccountRiskConfig>
 }
 
 // ── Computed types ───────────────────────────────────────────────

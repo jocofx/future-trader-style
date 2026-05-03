@@ -1,53 +1,241 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ShieldCheck, Save, Check, AlertTriangle, Users, User } from "lucide-react";
+import {
+  ShieldCheck, Save, Check, AlertTriangle, ChevronDown, ChevronUp,
+  Globe, User, ToggleLeft, ToggleRight,
+} from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import type { AccountRiskConfig } from "@/lib/types";
 
 export const Route = createFileRoute("/app/riesgo")({ component: RiesgoPage });
 
+const EMPTY_CONFIG: AccountRiskConfig = { maxLoss: 0, maxOps: 0, objetivo: 0, riskPct: 1, enabled: true };
+
 function fmt(n: number) {
-  return "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
-type Mode = "total" | "per_account";
-
-// Toggle component for Total / Por cuenta
-function ModeToggle({ value, onChange }: { value: Mode; onChange: (v: Mode) => void }) {
+function NumInput({ label, desc, value, onChange, step = "1", placeholder }: {
+  label: string; desc?: string; value: number; onChange: (v: number) => void;
+  step?: string; placeholder?: string;
+}) {
   return (
-    <div className="flex items-center gap-1 bg-surface/60 border border-border rounded-lg p-0.5">
-      <button
-        onClick={() => onChange("total")}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition ${
-          value === "total" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
-        }`}>
-        <Users className="h-3 w-3" /> Total
-      </button>
-      <button
-        onClick={() => onChange("per_account")}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition ${
-          value === "per_account" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
-        }`}>
-        <User className="h-3 w-3" /> Por cuenta
-      </button>
+    <div>
+      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</label>
+      {desc && <div className="text-[10px] text-muted-foreground mt-0.5 mb-1.5">{desc}</div>}
+      <input type="number" value={value || ""} step={step} placeholder={placeholder ?? "0 = sin límite"}
+        onChange={e => onChange(Number(e.target.value))}
+        className="w-full bg-surface/80 border border-border rounded-xl px-3 py-2.5 text-base font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-ring" />
     </div>
   );
 }
 
+// ── Account Risk Card ───────────────────────────────────────────────
+function AccountRiskCard({ nombre, numeroCuenta, config, todayTrades, onChange }: {
+  nombre: string;
+  numeroCuenta?: string | null;
+  config: AccountRiskConfig;
+  todayTrades: any[];
+  onChange: (c: AccountRiskConfig) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const num    = numeroCuenta?.trim().toLowerCase();
+  const ac     = nombre.trim().toLowerCase();
+  const myTrades = todayTrades.filter(t => {
+    const tc = (t.cuenta ?? "").trim().toLowerCase();
+    return tc === ac || (num ? tc === num : false) || ac.includes(tc);
+  });
+
+  const todayPnl  = myTrades.reduce((s: number, t: any) => s + (t.resultado ?? 0), 0);
+  const todayOps  = myTrades.length;
+  const lossUsed  = Math.abs(Math.min(0, todayPnl));
+
+  const lossAlert = config.maxLoss  > 0 && lossUsed  >= config.maxLoss;
+  const opsAlert  = config.maxOps   > 0 && todayOps  >= config.maxOps;
+  const objOk     = config.objetivo > 0 && todayPnl  >= config.objetivo;
+
+  const hasAlert = lossAlert || opsAlert;
+
+  return (
+    <div className={`rounded-2xl border backdrop-blur overflow-hidden transition ${
+      hasAlert ? "border-destructive/40 bg-destructive/5" :
+      objOk    ? "border-success/30 bg-success/5" :
+      "border-border bg-card/60"
+    }`}>
+      {/* Header */}
+      <button onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface/30 transition">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+            hasAlert ? "bg-destructive animate-pulse" : objOk ? "bg-success" : "bg-primary/50"
+          }`} />
+          <div className="text-left min-w-0">
+            <div className="font-semibold text-sm truncate">{nombre}</div>
+            <div className="flex items-center gap-3 mt-0.5">
+              <span className="text-[10px] text-muted-foreground font-mono">
+                Hoy: {todayOps} ops · {todayPnl >= 0 ? "+" : ""}{fmt(Math.abs(todayPnl))}
+              </span>
+              {!config.enabled && <span className="text-[10px] text-muted-foreground italic">Sin límites</span>}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 shrink-0 ml-4">
+          {/* Quick status pills */}
+          <div className="hidden sm:flex items-center gap-2">
+            {config.maxLoss > 0 && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border font-mono ${
+                lossAlert ? "bg-destructive/15 border-destructive/30 text-destructive" : "bg-surface border-border text-muted-foreground"
+              }`}>
+                -{fmt(config.maxLoss)}
+              </span>
+            )}
+            {config.maxOps > 0 && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border font-mono ${
+                opsAlert ? "bg-warning/15 border-warning/30 text-warning" : "bg-surface border-border text-muted-foreground"
+              }`}>
+                {todayOps}/{config.maxOps} ops
+              </span>
+            )}
+            {config.objetivo > 0 && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border font-mono ${
+                objOk ? "bg-success/15 border-success/30 text-success" : "bg-surface border-border text-muted-foreground"
+              }`}>
+                +{fmt(config.objetivo)}
+              </span>
+            )}
+          </div>
+          {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </div>
+      </button>
+
+      {/* Expanded config */}
+      {open && (
+        <div className="px-5 pb-5 border-t border-border space-y-4 pt-4">
+          {/* Enable toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold">Límites activos para esta cuenta</div>
+              <div className="text-xs text-muted-foreground">Si está desactivado, no se aplican límites individuales</div>
+            </div>
+            <button onClick={() => onChange({ ...config, enabled: !config.enabled })}
+              className="text-muted-foreground hover:text-primary transition">
+              {config.enabled
+                ? <ToggleRight className="h-7 w-7 text-primary" />
+                : <ToggleLeft className="h-7 w-7" />}
+            </button>
+          </div>
+
+          {config.enabled && (
+            <div className="grid grid-cols-2 gap-4">
+              <NumInput
+                label="Pérdida máxima ($)"
+                desc="Alerta cuando esta cuenta pierda este importe hoy"
+                value={config.maxLoss}
+                onChange={v => onChange({ ...config, maxLoss: v })}
+              />
+              <NumInput
+                label="Máx. operaciones/día"
+                desc="Alerta cuando esta cuenta supere este número de ops"
+                value={config.maxOps}
+                onChange={v => onChange({ ...config, maxOps: v })}
+              />
+              <NumInput
+                label="Objetivo de ganancia ($)"
+                desc="Notificación cuando esta cuenta alcance esta ganancia"
+                value={config.objetivo}
+                onChange={v => onChange({ ...config, objetivo: v })}
+              />
+              <NumInput
+                label="Riesgo por op (%)"
+                desc="% del balance arriesgado por operación en esta cuenta"
+                value={config.riskPct}
+                onChange={v => onChange({ ...config, riskPct: v })}
+                step="0.1"
+                placeholder="1"
+              />
+            </div>
+          )}
+
+          {/* Today progress bars if limits set */}
+          {config.enabled && (config.maxLoss > 0 || config.maxOps > 0 || config.objetivo > 0) && (
+            <div className="space-y-2 pt-2 border-t border-border">
+              {config.maxLoss > 0 && (
+                <div>
+                  <div className="flex justify-between text-[10px] mb-1">
+                    <span className="text-muted-foreground">Pérdida hoy</span>
+                    <span className={`font-mono font-bold ${lossAlert ? "text-destructive" : "text-foreground"}`}>
+                      {fmt(lossUsed)} / {fmt(config.maxLoss)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${lossAlert ? "bg-destructive" : lossUsed / config.maxLoss > 0.7 ? "bg-warning" : "bg-success"}`}
+                      style={{ width: `${Math.min(100, config.maxLoss > 0 ? (lossUsed / config.maxLoss) * 100 : 0)}%` }} />
+                  </div>
+                </div>
+              )}
+              {config.maxOps > 0 && (
+                <div>
+                  <div className="flex justify-between text-[10px] mb-1">
+                    <span className="text-muted-foreground">Operaciones hoy</span>
+                    <span className={`font-mono font-bold ${opsAlert ? "text-warning" : "text-foreground"}`}>
+                      {todayOps} / {config.maxOps}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${opsAlert ? "bg-warning" : todayOps / config.maxOps > 0.7 ? "bg-warning/60" : "bg-primary"}`}
+                      style={{ width: `${Math.min(100, config.maxOps > 0 ? (todayOps / config.maxOps) * 100 : 0)}%` }} />
+                  </div>
+                </div>
+              )}
+              {config.objetivo > 0 && (
+                <div>
+                  <div className="flex justify-between text-[10px] mb-1">
+                    <span className="text-muted-foreground">Ganancia hoy</span>
+                    <span className={`font-mono font-bold ${objOk ? "text-success" : "text-foreground"}`}>
+                      {fmt(Math.max(0, todayPnl))} / {fmt(config.objetivo)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${objOk ? "bg-success" : "bg-primary"}`}
+                      style={{ width: `${Math.min(100, config.objetivo > 0 ? (Math.max(0, todayPnl) / config.objetivo) * 100 : 0)}%` }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ──────────────────────────────────────────────────────
 function RiesgoPage() {
   const { trades: { trades }, accounts: { accounts }, riskSettings, setRiskSettings } = useApp();
-  const [form, setForm]   = useState({ ...riskSettings });
-  const [saved, setSaved] = useState(false);
+  const [form, setForm]     = useState({ ...riskSettings, accounts: { ...(riskSettings.accounts ?? {}) } });
+  const [saved, setSaved]   = useState(false);
+  const [section, setSection] = useState<"global" | "accounts">("global");
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today       = new Date().toISOString().slice(0, 10);
+  const todayTrades = useMemo(() => trades.filter(t => (t.fecha ?? "").slice(0, 10) === today && t.resultado != null), [trades, today]);
+  const todayPnl    = useMemo(() => todayTrades.reduce((s, t) => s + (t.resultado ?? 0), 0), [todayTrades]);
+  const todayOps    = todayTrades.length;
+  const lossUsed    = Math.abs(Math.min(0, todayPnl));
 
-  const todayTrades = useMemo(() =>
-    trades.filter(t => (t.fecha ?? "").slice(0, 10) === today && t.resultado != null),
-    [trades, today]
-  );
+  const lossUsedPct = form.maxLoss  > 0 ? (lossUsed  / form.maxLoss)  * 100 : 0;
+  const opsUsedPct  = form.maxOps   > 0 ? (todayOps  / form.maxOps)   * 100 : 0;
+  const objPct      = form.objetivo > 0 ? Math.min(100, (Math.max(0, todayPnl) / form.objetivo) * 100) : 0;
 
-  // Per account stats for today
-  const accountStats = useMemo(() => {
-    return accounts.map(a => {
+  const maxLossHit = lossUsed >= form.maxLoss && form.maxLoss > 0;
+  const maxOpsHit  = todayOps >= form.maxOps  && form.maxOps  > 0;
+  const objReached = todayPnl >= form.objetivo && form.objetivo > 0;
+
+  // Check per-account alerts
+  const accountAlerts = useMemo(() => {
+    return accounts.filter(a => {
+      const cfg = form.accounts?.[a.id];
+      if (!cfg?.enabled) return false;
       const num = a.numero_cuenta?.trim().toLowerCase();
       const ac  = a.nombre.trim().toLowerCase();
       const t   = todayTrades.filter(tr => {
@@ -56,32 +244,9 @@ function RiesgoPage() {
       });
       const pnl  = t.reduce((s, tr) => s + (tr.resultado ?? 0), 0);
       const loss = Math.abs(Math.min(0, pnl));
-      return { nombre: a.nombre, ops: t.length, pnl, loss };
+      return (cfg.maxLoss > 0 && loss >= cfg.maxLoss) || (cfg.maxOps > 0 && t.length >= cfg.maxOps);
     });
-  }, [accounts, todayTrades, today]);
-
-  // Total stats
-  const todayPnl  = useMemo(() => todayTrades.reduce((s, t) => s + (t.resultado ?? 0), 0), [todayTrades]);
-  const todayOps  = todayTrades.length;
-  const lossUsed  = Math.abs(Math.min(0, todayPnl));
-
-  // Per-account worst case
-  const worstAccountLoss = useMemo(() => Math.max(...accountStats.map(a => a.loss), 0), [accountStats]);
-  const worstAccountOps  = useMemo(() => Math.max(...accountStats.map(a => a.ops), 0), [accountStats]);
-  const bestAccountGain  = useMemo(() => Math.max(...accountStats.map(a => a.pnl), 0), [accountStats]);
-
-  // Effective values based on mode
-  const effectiveLoss    = form.maxLossMode  === "total" ? lossUsed          : worstAccountLoss;
-  const effectiveOps     = form.maxOpsMode   === "total" ? todayOps           : worstAccountOps;
-  const effectiveGain    = form.objetivoMode === "total" ? Math.max(0, todayPnl) : bestAccountGain;
-
-  const lossUsedPct = form.maxLoss  > 0 ? (effectiveLoss / form.maxLoss) * 100 : 0;
-  const opsUsedPct  = form.maxOps   > 0 ? (effectiveOps  / form.maxOps)  * 100 : 0;
-  const objPct      = form.objetivo > 0 ? Math.min(100, (effectiveGain / form.objetivo) * 100) : 0;
-
-  const maxLossHit  = effectiveLoss >= form.maxLoss  && form.maxLoss  > 0;
-  const maxOpsHit   = effectiveOps  >= form.maxOps   && form.maxOps   > 0;
-  const objReached  = effectiveGain >= form.objetivo && form.objetivo  > 0;
+  }, [accounts, form.accounts, todayTrades]);
 
   const handleSave = () => {
     setRiskSettings(form);
@@ -89,258 +254,173 @@ function RiesgoPage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const barColor = (pct: number, inverse = false) => {
+  const updateAccountConfig = (id: string, cfg: AccountRiskConfig) => {
+    setForm(f => ({ ...f, accounts: { ...f.accounts, [id]: cfg } }));
+  };
+
+  const barStyle = (pct: number, inverse = false) => {
     if (inverse) return pct >= 100 ? "bg-destructive" : pct >= 70 ? "bg-warning" : "bg-success";
     return pct >= 100 ? "bg-success" : pct >= 50 ? "bg-info" : "bg-primary";
   };
 
-  const modeLabel = (mode: Mode) => mode === "total" ? "todas las cuentas" : "la peor cuenta";
-
   return (
     <div className="max-w-[900px] mx-auto px-4 md:px-8 py-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 grid place-items-center rounded-xl bg-primary/10 text-primary border border-primary/20">
-          <ShieldCheck className="h-5 w-5" />
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 grid place-items-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Control de Riesgo</h1>
+            <p className="text-sm text-muted-foreground">Límites globales y por cuenta</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Control de Riesgo</h1>
-          <p className="text-sm text-muted-foreground">Límites diarios y monitorización en tiempo real</p>
-        </div>
+        <button onClick={handleSave}
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-primary text-primary-foreground px-5 py-2.5 text-sm font-semibold shadow-glow hover:brightness-110 transition">
+          {saved ? <><Check className="h-4 w-4" />Guardado</> : <><Save className="h-4 w-4" />Guardar cambios</>}
+        </button>
       </div>
 
       {/* Alerts */}
-      {(maxLossHit || maxOpsHit) && (
-        <div className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${maxLossHit ? "border-destructive/30 bg-destructive/8 text-destructive" : "border-warning/30 bg-warning/8 text-warning"}`}>
-          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-          <div>
-            <div className="font-semibold text-sm">
-              {maxLossHit ? "🚨 Límite de pérdida alcanzado — Para de operar" : "⚠️ Límite de operaciones alcanzado"}
+      {(maxLossHit || maxOpsHit || accountAlerts.length > 0) && (
+        <div className="space-y-2">
+          {maxLossHit && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-destructive/30 bg-destructive/8 text-destructive">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="text-sm font-semibold">🚨 Límite global de pérdida alcanzado — {fmt(lossUsed)} de {fmt(form.maxLoss)}</span>
             </div>
-            <div className="text-xs mt-0.5 opacity-80">
-              {maxLossHit
-                ? `${form.maxLossMode === "per_account" ? "Una cuenta ha alcanzado" : "Has perdido"} ${fmt(effectiveLoss)}, tu límite de ${fmt(form.maxLoss)}.`
-                : `${form.maxOpsMode === "per_account" ? "Una cuenta tiene" : "Has realizado"} ${effectiveOps} operaciones, tu límite diario.`}
+          )}
+          {maxOpsHit && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-warning/30 bg-warning/8 text-warning">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="text-sm font-semibold">⚠️ Límite global de operaciones alcanzado — {todayOps} de {form.maxOps}</span>
             </div>
-          </div>
+          )}
+          {accountAlerts.map(a => (
+            <div key={a.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-destructive/30 bg-destructive/8 text-destructive">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="text-sm font-semibold">🚨 Límite alcanzado en <span className="underline">{a.nombre}</span></span>
+            </div>
+          ))}
+          {objReached && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-success/30 bg-success/8 text-success">
+              <Check className="h-4 w-4 shrink-0" />
+              <span className="text-sm font-semibold">🎯 Objetivo global alcanzado — +{fmt(todayPnl)}</span>
+            </div>
+          )}
         </div>
       )}
-      {objReached && (
-        <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-success/30 bg-success/8 text-success">
-          <Check className="h-5 w-5 flex-shrink-0 mt-0.5" />
-          <div>
-            <div className="font-semibold text-sm">🎯 Objetivo diario alcanzado</div>
-            <div className="text-xs mt-0.5 opacity-80">
-              {form.objetivoMode === "per_account" ? "Una cuenta ha alcanzado" : "Has ganado"} {fmt(effectiveGain)}. Considera cerrar la sesión.
+
+      {/* Section tabs */}
+      <div className="flex bg-surface/60 border border-border rounded-xl p-1 gap-1">
+        <button onClick={() => setSection("global")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition ${section === "global" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+          <Globe className="h-4 w-4" /> Límites globales
+        </button>
+        <button onClick={() => setSection("accounts")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition ${section === "accounts" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+          <User className="h-4 w-4" /> Por cuenta {accounts.length > 0 && <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full">{accounts.length}</span>}
+        </button>
+      </div>
+
+      {/* ── GLOBAL LIMITS ── */}
+      {section === "global" && (
+        <>
+          {/* Status cards */}
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              { label: "Pérdida total hoy", val: fmt(lossUsed),    pct: lossUsedPct, limit: fmt(form.maxLoss),  hit: maxLossHit, inverse: true,  color: maxLossHit ? "text-destructive" : "text-foreground" },
+              { label: "Operaciones hoy",   val: String(todayOps), pct: opsUsedPct,  limit: `${form.maxOps} ops`, hit: maxOpsHit, inverse: true, color: maxOpsHit ? "text-warning" : "text-foreground" },
+              { label: "P&L hoy",           val: (todayPnl >= 0 ? "+" : "") + fmt(Math.abs(todayPnl)), pct: objPct, limit: `obj. ${fmt(form.objetivo)}`, hit: objReached, inverse: false, color: todayPnl >= 0 ? "text-success" : "text-destructive" },
+            ].map(s => (
+              <div key={s.label} className={`rounded-2xl border backdrop-blur p-5 ${s.hit ? "border-destructive/30 bg-destructive/5" : "border-border bg-card/60"}`}>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">{s.label}</div>
+                <div className={`text-2xl font-bold font-mono ${s.color}`}>{s.val}</div>
+                <div className="text-xs text-muted-foreground mb-3">{s.limit}</div>
+                <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${barStyle(s.pct, s.inverse)}`} style={{ width: `${Math.min(100, s.pct)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Global config */}
+          <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5">
+            <div className="text-sm font-semibold mb-1">Límites globales — todas las cuentas combinadas</div>
+            <p className="text-xs text-muted-foreground mb-5">Se activan cuando la suma de TODAS tus cuentas supera el límite</p>
+            <div className="grid md:grid-cols-2 gap-5">
+              <NumInput label="Pérdida máxima diaria ($)" desc="Suma de pérdidas de todas las cuentas"
+                value={form.maxLoss} onChange={v => setForm(f => ({ ...f, maxLoss: v }))} />
+              <NumInput label="Máx. operaciones/día" desc="Total de ops entre todas las cuentas"
+                value={form.maxOps} onChange={v => setForm(f => ({ ...f, maxOps: v }))} />
+              <NumInput label="Objetivo de ganancia ($)" desc="P&L total de todas las cuentas"
+                value={form.objetivo} onChange={v => setForm(f => ({ ...f, objetivo: v }))} />
+              <NumInput label="Riesgo por operación (%)" desc="Referencia general de riesgo" step="0.1" placeholder="1"
+                value={form.riskPct} onChange={v => setForm(f => ({ ...f, riskPct: v }))} />
             </div>
           </div>
-        </div>
+
+          {/* Today's trades */}
+          {todayTrades.length > 0 && (
+            <div className="rounded-2xl border border-border bg-card/60 backdrop-blur overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+                <span className="text-sm font-semibold">Operaciones de hoy</span>
+                <span className="text-xs text-muted-foreground">{todayTrades.length} ops · {todayPnl >= 0 ? "+" : ""}{fmt(Math.abs(todayPnl))}</span>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border bg-surface/30">
+                    {["Símbolo", "Cuenta", "Lado", "P&L"].map(h => <th key={h} className="text-left font-medium py-2 px-4">{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {todayTrades.map(t => (
+                    <tr key={t.id} className="border-b border-border/60 hover:bg-surface/40 transition">
+                      <td className="py-2.5 px-4 font-semibold">{t.instrumento}</td>
+                      <td className="py-2.5 px-4 text-muted-foreground text-xs">{t.cuenta ?? "—"}</td>
+                      <td className="py-2.5 px-4">
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md border ${t.tipo === "BUY" ? "text-success border-success/30 bg-success/10" : "text-info border-info/30 bg-info/10"}`}>
+                          {t.tipo ?? "—"}
+                        </span>
+                      </td>
+                      <td className={`py-2.5 px-4 font-mono font-bold ${(t.resultado ?? 0) >= 0 ? "text-success" : "text-destructive"}`}>
+                        {(t.resultado ?? 0) >= 0 ? "+" : "-"}${Math.abs(t.resultado ?? 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Status cards */}
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* Max Loss */}
-        <div className={`rounded-2xl border backdrop-blur p-5 ${maxLossHit ? "border-destructive/30 bg-destructive/5" : "border-border bg-card/60"}`}>
-          <div className="flex items-center justify-between mb-1">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Pérdida máxima</div>
-            <span className={`text-xs font-mono ${maxLossHit ? "text-destructive font-bold" : "text-muted-foreground"}`}>{lossUsedPct.toFixed(0)}%</span>
-          </div>
-          <div className={`text-2xl font-bold font-mono ${maxLossHit ? "text-destructive" : "text-foreground"}`}>{fmt(effectiveLoss)}</div>
-          <div className="text-xs text-muted-foreground mb-3">
-            de {fmt(form.maxLoss)} · {form.maxLossMode === "total" ? <span className="text-info">todas las cuentas</span> : <span className="text-warning">por cuenta</span>}
-          </div>
-          <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${barColor(lossUsedPct, true)}`} style={{ width: `${Math.min(100, lossUsedPct)}%` }} />
-          </div>
-          {form.maxLossMode === "per_account" && accountStats.some(a => a.loss > 0) && (
-            <div className="mt-3 space-y-1">
-              {accountStats.filter(a => a.loss > 0).map(a => (
-                <div key={a.nombre} className="flex justify-between text-[10px]">
-                  <span className="text-muted-foreground truncate">{a.nombre}</span>
-                  <span className={`font-mono font-bold ${a.loss >= form.maxLoss ? "text-destructive" : "text-foreground"}`}>{fmt(a.loss)}</span>
-                </div>
-              ))}
+      {/* ── PER ACCOUNT ── */}
+      {section === "accounts" && (
+        <div className="space-y-3">
+          {accounts.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              <div className="text-3xl mb-3">🏦</div>
+              No tienes cuentas registradas. Añade cuentas en el menú <span className="font-semibold text-foreground">Cuentas</span> para configurar límites individuales.
             </div>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Haz click en cada cuenta para configurar sus límites individuales. Los límites por cuenta son independientes de los globales — ambos pueden estar activos al mismo tiempo.
+              </p>
+              {accounts.map(a => (
+                <AccountRiskCard
+                  key={a.id}
+                  nombre={a.nombre}
+                  numeroCuenta={a.numero_cuenta}
+                  config={form.accounts?.[a.id] ?? { ...EMPTY_CONFIG }}
+                  todayTrades={todayTrades}
+                  onChange={cfg => updateAccountConfig(a.id, cfg)}
+                />
+              ))}
+            </>
           )}
-        </div>
-
-        {/* Max Ops */}
-        <div className={`rounded-2xl border backdrop-blur p-5 ${maxOpsHit ? "border-warning/30 bg-warning/5" : "border-border bg-card/60"}`}>
-          <div className="flex items-center justify-between mb-1">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Operaciones</div>
-            <span className={`text-xs font-mono ${maxOpsHit ? "text-warning font-bold" : "text-muted-foreground"}`}>{opsUsedPct.toFixed(0)}%</span>
-          </div>
-          <div className={`text-2xl font-bold font-mono ${maxOpsHit ? "text-warning" : "text-foreground"}`}>{effectiveOps}</div>
-          <div className="text-xs text-muted-foreground mb-3">
-            de {form.maxOps} ops · {form.maxOpsMode === "total" ? <span className="text-info">todas las cuentas</span> : <span className="text-warning">por cuenta</span>}
-          </div>
-          <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${barColor(opsUsedPct, true)}`} style={{ width: `${Math.min(100, opsUsedPct)}%` }} />
-          </div>
-          {form.maxOpsMode === "per_account" && accountStats.some(a => a.ops > 0) && (
-            <div className="mt-3 space-y-1">
-              {accountStats.filter(a => a.ops > 0).map(a => (
-                <div key={a.nombre} className="flex justify-between text-[10px]">
-                  <span className="text-muted-foreground truncate">{a.nombre}</span>
-                  <span className={`font-mono font-bold ${a.ops >= form.maxOps ? "text-warning" : "text-foreground"}`}>{a.ops} ops</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Objective */}
-        <div className={`rounded-2xl border backdrop-blur p-5 ${objReached ? "border-success/30 bg-success/5" : "border-border bg-card/60"}`}>
-          <div className="flex items-center justify-between mb-1">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Objetivo diario</div>
-            <span className={`text-xs font-mono ${objReached ? "text-success font-bold" : "text-muted-foreground"}`}>{objPct.toFixed(0)}%</span>
-          </div>
-          <div className={`text-2xl font-bold font-mono ${todayPnl >= 0 ? "text-success" : "text-destructive"}`}>
-            {(todayPnl >= 0 ? "+" : "-") + fmt(Math.abs(todayPnl))}
-          </div>
-          <div className="text-xs text-muted-foreground mb-3">
-            objetivo: {fmt(form.objetivo)} · {form.objetivoMode === "total" ? <span className="text-info">todas las cuentas</span> : <span className="text-warning">por cuenta</span>}
-          </div>
-          <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${barColor(objPct)}`} style={{ width: `${Math.min(100, objPct)}%` }} />
-          </div>
-          {form.objetivoMode === "per_account" && accountStats.some(a => a.pnl > 0) && (
-            <div className="mt-3 space-y-1">
-              {accountStats.filter(a => a.pnl > 0).map(a => (
-                <div key={a.nombre} className="flex justify-between text-[10px]">
-                  <span className="text-muted-foreground truncate">{a.nombre}</span>
-                  <span className={`font-mono font-bold ${a.pnl >= form.objetivo ? "text-success" : "text-foreground"}`}>+{fmt(a.pnl)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Settings */}
-      <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <div className="text-sm font-semibold">Configuración de límites</div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              <span className="font-semibold text-info">Total</span> = suma de todas las cuentas ·
-              <span className="font-semibold text-warning ml-1">Por cuenta</span> = se activa cuando cualquier cuenta individual supera el límite
-            </p>
-          </div>
-          <button onClick={handleSave}
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow hover:brightness-110 transition">
-            {saved ? <><Check className="h-4 w-4" />Guardado</> : <><Save className="h-4 w-4" />Guardar</>}
-          </button>
-        </div>
-
-        <div className="space-y-5">
-          {/* Pérdida máxima */}
-          <div className="rounded-xl border border-border bg-surface/30 p-4">
-            <div className="flex items-start justify-between gap-4 mb-3">
-              <div>
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Pérdida máxima diaria ($)</label>
-                <div className="text-xs text-muted-foreground mt-0.5">Detente cuando la pérdida alcance este importe</div>
-              </div>
-              <ModeToggle value={form.maxLossMode ?? "total"} onChange={v => setForm(f => ({ ...f, maxLossMode: v }))} />
-            </div>
-            <input type="number" value={form.maxLoss || ""} step="1"
-              onChange={e => setForm(f => ({ ...f, maxLoss: Number(e.target.value) }))}
-              placeholder="100"
-              className="w-full bg-surface/80 border border-border rounded-xl px-4 py-3 text-lg font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-ring" />
-            <div className="text-xs text-muted-foreground mt-2">
-              {form.maxLossMode === "total"
-                ? `⚠️ Alerta cuando la pérdida total de todas las cuentas supere ${fmt(form.maxLoss)}`
-                : `⚠️ Alerta cuando CUALQUIER cuenta individual pierda más de ${fmt(form.maxLoss)}`}
-            </div>
-          </div>
-
-          {/* Máximo operaciones */}
-          <div className="rounded-xl border border-border bg-surface/30 p-4">
-            <div className="flex items-start justify-between gap-4 mb-3">
-              <div>
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Máximo de operaciones/día</label>
-                <div className="text-xs text-muted-foreground mt-0.5">Número máximo de trades permitidos al día</div>
-              </div>
-              <ModeToggle value={form.maxOpsMode ?? "total"} onChange={v => setForm(f => ({ ...f, maxOpsMode: v }))} />
-            </div>
-            <input type="number" value={form.maxOps || ""} step="1"
-              onChange={e => setForm(f => ({ ...f, maxOps: Number(e.target.value) }))}
-              placeholder="5"
-              className="w-full bg-surface/80 border border-border rounded-xl px-4 py-3 text-lg font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-ring" />
-            <div className="text-xs text-muted-foreground mt-2">
-              {form.maxOpsMode === "total"
-                ? `⚠️ Alerta cuando el total de operaciones de todas las cuentas supere ${form.maxOps}`
-                : `⚠️ Alerta cuando CUALQUIER cuenta individual supere ${form.maxOps} operaciones`}
-            </div>
-          </div>
-
-          {/* Objetivo */}
-          <div className="rounded-xl border border-border bg-surface/30 p-4">
-            <div className="flex items-start justify-between gap-4 mb-3">
-              <div>
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Objetivo de ganancia diaria ($)</label>
-                <div className="text-xs text-muted-foreground mt-0.5">Objetivo de P&L para dar el día por bueno</div>
-              </div>
-              <ModeToggle value={form.objetivoMode ?? "total"} onChange={v => setForm(f => ({ ...f, objetivoMode: v }))} />
-            </div>
-            <input type="number" value={form.objetivo || ""} step="1"
-              onChange={e => setForm(f => ({ ...f, objetivo: Number(e.target.value) }))}
-              placeholder="200"
-              className="w-full bg-surface/80 border border-border rounded-xl px-4 py-3 text-lg font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-ring" />
-            <div className="text-xs text-muted-foreground mt-2">
-              {form.objetivoMode === "total"
-                ? `🎯 Objetivo alcanzado cuando la ganancia total de todas las cuentas supere ${fmt(form.objetivo)}`
-                : `🎯 Objetivo alcanzado cuando CUALQUIER cuenta individual gane más de ${fmt(form.objetivo)}`}
-            </div>
-          </div>
-
-          {/* Riesgo por operación */}
-          <div className="rounded-xl border border-border bg-surface/30 p-4">
-            <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Riesgo por operación (%)</label>
-            <div className="text-xs text-muted-foreground mt-0.5 mb-3">Porcentaje del balance arriesgado por trade</div>
-            <input type="number" value={form.riskPct || ""} step="0.1"
-              onChange={e => setForm(f => ({ ...f, riskPct: Number(e.target.value) }))}
-              placeholder="1"
-              className="w-full bg-surface/80 border border-border rounded-xl px-4 py-3 text-lg font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-ring" />
-            <div className="text-xs text-muted-foreground mt-2">
-              Este límite aplica siempre a nivel individual por operación
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Today's trades */}
-      {todayTrades.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card/60 backdrop-blur overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
-            <span className="text-sm font-semibold">Operaciones de hoy</span>
-            <span className="text-xs text-muted-foreground">{todayTrades.length} ops · P&L {(todayPnl >= 0 ? "+" : "") + fmt(todayPnl)}</span>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border bg-surface/30">
-                {["Símbolo", "Cuenta", "Lado", "P&L"].map(h => (
-                  <th key={h} className="text-left font-medium py-2 px-4">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {todayTrades.map(t => (
-                <tr key={t.id} className="border-b border-border/60 hover:bg-surface/40 transition">
-                  <td className="py-2.5 px-4 font-semibold">{t.instrumento}</td>
-                  <td className="py-2.5 px-4 text-muted-foreground text-xs">{t.cuenta ?? "—"}</td>
-                  <td className="py-2.5 px-4">
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md border ${t.tipo === "BUY" ? "text-success border-success/30 bg-success/10" : "text-info border-info/30 bg-info/10"}`}>
-                      {t.tipo ?? "—"}
-                    </span>
-                  </td>
-                  <td className={`py-2.5 px-4 font-mono font-bold ${(t.resultado ?? 0) >= 0 ? "text-success" : "text-destructive"}`}>
-                    {(t.resultado ?? 0) >= 0 ? "+" : "-"}${Math.abs(t.resultado ?? 0).toFixed(2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
     </div>
