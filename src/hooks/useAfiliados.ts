@@ -32,7 +32,7 @@ export type AffiliateConversion = {
   created_at:       string
 }
 
-export function useAfiliados(userId: string | null) {
+export function useAfiliados(userId: string | null, userPlan: string = "free") {
   const [profile,     setProfile]     = useState<AffiliateProfile | null>(null)
   const [conversions, setConversions] = useState<AffiliateConversion[]>([])
   const [loading,     setLoading]     = useState(false)
@@ -103,14 +103,25 @@ export function useAfiliados(userId: string | null) {
       : 0,
   }
 
-  // Commission tier based on active conversions
-  const commission = (() => {
-    const n = stats.activos
-    if (n >= 25) return 50
-    if (n >= 10) return 40
-    if (n >= 5)  return 35
-    return 30
-  })()
+  // Commission = plan base + volume bonus
+  // Free: 15% (no growth — incentive to upgrade)
+  // Basic: 20% base → 25% (5+) → 30% (10+)
+  // Pro:   30% base → 40% (5+) → 50% (10+)
+  const getCommission = (userPlan: string, activeRefs: number): number => {
+    const plan = userPlan?.toLowerCase() ?? 'free'
+    if (plan === 'pro') {
+      if (activeRefs >= 10) return 50
+      if (activeRefs >= 5)  return 40
+      return 30
+    }
+    if (plan === 'basic') {
+      if (activeRefs >= 10) return 30
+      if (activeRefs >= 5)  return 25
+      return 20
+    }
+    return 15 // free — capped
+  }
+  const commission = getCommission(userPlan, stats.activos)
 
   const requestPayout = async (paypalEmail: string) => {
     if (!profile) return

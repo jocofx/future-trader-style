@@ -27,8 +27,8 @@ function convStatus(c: { monto: number; pagado: boolean }) {
 }
 
 function AfiliadosPage() {
-  const { user } = useApp();
-  const aff = useAfiliados(user?.id ?? null);
+  const { user, plan } = useApp();
+  const aff = useAfiliados(user?.id ?? null, plan);
 
   useEffect(() => { if (user) aff.load(); }, [user?.id]);
 
@@ -55,19 +55,31 @@ function AfiliadosPage() {
   };
 
   const tierInfo = useMemo(() => {
-    const tiers = [
-      { label: "Bronce", min: 0,  max: 4,  pct: 30,  color: "text-orange-400" },
-      { label: "Plata",  min: 5,  max: 9,  pct: 35,  color: "text-slate-400" },
-      { label: "Oro",    min: 10, max: 24, pct: 40,  color: "text-warning" },
-      { label: "Platino",min: 25, max: Infinity, pct: 50, color: "text-primary" },
-    ];
+    // Tiers depend on current plan
+    const isPro   = plan === "pro";
+    const isBasic = plan === "basic";
+    const tiers = isPro
+      ? [
+          { label: "Pro Base",    min: 0,  pct: 30, color: "text-primary" },
+          { label: "Pro Plata",   min: 5,  pct: 40, color: "text-slate-400" },
+          { label: "Pro Platino", min: 10, pct: 50, color: "text-warning" },
+        ]
+      : isBasic
+      ? [
+          { label: "Basic Base",  min: 0,  pct: 20, color: "text-orange-400" },
+          { label: "Basic Plata", min: 5,  pct: 25, color: "text-slate-400" },
+          { label: "Basic Oro",   min: 10, pct: 30, color: "text-success" },
+        ]
+      : [
+          { label: "Free",        min: 0,  pct: 15, color: "text-muted-foreground" },
+        ];
     const current = [...tiers].reverse().find(t => stats.active >= t.min) ?? tiers[0];
     const next    = tiers[tiers.indexOf(current) + 1];
     const progress = next
       ? Math.min(100, ((stats.active - current.min) / (next.min - current.min)) * 100)
       : 100;
-    return { current, next, progress };
-  }, [stats.active]);
+    return { current, next, progress, tiers, isPro, isBasic };
+  }, [stats.active, plan]);
 
   const copy = async (val: string, kind: "code" | "url") => {
     try { await navigator.clipboard.writeText(val); setCopied(kind); setTimeout(() => setCopied(null), 1500); } catch {}
@@ -250,18 +262,13 @@ function AfiliadosPage() {
             </div>
           )}
           <div className="mt-4 pt-4 border-t border-border space-y-1.5 text-[11px]">
-            {[
-              { label: "Bronce (1–4 ref.)",  pct: 30 },
-              { label: "Plata (5–9 ref.)",   pct: 35 },
-              { label: "Oro (10–24 ref.)",   pct: 40 },
-              { label: "Platino (25+ ref.)", pct: 50 },
-            ].map(t => (
-              <div key={t.label} className={`flex items-center justify-between ${t.pct === stats.commission ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
+            {tierInfo.tiers.map(t => (
+              <div key={t.label} className={`flex items-center justify-between ${t.pct === commission ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
                 <span className="flex items-center gap-1">
-                  {t.pct === stats.commission && <ChevronRight className="h-3 w-3 text-primary" />}
-                  {t.label}
+                  {t.pct === commission && <ChevronRight className="h-3 w-3 text-primary" />}
+                  {t.label} {t.min > 0 ? `(${t.min}+ ref.)` : "(base)"}
                 </span>
-                <span className="font-mono">{t.pct}%</span>
+                <span className={`font-mono ${t.pct === commission ? "text-primary" : ""}`}>{t.pct}%</span>
               </div>
             ))}
           </div>
@@ -330,6 +337,38 @@ function AfiliadosPage() {
           </div>
         )}
       </div>
+
+      {/* Upgrade CTA for free/basic users */}
+      {!tierInfo.isPro && (
+        <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/8 to-surface/40 p-5">
+          <div className="flex items-start gap-4">
+            <div className="text-2xl shrink-0">🚀</div>
+            <div className="flex-1">
+              <div className="font-semibold text-sm mb-1">
+                {tierInfo.isBasic
+                  ? "Pásate a Pro y empieza desde el 30% — no el 20%"
+                  : "Activa Basic o Pro para ganar comisiones reales"}
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                {tierInfo.isBasic
+                  ? `Con Pro empezarías ganando un 30% desde el primer referido (ahora ganas 20%). Con 10 referidos llegarías al 50%.`
+                  : `Con el plan Free estás limitado al 15%. Basic te da 20% base, Pro te da 30% base con opción de llegar al 50%.`}
+              </p>
+              <div className="flex items-center gap-3 text-xs">
+                <div className={`px-3 py-1.5 rounded-lg border font-semibold ${tierInfo.isBasic ? "border-border text-muted-foreground" : "border-border text-muted-foreground"}`}>
+                  Free: 15% fijo
+                </div>
+                <div className={`px-3 py-1.5 rounded-lg border font-semibold ${tierInfo.isBasic ? "border-primary/30 bg-primary/8 text-primary" : "border-border text-muted-foreground"}`}>
+                  Basic: 20%→30%
+                </div>
+                <div className="px-3 py-1.5 rounded-lg border border-warning/30 bg-warning/8 text-warning font-semibold">
+                  Pro: 30%→50% 🔥
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* How it works */}
       <div className="rounded-2xl border border-border bg-surface/40 p-5">
