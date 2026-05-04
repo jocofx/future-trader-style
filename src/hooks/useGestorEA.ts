@@ -77,15 +77,16 @@ export function useGestorEA(userId: string | null) {
   useEffect(() => {
     if (!userId) return
     load()
-    const interval = setInterval(load, 10_000)
+    const interval = setInterval(load, 15_000)
     return () => clearInterval(interval)
   }, [userId, load])
 
-  // Mark EAs as disconnected if last_ping > 30s ago
+  // Trust DB status — only override to 'disconnected' if ping is very old (5+ min)
+  // This prevents false flicker from polling/ping timing differences
   const withStatus = instances.map(ea => {
-    if (ea.last_ping) {
+    if (ea.status === 'active' && ea.last_ping) {
       const secondsAgo = (Date.now() - new Date(ea.last_ping).getTime()) / 1000
-      if (secondsAgo > 30 && ea.status === 'active') {
+      if (secondsAgo > 300) {  // 5 minutes = truly disconnected
         return { ...ea, status: 'disconnected' as EAStatus }
       }
     }
