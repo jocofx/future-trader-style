@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   User, Mail, Camera, Crown, Shield, Bell, Globe, Moon, Sun, Monitor, KeyRound,
-  CreditCard, Download, LogOut, Trash2, Edit3, Check, X, Sparkles, Zap, Trophy,
+  CreditCard, Download, LogOut, Trash2, Edit3, Check, Save, X, Sparkles, Zap, Trophy,
   Calendar, BarChart3, ShieldCheck, ChevronRight, ExternalLink, AlertTriangle,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useCheckout } from "@/hooks/useCheckout";
+import { useNotifPrefs } from "@/hooks/useNotifPrefs";
+import type { NotifPrefs, NotifPref } from "@/hooks/useNotifPrefs";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/components/theme-provider";
 import { Modal, Field, inputCls, ModalButton } from "@/components/Modal";
@@ -20,6 +22,8 @@ type Tab = "general" | "seguridad" | "notificaciones" | "facturacion" | "prefere
 function PerfilPage() {
   const { startCheckout, loading: checkoutLoading } = useCheckout();
   const { user, plan, trades: { trades } } = useApp();
+  const notif = useNotifPrefs(user?.id ?? null);
+  useEffect(() => { if (user?.id) notif.load(); }, [user?.id]);
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("general");
   const [editing, setEditing] = useState(false);
@@ -290,17 +294,13 @@ function PerfilPage() {
       )}
 
       {tab === "notificaciones" && (
-        <Section title="Notificaciones" subtitle="Elige qué quieres recibir y por dónde">
-          <div className="space-y-2">
-            {[
-              { id: "n1", label: "Resumen diario", desc: "Tu rendimiento del día a las 22:00", email: true,  push: true },
-              { id: "n2", label: "Alerta de regla rota", desc: "Cuando se incumpla una regla de riesgo", email: true,  push: true },
-              { id: "n3", label: "Logros desbloqueados", desc: "Cada vez que ganes una medalla", email: false, push: true },
-              { id: "n4", label: "Pre-Market diario", desc: "Eventos del calendario económico", email: true,  push: false },
-              { id: "n5", label: "Newsletter TradyncApp", desc: "Tips y novedades semanales", email: true,  push: false },
-            ].map((n) => <NotificationRow key={n.id} item={n} />)}
-          </div>
-        </Section>
+        <NotificacionesTab
+          prefs={notif.prefs}
+          pushGranted={notif.pushGranted}
+          onSave={notif.save}
+          onRequestPush={notif.requestPush}
+          onTestPush={notif.testPush}
+        />
       )}
 
       {tab === "facturacion" && (
@@ -481,6 +481,166 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     >
       <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-background shadow transition-transform ${checked ? "translate-x-4" : ""}`} />
     </button>
+  );
+}
+
+// ── Notifications Tab ─────────────────────────────────────────────
+function NotifRow({ label, desc, icon, pref, time, onChangePref, onChangeTime, showTime = false }: {
+  label: string; desc: string; icon: string;
+  pref: NotifPref;
+  time?: string;
+  onChangePref: (p: NotifPref) => void;
+  onChangeTime?: (t: string) => void;
+  showTime?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-2/40 p-4 space-y-3 hover:border-primary/20 transition">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-xl shrink-0">{icon}</span>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold">{label}</div>
+            <div className="text-[11px] text-muted-foreground">{desc}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 shrink-0">
+          <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
+            <Mail className="h-3 w-3" /> Email
+            <Toggle checked={pref.email} onChange={v => onChangePref({ ...pref, email: v })} />
+          </label>
+          <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
+            <Bell className="h-3 w-3" /> Push
+            <Toggle checked={pref.push} onChange={v => onChangePref({ ...pref, push: v })} />
+          </label>
+        </div>
+      </div>
+      {showTime && (pref.push || pref.email) && onChangeTime && (
+        <div className="flex items-center gap-2 pl-9">
+          <span className="text-[11px] text-muted-foreground">Hora:</span>
+          <input type="time" value={pref.time ?? "09:00"}
+            onChange={e => onChangePref({ ...pref, time: e.target.value })}
+            className="bg-surface/80 border border-border rounded-lg px-2.5 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring" />
+          <span className="text-[11px] text-muted-foreground">hora local</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NotificacionesTab({ prefs, pushGranted, onSave, onRequestPush, onTestPush }: {
+  prefs: NotifPrefs;
+  pushGranted: boolean;
+  onSave: (p: NotifPrefs) => Promise<void>;
+  onRequestPush: () => Promise<boolean>;
+  onTestPush: (title: string, body: string) => void;
+}) {
+  const [local, setLocal] = useState<NotifPrefs>(prefs);
+  const [saving, setSaving] = useState(false);
+  const [saved,  setSaved]  = useState(false);
+
+  // Sync when prefs load from DB
+  useEffect(() => { setLocal(prefs); }, [prefs]);
+
+  const update = (key: keyof NotifPrefs, p: NotifPref) =>
+    setLocal(prev => ({ ...prev, [key]: p }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(local);
+    setSaving(false); setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Push permission banner */}
+      {!pushGranted && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border border-warning/30 bg-warning/8">
+          <span className="text-lg shrink-0">🔔</span>
+          <div className="flex-1">
+            <div className="text-sm font-semibold">Activa las notificaciones del navegador</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Para recibir recordatorios en tiempo real necesitas dar permiso al navegador.
+            </div>
+            <button onClick={onRequestPush}
+              className="mt-2 text-xs font-semibold text-primary hover:underline">
+              Activar notificaciones push →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {pushGranted && (
+        <div className="flex items-center justify-between p-3 rounded-xl border border-success/20 bg-success/5">
+          <div className="flex items-center gap-2 text-xs text-success font-semibold">
+            <Check className="h-3.5 w-3.5" /> Notificaciones push activadas
+          </div>
+          <button onClick={() => onTestPush("🔔 TradyncApp", "Las notificaciones funcionan correctamente ✅")}
+            className="text-xs text-muted-foreground hover:text-foreground underline">
+            Probar
+          </button>
+        </div>
+      )}
+
+      {/* Informativas */}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          📊 Informativas y alertas
+        </div>
+        <div className="space-y-2">
+          <NotifRow label="Resumen diario" desc="Tu rendimiento, estadísticas y balance del día" icon="📊"
+            pref={local.resumen_diario} showTime
+            onChangePref={p => update("resumen_diario", p)} />
+          <NotifRow label="Alerta de regla rota" desc="Cuando superes un límite de riesgo configurado" icon="🚨"
+            pref={local.alerta_riesgo}
+            onChangePref={p => update("alerta_riesgo", p)} />
+          <NotifRow label="Logros desbloqueados" desc="Cuando alcances un hito o medalla de trading" icon="🏆"
+            pref={local.logros}
+            onChangePref={p => update("logros", p)} />
+          <NotifRow label="Pre-Market diario" desc="Recordatorio de eventos económicos del día" icon="📅"
+            pref={local.premarket_diario} showTime
+            onChangePref={p => update("premarket_diario", p)} />
+          <NotifRow label="Newsletter TradyncApp" desc="Tips, mejoras y novedades de la plataforma" icon="📬"
+            pref={local.newsletter}
+            onChangePref={p => update("newsletter", p)} />
+        </div>
+      </div>
+
+      {/* Recordatorios */}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          ⏰ Recordatorios diarios
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Se envían a la hora que configures. Requieren <span className="font-semibold text-foreground">notificaciones push activadas</span> para funcionar en el navegador.
+        </p>
+        <div className="space-y-2">
+          <NotifRow label="Recordatorio — Diario" desc="Aviso para escribir tu reflexión del día" icon="✍️"
+            pref={local.recordatorio_diario} showTime
+            onChangePref={p => update("recordatorio_diario", p)} />
+          <NotifRow label="Recordatorio — Hábitos" desc="Aviso para registrar tus hábitos diarios" icon="💪"
+            pref={local.recordatorio_habitos} showTime
+            onChangePref={p => update("recordatorio_habitos", p)} />
+          <NotifRow label="Recordatorio — Pre-Market" desc="Aviso para completar el checklist antes de operar" icon="📋"
+            pref={local.recordatorio_premarket} showTime
+            onChangePref={p => update("recordatorio_premarket", p)} />
+          <NotifRow label="Recordatorio — Cierre del día" desc="Aviso para revisar operaciones y cerrar la sesión" icon="🔔"
+            pref={local.recordatorio_cierre} showTime
+            onChangePref={p => update("recordatorio_cierre", p)} />
+        </div>
+      </div>
+
+      {/* Save */}
+      <button onClick={handleSave} disabled={saving}
+        className="w-full h-10 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition disabled:opacity-50 flex items-center justify-center gap-2">
+        {saved ? <><Check className="h-4 w-4" />Preferencias guardadas</> : saving ? "Guardando…" : <><Save className="h-4 w-4" />Guardar preferencias</>}
+      </button>
+
+      <div className="text-xs text-muted-foreground text-center">
+        Los recordatorios push funcionan mientras tengas TradyncApp abierto en el navegador.
+        Para notificaciones cuando el navegador esté cerrado, activa las notificaciones por email.
+      </div>
+    </div>
   );
 }
 
