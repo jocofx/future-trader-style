@@ -485,12 +485,10 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 // ── Notifications Tab ─────────────────────────────────────────────
-function NotifRow({ label, desc, icon, pref, time, onChangePref, onChangeTime, showTime = false }: {
+function NotifRow({ label, desc, icon, pref, onChangePref, showTime = false }: {
   label: string; desc: string; icon: string;
   pref: NotifPref;
-  time?: string;
   onChangePref: (p: NotifPref) => void;
-  onChangeTime?: (t: string) => void;
   showTime?: boolean;
 }) {
   return (
@@ -514,7 +512,7 @@ function NotifRow({ label, desc, icon, pref, time, onChangePref, onChangeTime, s
           </label>
         </div>
       </div>
-      {showTime && (pref.push || pref.email) && onChangeTime && (
+      {showTime && (pref.push || pref.email) && (
         <div className="flex items-center gap-2 pl-9">
           <span className="text-[11px] text-muted-foreground">Hora:</span>
           <input type="time" value={pref.time ?? "09:00"}
