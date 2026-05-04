@@ -1,6 +1,25 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 
+// affiliate_payouts table
+export type AffiliatePayout = {
+  id:           string
+  affiliate_id: string
+  user_id:      string
+  amount:       number
+  method:       'paypal' | 'wise' | 'bank'
+  paypal_email: string | null
+  wise_email:   string | null
+  bank_iban:    string | null
+  bank_name:    string | null
+  bank_holder:  string | null
+  status:       'pending' | 'approved' | 'paid' | 'rejected'
+  admin_notes:  string | null
+  requested_at: string
+  processed_at: string | null
+  created_at:   string
+}
+
 // affiliates table
 export type AffiliateProfile = {
   id:                 string
@@ -35,6 +54,7 @@ export type AffiliateConversion = {
 export function useAfiliados(userId: string | null, userPlan: string = "free") {
   const [profile,     setProfile]     = useState<AffiliateProfile | null>(null)
   const [conversions, setConversions] = useState<AffiliateConversion[]>([])
+  const [payouts,     setPayouts]     = useState<AffiliatePayout[]>([])
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState<string | null>(null)
 
@@ -64,6 +84,15 @@ export function useAfiliados(userId: string | null, userPlan: string = "free") {
           .limit(100)
 
         setConversions((convs ?? []) as AffiliateConversion[])
+
+        // Load payout history
+        const { data: pays } = await supabase
+          .from('affiliate_payouts')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(20)
+        setPayouts((pays ?? []) as AffiliatePayout[])
       } else {
         // Create profile
         const codigo = 'TRADYNCAPP-' + userId.slice(0, 6).toUpperCase()
@@ -123,26 +152,46 @@ export function useAfiliados(userId: string | null, userPlan: string = "free") {
   }
   const commission = getCommission(userPlan, stats.activos)
 
-  const requestPayout = async (paypalEmail: string) => {
-    if (!profile) return
-    const { error } = await supabase
-      .from('affiliates')
-      .update({ paypal_email: paypalEmail })
-      .eq('id', profile.id)
-    if (error) throw error
-    // Log request in configuracion
-    await supabase.from('configuracion').upsert({
-      user_id:    userId!,
-      clave:      'payout_request',
-      valor:      {
+  const requestPayout = async (data: {
+    method:       'paypal' | 'wise' | 'bank'
+    paypal_email?: string
+    wise_email?:   string
+    bank_iban?:    string
+    bank_name?:    string
+    bank_holder?:  string
+  }) => {
+    if (!profile || !userId) throw new Error('No profile')
+    if (stats.pendiente <= 0) throw new Error('Sin saldo pendiente')
+
+    // Save payment method on affiliate profile
+    const updateData: Record<string, string> = {}
+    if (data.paypal_email) updateData.paypal_email = data.paypal_email
+    if (Object.keys(updateData).length > 0) {
+      await supabase.from('affiliates').update(updateData).eq('id', profile.id)
+    }
+
+    // Create payout request
+    const { data: payout, error } = await supabase
+      .from('affiliate_payouts')
+      .insert({
+        affiliate_id: profile.id,
+        user_id:      userId,
         amount:       stats.pendiente,
-        paypal:       paypalEmail,
-        requested_at: new Date().toISOString(),
-        status:       'pending'
-      },
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,clave' })
+        method:       data.method,
+        paypal_email: data.paypal_email ?? null,
+        wise_email:   data.wise_email   ?? null,
+        bank_iban:    data.bank_iban    ?? null,
+        bank_name:    data.bank_name    ?? null,
+        bank_holder:  data.bank_holder  ?? null,
+        status:       'pending',
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+    setPayouts(prev => [payout as AffiliatePayout, ...prev])
+    return payout
   }
 
-  return { profile, conversions, loading, error, stats, commission, load, requestPayout }
+  return { profile, conversions, payouts, loading, error, stats, commission, load, requestPayout }
 }

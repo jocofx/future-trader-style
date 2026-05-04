@@ -30,6 +30,7 @@ import { Route as AppCapitalRouteImport } from './routes/app.capital'
 import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
 import { Route as AppBrokerRouteImport } from './routes/app.broker'
 import { Route as AppAfiliadosRouteImport } from './routes/app.afiliados'
+import { Route as AdminAfiliadosRouteImport } from './routes/admin.afiliados'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -136,11 +137,17 @@ const AppAfiliadosRoute = AppAfiliadosRouteImport.update({
   path: '/afiliados',
   getParentRoute: () => AppRoute,
 } as any)
+const AdminAfiliadosRoute = AdminAfiliadosRouteImport.update({
+  id: '/admin/afiliados',
+  path: '/admin/afiliados',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/afiliados': typeof AdminAfiliadosRoute
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/admin/afiliados': typeof AdminAfiliadosRoute
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/afiliados': typeof AdminAfiliadosRoute
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/admin/afiliados'
     | '/app/afiliados'
     | '/app/broker'
     | '/app/calendario'
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/admin/afiliados'
     | '/app/afiliados'
     | '/app/broker'
     | '/app/calendario'
@@ -257,6 +268,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/admin/afiliados'
     | '/app/afiliados'
     | '/app/broker'
     | '/app/calendario'
@@ -281,6 +293,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  AdminAfiliadosRoute: typeof AdminAfiliadosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -432,6 +445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAfiliadosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/admin/afiliados': {
+      id: '/admin/afiliados'
+      path: '/admin/afiliados'
+      fullPath: '/admin/afiliados'
+      preLoaderRoute: typeof AdminAfiliadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -483,6 +503,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  AdminAfiliadosRoute: AdminAfiliadosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

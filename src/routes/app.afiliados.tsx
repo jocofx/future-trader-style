@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Users2, Copy, Check, DollarSign, Share2, TrendingUp, Gift, Crown,
   Twitter, Send, Mail, Sparkles, Zap, ArrowUpRight, Trophy,
-  Wallet, Clock, ExternalLink, AlertCircle, ChevronRight,
+  Wallet, Clock, ExternalLink, AlertCircle, ChevronRight, X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/afiliados")({ component: AfiliadosPage });
@@ -24,6 +24,157 @@ function convStatus(c: { monto: number; pagado: boolean }) {
   if (c.pagado) return "paid";
   if (c.monto > 0) return "active";
   return "trial";
+}
+
+// ── Payout Request Modal ──────────────────────────────────────────
+function PayoutModal({ amount, onClose, onSubmit }: {
+  amount: number;
+  onClose: () => void;
+  onSubmit: (data: any) => Promise<void>;
+}) {
+  const [method, setMethod] = useState<"paypal"|"wise"|"bank">("paypal");
+  const [paypalEmail, setPaypalEmail] = useState("");
+  const [wiseEmail,   setWiseEmail]   = useState("");
+  const [bankIban,    setBankIban]    = useState("");
+  const [bankName,    setBankName]    = useState("");
+  const [bankHolder,  setBankHolder]  = useState("");
+  const [submitting,  setSubmitting]  = useState(false);
+  const [err,         setErr]         = useState("");
+
+  const handleSubmit = async () => {
+    setErr("");
+    if (method === "paypal" && !paypalEmail.includes("@")) return setErr("Introduce un email de PayPal válido");
+    if (method === "wise"   && !wiseEmail.includes("@"))   return setErr("Introduce un email de Wise válido");
+    if (method === "bank"   && bankIban.length < 10)        return setErr("Introduce un IBAN válido");
+    if (method === "bank"   && !bankHolder.trim())          return setErr("Introduce el titular de la cuenta");
+
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        method,
+        paypal_email: method === "paypal" ? paypalEmail : undefined,
+        wise_email:   method === "wise"   ? wiseEmail   : undefined,
+        bank_iban:    method === "bank"   ? bankIban    : undefined,
+        bank_name:    method === "bank"   ? bankName    : undefined,
+        bank_holder:  method === "bank"   ? bankHolder  : undefined,
+      });
+      onClose();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Error al enviar solicitud");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const METHODS = [
+    { key: "paypal" as const, label: "PayPal",       icon: "🅿️",  desc: "Más rápido, 1-2 días" },
+    { key: "wise"   as const, label: "Wise",          icon: "🌍",  desc: "Internacional, mejor cambio" },
+    { key: "bank"   as const, label: "Transferencia", icon: "🏦",  desc: "3-5 días hábiles" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div>
+            <div className="font-bold text-base">Solicitar retiro</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Importe disponible: <span className="font-mono font-bold text-success">{fmtUSD(amount)}</span></div>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* Method selector */}
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block mb-2">Método de pago</label>
+            <div className="grid grid-cols-3 gap-2">
+              {METHODS.map(m => (
+                <button key={m.key} onClick={() => setMethod(m.key)}
+                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition ${
+                    method === m.key
+                      ? "border-primary/50 bg-primary/8 text-primary"
+                      : "border-border bg-surface-2/40 text-muted-foreground hover:border-primary/30"
+                  }`}>
+                  <span className="text-xl">{m.icon}</span>
+                  <span className="text-xs font-semibold">{m.label}</span>
+                  <span className="text-[10px] opacity-70">{m.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Payment details */}
+          {method === "paypal" && (
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block mb-1.5">Email de PayPal</label>
+              <input value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)}
+                placeholder="tu@paypal.com" type="email"
+                className="w-full bg-surface/80 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+          )}
+
+          {method === "wise" && (
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block mb-1.5">Email de Wise</label>
+              <input value={wiseEmail} onChange={e => setWiseEmail(e.target.value)}
+                placeholder="tu@wise.com" type="email"
+                className="w-full bg-surface/80 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+          )}
+
+          {method === "bank" && (
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block mb-1.5">IBAN</label>
+                <input value={bankIban} onChange={e => setBankIban(e.target.value.toUpperCase())}
+                  placeholder="ES12 3456 7890 1234 5678 9012"
+                  className="w-full bg-surface/80 border border-border rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block mb-1.5">Titular de la cuenta</label>
+                <input value={bankHolder} onChange={e => setBankHolder(e.target.value)}
+                  placeholder="Nombre Apellidos"
+                  className="w-full bg-surface/80 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block mb-1.5">Banco (opcional)</label>
+                <input value={bankName} onChange={e => setBankName(e.target.value)}
+                  placeholder="Nombre del banco"
+                  className="w-full bg-surface/80 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+            </div>
+          )}
+
+          {/* Info */}
+          <div className="rounded-xl bg-info/5 border border-info/20 p-3 text-xs text-muted-foreground space-y-1">
+            <div className="flex items-center gap-2 text-info font-semibold"><AlertCircle className="h-3.5 w-3.5" />Información</div>
+            <div>• Los pagos se procesan manualmente en los primeros 5 días de cada mes.</div>
+            <div>• Mínimo de retiro: <span className="font-semibold text-foreground">$20</span></div>
+            <div>• Recibirás confirmación por email cuando se procese.</div>
+          </div>
+
+          {err && <div className="text-destructive text-xs bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">{err}</div>}
+
+          <div className="flex gap-2">
+            <button onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold hover:bg-surface transition">
+              Cancelar
+            </button>
+            <button onClick={handleSubmit} disabled={submitting || amount < 20}
+              className="flex-1 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition disabled:opacity-50 flex items-center justify-center gap-2">
+              {submitting ? "Enviando…" : <><Check className="h-4 w-4" />Solicitar {fmtUSD(amount)}</>}
+            </button>
+          </div>
+          {amount < 20 && (
+            <div className="text-center text-xs text-muted-foreground">Mínimo $20 para solicitar retiro (tienes {fmtUSD(amount)})</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function AfiliadosPage() {
@@ -96,16 +247,14 @@ function AfiliadosPage() {
     window.open(links[network], "_blank", "noopener,noreferrer");
   };
 
-  const [paypalEmail, setPaypalEmail] = useState(aff.profile?.paypal_email ?? "");
   const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [payoutSuccess,   setPayoutSuccess]   = useState(false);
 
-  const handlePayout = async () => {
-    if (!paypalEmail.trim()) { setShowPayoutModal(true); return; }
-    try {
-      await aff.requestPayout(paypalEmail);
-      setPayoutRequested(true);
-      setTimeout(() => setPayoutRequested(false), 3000);
-    } catch (e) { console.error(e); }
+  const handlePayoutSubmit = async (data: any) => {
+    await aff.requestPayout(data);
+    setPayoutSuccess(true);
+    setTimeout(() => setPayoutSuccess(false), 4000);
+    await aff.load();
   };
 
   if (aff.loading) return (
@@ -113,6 +262,7 @@ function AfiliadosPage() {
   );
 
   return (
+    <>
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div>
@@ -158,12 +308,12 @@ function AfiliadosPage() {
               <span className="flex items-center gap-1.5"><TrendingUp className="h-3 w-3 text-info" /> {stats.clicks} clics en tu enlace</span>
             </div>
           </div>
-          {stats.pending > 0 && (
-            <button onClick={handlePayout}
-              className="h-11 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition shadow-glow inline-flex items-center gap-2">
-              {payoutRequested ? <><Check className="h-4 w-4" />Solicitud enviada</> : <><Wallet className="h-4 w-4" />Solicitar pago</>}
-            </button>
-          )}
+          <button onClick={() => setShowPayoutModal(true)}
+            disabled={stats.pending < 20}
+            className="h-11 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition shadow-glow inline-flex items-center gap-2 disabled:opacity-40">
+            <Wallet className="h-4 w-4" />
+            {stats.pending >= 20 ? `Retirar ${fmtUSD(stats.pending)}` : `Mínimo $20 (tienes ${fmtUSD(stats.pending)})`}
+          </button>
         </div>
       </div>
 
@@ -391,5 +541,22 @@ function AfiliadosPage() {
         </div>
       </div>
     </div>
+
+    {/* Payout modal */}
+    {showPayoutModal && (
+      <PayoutModal
+        amount={stats.pending}
+        onClose={() => setShowPayoutModal(false)}
+        onSubmit={handlePayoutSubmit}
+      />
+    )}
+
+    {/* Success toast */}
+    {payoutSuccess && (
+      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-success text-white shadow-lg text-sm font-semibold">
+        <Check className="h-4 w-4" /> Solicitud enviada — te avisamos cuando se procese
+      </div>
+    )}
+    </>
   );
 }
