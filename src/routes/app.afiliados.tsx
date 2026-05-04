@@ -16,7 +16,15 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   active:  { label: "Activo",    cls: "text-success bg-success/10 border-success/25" },
   trial:   { label: "Prueba",    cls: "text-info bg-info/10 border-info/25" },
   churned: { label: "Cancelado", cls: "text-muted-foreground bg-surface-3 border-border" },
+  paid:    { label: "Pagado",    cls: "text-success bg-success/10 border-success/25" },
+  pending: { label: "Pendiente", cls: "text-warning bg-warning/10 border-warning/25" },
 };
+
+function convStatus(c: { monto: number; pagado: boolean }) {
+  if (c.pagado) return "paid";
+  if (c.monto > 0) return "active";
+  return "trial";
+}
 
 function AfiliadosPage() {
   const { user } = useApp();
@@ -28,20 +36,23 @@ function AfiliadosPage() {
   const [payoutRequested, setPayoutRequested] = useState(false);
 
   // Fallback code from user id if no profile yet
-  const code = aff.profile?.code ?? ("TRADYNCAPP-" + (user?.id ?? "XXXX").slice(0, 6).toUpperCase());
+  const code = aff.profile?.codigo ?? ("TRADYNCAPP-" + (user?.id ?? "XXXX").slice(0, 6).toUpperCase());
   const url  = `https://tradyncapp.com/r/${code.toLowerCase()}`;
 
-  const stats = useMemo(() => {
-    const active  = aff.conversions.filter(c => c.status === "active").length;
-    const trial   = aff.conversions.filter(c => c.status === "trial").length;
-    const earned  = aff.profile?.total_earned ?? aff.conversions.reduce((s, c) => s + (c.earned ?? 0), 0);
-    const pending = aff.profile?.pending ?? 0;
-    const paid    = aff.profile?.total_paid ?? 0;
-    const clicks  = aff.profile?.clicks ?? 0;
-    const conv    = aff.conversions.length ? (active / aff.conversions.length) * 100 : 0;
-    const commission = aff.profile?.commission ?? 30;
-    return { active, trial, earned, pending, paid, clicks, conv, commission, total: aff.conversions.length };
-  }, [aff.profile, aff.conversions]);
+  // Use stats computed by the hook from real schema
+  const s          = aff.stats;
+  const commission = aff.commission;
+  const stats = {
+    active:     s.activos,
+    trial:      aff.conversions.filter(c => !c.pagado && c.monto === 0).length,
+    earned:     s.totalGanado,
+    pending:    s.pendiente,
+    paid:       s.pagado,
+    clicks:     s.totalClicks,
+    conv:       s.convRate,
+    commission,
+    total:      aff.conversions.length,
+  };
 
   const tierInfo = useMemo(() => {
     const tiers = [
@@ -73,10 +84,16 @@ function AfiliadosPage() {
     window.open(links[network], "_blank", "noopener,noreferrer");
   };
 
+  const [paypalEmail, setPaypalEmail] = useState(aff.profile?.paypal_email ?? "");
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+
   const handlePayout = async () => {
-    await aff.requestPayout();
-    setPayoutRequested(true);
-    setTimeout(() => setPayoutRequested(false), 3000);
+    if (!paypalEmail.trim()) { setShowPayoutModal(true); return; }
+    try {
+      await aff.requestPayout(paypalEmail);
+      setPayoutRequested(true);
+      setTimeout(() => setPayoutRequested(false), 3000);
+    } catch (e) { console.error(e); }
   };
 
   if (aff.loading) return (
@@ -279,8 +296,8 @@ function AfiliadosPage() {
               </thead>
               <tbody>
                 {aff.conversions.map(c => {
-                  const meta = STATUS_META[c.status] ?? STATUS_META.trial;
-                  const initials = (c.referred_name ?? c.referred_email ?? "??").split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase();
+                  const meta = STATUS_META[convStatus(c)] ?? STATUS_META.trial;
+                  const initials = (c.referred_email ?? "??").slice(0, 2).toUpperCase();
                   return (
                     <tr key={c.id} className="border-b border-border/60 hover:bg-surface/40 transition">
                       <td className="py-3 px-4">
@@ -289,8 +306,8 @@ function AfiliadosPage() {
                             {initials}
                           </div>
                           <div className="min-w-0">
-                            <div className="font-semibold text-sm truncate">{c.referred_name ?? "Usuario"}</div>
-                            <div className="text-[10px] text-muted-foreground font-mono truncate">{c.referred_email ?? "—"}</div>
+                            <div className="font-semibold text-sm truncate">{c.referred_email ?? "Usuario referido"}</div>
+                            <div className="text-[10px] text-muted-foreground font-mono truncate">{c.mes ?? c.created_at.slice(0,7)}</div>
                           </div>
                         </div>
                       </td>
@@ -302,8 +319,9 @@ function AfiliadosPage() {
                       </td>
                       <td className="py-3 px-4 text-[11px] text-muted-foreground font-mono">
                         {new Date(c.created_at).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" })}
+                        {c.mes && <span className="ml-1 text-muted-foreground/60">({c.mes})</span>}
                       </td>
-                      <td className="py-3 px-4 font-mono font-semibold text-primary">{fmtUSD(c.earned ?? 0)}</td>
+                      <td className="py-3 px-4 font-mono font-semibold text-primary">{fmtUSD(c.comision ?? 0)}</td>
                     </tr>
                   );
                 })}
