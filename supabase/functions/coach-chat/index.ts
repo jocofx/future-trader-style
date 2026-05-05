@@ -56,19 +56,20 @@ Deno.serve(async (req) => {
 
     // Check Pro message quota (simple: count messages today)
     if (isPro && appApiKey) {
-      const today = new Date().toISOString().slice(0, 10);
+      // Monthly quota key (YYYY-MM)
+    const today = new Date().toISOString().slice(0, 7);
       const { count } = await supabase
         .from("configuracion")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
-        .eq("clave", `coach_msg_${today}`);
+        .eq("clave", `coach_msg_month_${today}`);
 
       // Get current count
       const { data: quota } = await supabase
         .from("configuracion")
         .select("valor")
         .eq("user_id", user.id)
-        .eq("clave", `coach_msg_${today}`)
+        .eq("clave", `coach_msg_month_${today}`)
         .maybeSingle();
 
       const used = (quota?.valor as number) ?? 0;
@@ -77,7 +78,7 @@ Deno.serve(async (req) => {
       // Increment counter
       await supabase.from("configuracion").upsert({
         user_id: user.id,
-        clave: `coach_msg_${today}`,
+        clave: `coach_msg_month_${today}`,
         valor: used + 1,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id,clave" });

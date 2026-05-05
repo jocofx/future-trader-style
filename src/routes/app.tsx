@@ -9,6 +9,7 @@ import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/context/AppContext";
+import { IS_TEST_MODE } from "@/lib/stripe";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { computeStats } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
