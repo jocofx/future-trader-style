@@ -4,6 +4,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
+import { usePlan } from "@/hooks/usePlan";
 import type { Trade } from "@/lib/types";
 
 export const Route = createFileRoute("/app/operaciones")({
