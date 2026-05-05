@@ -40,13 +40,11 @@ function tradeMatchesAnyAccount(tradeCuenta: string | null, accounts: Account[])
 function filterByPeriod(trades: Trade[], period: Period, account: string, accounts: Account[], accountNumero?: string | null): Trade[] {
   const now = new Date();
   return trades.filter(t => {
-    // When filtering by specific account
+    // When filtering by specific account — strict match
     if (account) {
       if (!matchesCuenta(t.cuenta, account, accountNumero)) return false;
-    } else {
-      // "Todas las cuentas" — only show trades from registered accounts
-      if (!tradeMatchesAnyAccount(t.cuenta, accounts)) return false;
     }
+    // "Todas las cuentas" — show ALL trades, no account filter
     if (period === "all") return true;
     // Normalize fecha: take YYYY-MM-DD part only to avoid timezone issues
     const d = new Date((t.fecha ?? "").slice(0, 10) + "T12:00:00");
