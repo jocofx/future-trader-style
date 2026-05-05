@@ -55,13 +55,15 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
     }
 
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      // Route through Supabase Edge Function to avoid exposing API key
+    const { data: { session } } = await supabase.auth.getSession();
+    const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`;
+    const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
+          "Authorization": `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          "x-user-api-key": apiKey, // user's own key if provided
         },
         body: JSON.stringify({
           model: "claude-3-haiku-20240307",

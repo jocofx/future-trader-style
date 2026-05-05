@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Filter, Plus, Search, Trash2 } from "lucide-react";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { UpgradeModal } from "@/components/UpgradeModal";
 import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
+import { usePlan } from "@/hooks/usePlan";
 import type { Trade } from "@/lib/types";
 
 export const Route = createFileRoute("/app/operaciones")({
@@ -53,6 +55,11 @@ function OperacionesPage() {
   const handleSave = async () => {
     if (!newTrade.instrumento?.trim()) {
       setNewTrade(p => ({ ...p, error: "El símbolo es obligatorio" }));
+      return;
+    }
+    // Check free plan limit
+    if (!canAddTrade(trades.length)) {
+      setShowUpgrade(true);
       return;
     }
     setSaving(true);
@@ -360,6 +367,9 @@ function OperacionesPage() {
       </div>
     )}
     <ConfirmModal open={confirmDeleteId !== null} title="¿Eliminar operación?" message="Se eliminará permanentemente. Esta acción no se puede deshacer." confirmLabel="Sí, eliminar" onConfirm={doDelete} onCancel={() => setConfirmDeleteId(null)} />
+    {showUpgrade && (
+      <UpgradeModal feature="max_trades" onClose={() => setShowUpgrade(false)} />
+    )}
     </>
   );
 }

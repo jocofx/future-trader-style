@@ -75,9 +75,16 @@ export function planHasFeature(plan: Plan, feature: string): boolean {
 }
 
 // Helper — get effective plan from Supabase suscripciones row
-export function getEffectivePlan(row: { plan: string; estado: string } | null): Plan {
+// Supports both old schema (estado string) and new schema (activa boolean)
+export function getEffectivePlan(row: { plan: string; estado?: string; activa?: boolean } | null): Plan {
   if (!row) return "free";
-  if (row.estado !== "active" && row.estado !== "trialing") return "free";
+  // New schema: activa boolean
+  if (typeof row.activa === "boolean") {
+    if (!row.activa) return "free";
+  } else {
+    // Legacy: estado string
+    if (row.estado !== "active" && row.estado !== "trialing") return "free";
+  }
   if (row.plan === "pro")   return "pro";
   if (row.plan === "basic") return "basic";
   return "free";

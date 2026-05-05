@@ -17,6 +17,7 @@ export function useTrades(userId: string | null) {
         .select('*')
         .eq('user_id', userId)
         .order('fecha', { ascending: false })
+        .limit(1000) // safety cap — prevents huge queries
       if (error) throw error
       // Normalise tipo (BUY/SELL) — mirrors parseSupabaseRow() from legacy JS
       const normalised = (data ?? []).map((t: any) => ({
@@ -86,11 +87,20 @@ export function useTrades(userId: string | null) {
       .from('operaciones')
       .update(changes)
       .eq('id', id)
+      .eq('user_id', userId!) // extra RLS safety
       .select()
       .single()
     if (error) throw error
-    setTrades(prev => prev.map(t => t.id === id ? (data as Trade) : t))
-    return data as Trade
+    const normalised = {
+      ...(data as any),
+      tipo:           normalizeSide((data as any).tipo ?? (data as any).direccion),
+      fecha:          ((data as any).fecha ?? '').slice(0, 10),
+      precio_entrada: (data as any).entrada   ?? null,
+      precio_salida:  (data as any).tp        ?? null,
+      lotes:          (data as any).contratos ?? null,
+    } as Trade
+    setTrades(prev => prev.map(t => t.id === id ? normalised : t))
+    return normalised
   }
 
   const remove = async (id: string) => {
