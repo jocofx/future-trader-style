@@ -24,6 +24,41 @@ function PerfilPage() {
   const { user, plan, trades: { trades } } = useApp();
   const notif = useNotifPrefs(user?.id ?? null);
   useEffect(() => { if (user?.id) notif.load(); }, [user?.id]);
+
+  // ── Preferencias state ────────────────────────────────────────
+  const [prefIdioma,   setPrefIdioma]   = useState("es");
+  const [prefTimezone, setPrefTimezone] = useState("Europe/Madrid");
+  const [prefCurrency, setPrefCurrency] = useState("EUR");
+  const [prefSavedMsg, setPrefSavedMsg] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from("configuracion").select("clave,valor")
+      .eq("user_id", user.id).in("clave", ["pref_idioma","pref_timezone","pref_currency"])
+      .then(({ data }: { data: Array<{clave: string; valor: unknown}> | null }) => {
+        data?.forEach((row: {clave: string; valor: unknown}) => {
+          if (row.clave === "pref_idioma")   setPrefIdioma(row.valor as string);
+          if (row.clave === "pref_timezone") setPrefTimezone(row.valor as string);
+          if (row.clave === "pref_currency") setPrefCurrency(row.valor as string);
+        });
+      });
+  }, [user?.id]);
+
+  const handleSavePrefs = async () => {
+    if (!user?.id) return;
+    for (const [clave, valor] of [
+      ["pref_idioma",   prefIdioma],
+      ["pref_timezone", prefTimezone],
+      ["pref_currency", prefCurrency],
+    ] as const) {
+      await supabase.from("configuracion").upsert(
+        { user_id: user.id, clave, valor, updated_at: new Date().toISOString() },
+        { onConflict: "user_id,clave" }
+      );
+    }
+    setPrefSavedMsg(true);
+    setTimeout(() => setPrefSavedMsg(false), 2000);
+  };
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("general");
   const [editing, setEditing] = useState(false);
@@ -32,7 +67,23 @@ function PerfilPage() {
 
   const name = (user?.user_metadata?.full_name as string | undefined) ?? user?.email?.split("@")[0] ?? "Trader";
   const [displayName, setDisplayName] = useState(name);
-  const [bio, setBio] = useState("Day trader. Disciplina > genio.");
+  const [bio,         setBio]         = useState("");
+  const [avatarUrl,   setAvatarUrl]   = useState<string | null>(
+    (user?.user_metadata?.avatar_url as string | null) ?? null
+  );
+  const [avatarLoading, setAvatarLoading] = useState(false);
+
+  // Load profile from DB on mount
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("full_name, avatar_url").eq("id", user.id).maybeSingle()
+      .then(({ data }: { data: {full_name: string|null; avatar_url: string|null} | null }) => {
+        if (data?.full_name) setDisplayName(data.full_name);
+        if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+      });
+    supabase.from("configuracion").select("valor").eq("user_id", user.id).eq("clave", "perfil_bio").maybeSingle()
+      .then(({ data }: { data: {valor: unknown} | null }) => { if (data?.valor) setBio(data.valor as string); });
+  }, [user?.id]);
 
   const initials = useMemo(() => {
     return (displayName || "?").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?";
@@ -51,10 +102,40 @@ function PerfilPage() {
   };
 
   const handleSaveProfile = async () => {
-    if (user) {
-      await supabase.auth.updateUser({ data: { full_name: displayName } });
+    if (!user) return;
+    // Update auth metadata
+    await supabase.auth.updateUser({ data: { full_name: displayName } });
+    // Update profiles table
+    await supabase.from("profiles").upsert({ id: user.id, full_name: displayName, updated_at: new Date().toISOString() }, { onConflict: "id" });
+    // Save bio in configuracion
+    if (bio.trim()) {
+      await supabase.from("configuracion").upsert({
+        user_id: user.id, clave: "perfil_bio", valor: bio, updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,clave" });
     }
     setEditing(false);
+  };
+
+  // ── Avatar upload ──────────────────────────────────────────────
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setAvatarLoading(true);
+    try {
+      const ext  = file.name.split(".").pop();
+      const path = `avatars/${user.id}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      setAvatarUrl(publicUrl);
+      await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
+      await supabase.from("profiles").upsert({ id: user.id, avatar_url: publicUrl, updated_at: new Date().toISOString() }, { onConflict: "id" });
+    } catch (err) {
+      console.error("Avatar upload:", err);
+      alert("Error al subir la foto. Asegúrate de que el bucket 'avatars' existe en Supabase Storage.");
+    } finally {
+      setAvatarLoading(false);
+    }
   };
 
   const planMeta = ({
@@ -103,12 +184,17 @@ function PerfilPage() {
         <div className="relative grid lg:grid-cols-[auto_1fr_auto] gap-6 items-center">
           {/* Avatar */}
           <div className="relative mx-auto lg:mx-0">
-            <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-primary to-primary-glow text-primary-foreground grid place-items-center text-3xl font-bold shadow-[0_0_24px_color-mix(in_oklab,var(--primary)_45%,transparent)]">
-              {initials}
-            </div>
-            <button className="absolute -bottom-1 -right-1 h-8 w-8 grid place-items-center rounded-full bg-surface border border-border hover:border-primary/40 hover:text-primary transition shadow">
-              <Camera className="h-3.5 w-3.5" />
-            </button>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={displayName} className="h-24 w-24 rounded-2xl object-cover shadow-[0_0_24px_color-mix(in_oklab,var(--primary)_45%,transparent)]" />
+            ) : (
+              <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-primary to-primary-glow text-primary-foreground grid place-items-center text-3xl font-bold shadow-[0_0_24px_color-mix(in_oklab,var(--primary)_45%,transparent)]">
+                {initials}
+              </div>
+            )}
+            <label className={`absolute -bottom-1 -right-1 h-8 w-8 grid place-items-center rounded-full bg-surface border border-border hover:border-primary/40 hover:text-primary transition shadow cursor-pointer ${avatarLoading ? "opacity-50 pointer-events-none" : ""}`}>
+              {avatarLoading ? <span className="animate-spin text-xs">⏳</span> : <Camera className="h-3.5 w-3.5" />}
+              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+            </label>
           </div>
 
           {/* Info */}
@@ -290,6 +376,12 @@ function PerfilPage() {
               </button>
             </div>
           </Section>
+          <div className="flex justify-end">
+            <button onClick={handleSavePrefs}
+              className="h-9 px-5 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition flex items-center gap-2">
+              {prefSavedMsg ? <><Check className="h-4 w-4" />Guardado</> : <><Save className="h-4 w-4" />Guardar preferencias</>}
+            </button>
+          </div>
         </>
       )}
 
@@ -385,16 +477,16 @@ function PerfilPage() {
           <Section title="Idioma y región" subtitle="Configuración de localización">
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Idioma">
-                <select className={inputCls}>
-                  <option>Español</option>
-                  <option>English</option>
-                  <option>Português</option>
+                <select className={inputCls} value={prefIdioma} onChange={e => setPrefIdioma(e.target.value)}>
+                  <option value="es">Español</option>
+                  <option value="en">English</option>
+                  <option value="pt">Português</option>
                 </select>
               </Field>
               <Field label="Zona horaria">
-                <select className={inputCls}>
-                  <option>Europa/Madrid (UTC+2)</option>
-                  <option>America/New_York (UTC-4)</option>
+                <select className={inputCls} value={prefTimezone} onChange={e => setPrefTimezone(e.target.value)}>
+                  <option value="Europe/Madrid">Europa/Madrid (UTC+2)</option>
+                  <option value="America/New_York">America/New_York (UTC-4)</option>
                   <option>Asia/Tokyo (UTC+9)</option>
                 </select>
               </Field>
