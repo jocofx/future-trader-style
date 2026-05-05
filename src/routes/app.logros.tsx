@@ -1,6 +1,7 @@
 import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
 import { computeStats } from "@/lib/types";
 import { useMemo, useState } from "react";

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Brain, Sparkles, AlertTriangle, TrendingUp, Activity, Target, Flame, Hash } from "lucide-react";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { Lock } from "lucide-react";
+import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
 
 export const Route = createFileRoute("/app/psicologia")({

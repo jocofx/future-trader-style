@@ -59,14 +59,14 @@ export const PLAN_LIMITS = {
     max_accounts:  3,
     history_days:  Infinity,
     ai_messages:   0,        // user provides own API key
-    features: ["stats","premarket","capital","diario","habitos","insights","calendar","psicologia","afiliados"],
+    features: ["stats","premarket","capital","diario","habitos","insights","calendar","psicologia","afiliados","logros"],
   },
   pro: {
     max_trades:    Infinity,
     max_accounts:  Infinity,
     history_days:  Infinity,
     ai_messages:   150,
-    features: ["stats","premarket","capital","diario","habitos","insights","calendar","psicologia","afiliados","gestor_ea","broker","coach_ia_included"],
+    features: ["stats","premarket","capital","diario","habitos","insights","calendar","psicologia","afiliados","logros","gestor_ea","broker","coach_ia","coach_ia_included","logros"],
   },
 } as const;
 

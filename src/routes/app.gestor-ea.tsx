@@ -2,6 +2,7 @@ import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { Lock } from "lucide-react";
+import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
 import { supabase } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ConfirmModal";

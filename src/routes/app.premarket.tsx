@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { Lock } from "lucide-react";
+import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
 import { useChecklistConfig } from "@/hooks/useChecklistConfig";
 import { ConfirmModal } from "@/components/ConfirmModal";

@@ -4,6 +4,7 @@ import { LineChart, TrendingUp, TrendingDown, ArrowDownToLine, ArrowUpFromLine, 
 import { useState } from "react";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { Lock } from "lucide-react";
+import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
 import type { CapitalEntry, CapitalGanancia } from "@/lib/types";
 

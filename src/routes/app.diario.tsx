@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { BookText, ChevronLeft, ChevronRight, Save, Check, Search } from "lucide-react";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { Lock } from "lucide-react";
+import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
 
 export const Route = createFileRoute("/app/diario")({ component: DiarioPage });

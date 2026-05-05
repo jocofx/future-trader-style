@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Lock } from "lucide-react";
 import { UpgradeModal } from "./UpgradeModal";
 import { usePlan } from "@/hooks/usePlan";
+import { useApp } from "@/context/AppContext";
 
 export function PlanGate({ feature, plan, children }: { 
   feature: string; 
@@ -9,8 +10,11 @@ export function PlanGate({ feature, plan, children }: {
   children: React.ReactNode 
 }) {
   const { can } = usePlan();
+  const { planLoading } = useApp();
   const [show, setShow] = useState(false);
   
+  // While plan is loading, show content (avoid flash of upgrade screen)
+  if (planLoading) return <>{children}</>;
   if (can(feature)) return <>{children}</>;
   
   return (

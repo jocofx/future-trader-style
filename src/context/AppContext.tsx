@@ -14,6 +14,7 @@ type AppContextType = {
   user: User | null
   loading: boolean
   plan: UserPlan
+  planLoading: boolean
   riskSettings: RiskSettings
   setRiskSettings: (s: RiskSettings) => void
   trades:    ReturnType<typeof useTrades>
@@ -39,6 +40,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser]       = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [plan, setPlan]       = useState<UserPlan>('free')
+  const [planLoading, setPlanLoading] = useState(true)
   const [riskSettings, setRiskSettingsState] = useState<RiskSettings>(() => {
     try {
       const s = localStorage.getItem('tj_risk')
@@ -82,13 +84,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .select('plan,activa')
       .eq('user_id', user.id)
       .maybeSingle()
-      .then(({ data }: any) => {
+      .then(({ data, error }: any) => {
+        console.log('[Plan] suscripciones query:', { data, error })
+        setPlanLoading(false)
         // Schema uses 'activa' boolean (not 'estado' string)
         if (data?.activa === true) {
           setPlan((data.plan ?? 'free') as UserPlan)
+        } else if (data?.activa === false || data === null) {
+          setPlan('free')
         }
       })
-      .catch(() => {})
+      .catch((e: any) => { console.warn('[Plan] error:', e); setPlanLoading(false) })
 
     // Load risk settings from Supabase (overrides localStorage)
     supabase.from('configuracion')
@@ -117,7 +123,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      user, loading, plan, riskSettings, setRiskSettings,
+      user, loading, plan, planLoading, riskSettings, setRiskSettings,
       trades, accounts, capital, habits, diario, premarket,
     }}>
       {children}

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BarChart3 } from "lucide-react";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { Lock } from "lucide-react";
+import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
 import { computeStats } from "@/lib/types";
 import type { Trade } from "@/lib/types";

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Bot, Send, RefreshCw, Sparkles, Settings, Zap, AlertCircle, MessageSquare } from "lucide-react";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { Lock } from "lucide-react";
+import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
 import { computeStats } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
