@@ -86,7 +86,7 @@ function StatCard({ label, value, sub, color = "text-foreground" }: {
 
 function EstadisticasPage() {
   const { trades: { trades }, accounts: { accounts } } = useApp();
-  const [period, setPeriod]   = useState<Period>("month");
+  const [period, setPeriod]   = useState<Period>("3month");
   const [account, setAccount] = useState("");
 
   // Only show accounts currently registered (activa=true) in the selector
@@ -97,6 +97,8 @@ function EstadisticasPage() {
   const selectedAccount = useMemo(() => accounts.find(a => a.nombre === account), [accounts, account]);
   const filtered = useMemo(() => filterByPeriod(trades, period, account, cuentasActivas, selectedAccount?.numero_cuenta), [trades, period, account, cuentasActivas, selectedAccount]);
   const stats     = useMemo(() => computeStats(filtered), [filtered]);
+  const hasTradesTotal = trades.length > 0;
+  const hasFilteredTrades = filtered.length > 0;
 
   // Equity curve data
   const equityData = useMemo(() => {
