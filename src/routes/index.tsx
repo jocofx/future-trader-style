@@ -12,6 +12,12 @@ import { useState } from "react";
 import { useCheckout } from "@/hooks/useCheckout";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: async () => {
+    const { supabase } = await import("@/lib/supabase");
+    const { redirect } = await import("@tanstack/react-router");
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) throw redirect({ to: "/app" });
+  },
   component: Landing,
 });
 
