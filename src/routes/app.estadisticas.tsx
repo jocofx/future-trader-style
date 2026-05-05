@@ -1,6 +1,9 @@
+import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { BarChart3 } from "lucide-react";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { computeStats } from "@/lib/types";
 import type { Trade } from "@/lib/types";
@@ -149,7 +152,7 @@ function EstadisticasPage() {
   const maxAbsInstr = Math.max(...instrData.map(([, d]) => Math.abs(d.pnl)), 1);
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 space-y-6">
+    <PlanGate feature="stats" plan="basic">   <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -360,5 +363,6 @@ function EstadisticasPage() {
         </div>
       </div>
     </div>
+    </PlanGate>
   );
 }

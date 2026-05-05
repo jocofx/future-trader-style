@@ -1,16 +1,25 @@
 import { Link } from "@tanstack/react-router";
 import { Sparkles, X, ArrowRight, Lock } from "lucide-react";
 
+import { UPGRADE_PROMPTS } from "@/hooks/usePlan";
+
 interface UpgradeModalProps {
-  open: boolean;
+  // Either pass feature shorthand OR explicit title/desc/cta
+  feature?: string;
+  open?: boolean;
   onClose: () => void;
-  title: string;
-  desc: string;
-  cta: string;
+  title?: string;
+  desc?: string;
+  cta?: string;
 }
 
-export function UpgradeModal({ open, onClose, title, desc, cta }: UpgradeModalProps) {
+export function UpgradeModal({ feature, open = true, onClose, title: titleProp, desc: descProp, cta: ctaProp }: UpgradeModalProps) {
+  const prompt = feature ? UPGRADE_PROMPTS[feature] : null;
+  const title = titleProp ?? prompt?.title ?? "Función Premium";
+  const desc  = descProp  ?? prompt?.desc  ?? "Actualiza tu plan para acceder a esta función.";
+  const cta   = ctaProp   ?? prompt?.cta   ?? "Ver planes";
   if (!open) return null;
+
   return (
     <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
       onClick={e => e.target === e.currentTarget && onClose()}>

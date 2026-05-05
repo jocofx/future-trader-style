@@ -1,3 +1,4 @@
+import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import {
@@ -5,6 +6,8 @@ import {
   Minus, Target, ShieldAlert, FileText, Settings, Plus, Pencil, Trash2,
   X, ArrowUp, ArrowDown,
 } from "lucide-react";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useChecklistConfig } from "@/hooks/useChecklistConfig";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -106,7 +109,7 @@ function PremarketPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <PlanGate feature="premarket" plan="basic">   <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -373,5 +376,6 @@ function PremarketPage() {
         onCancel={() => setDeleteId(null)}
       />
     </div>
+    </PlanGate>
   );
 }

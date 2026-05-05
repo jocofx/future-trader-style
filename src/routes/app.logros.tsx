@@ -1,4 +1,6 @@
+import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { UpgradeModal } from "@/components/UpgradeModal";
 import { useApp } from "@/context/AppContext";
 import { computeStats } from "@/lib/types";
 import { useMemo, useState } from "react";
@@ -106,7 +108,7 @@ function LogrosPage() {
   });
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <PlanGate feature="logros" plan="basic">   <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -221,6 +223,7 @@ function LogrosPage() {
         ))}
       </div>
     </div>
+    </PlanGate>
   );
 }
 

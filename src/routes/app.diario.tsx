@@ -1,6 +1,9 @@
+import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { BookText, ChevronLeft, ChevronRight, Save, Check, Search } from "lucide-react";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
 export const Route = createFileRoute("/app/diario")({ component: DiarioPage });
@@ -93,7 +96,7 @@ function DiarioPage() {
   const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y=>y+1); } else setMonth(m=>m+1); };
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <PlanGate feature="diario" plan="basic">   <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -278,5 +281,6 @@ function DiarioPage() {
         </div>
       </div>
     </div>
+    </PlanGate>
   );
 }

@@ -1,4 +1,7 @@
+import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { supabase } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -431,7 +434,7 @@ function GestorEAPage() {
   ).length;
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <PlanGate feature="gestor_ea" plan="pro">   <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -573,5 +576,6 @@ function GestorEAPage() {
         onCancel={() => setDeleteId(null)}
       />
     </div>
+    </PlanGate>
   );
 }

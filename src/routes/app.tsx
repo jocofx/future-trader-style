@@ -56,7 +56,6 @@ const SECTIONS = [
     label: "Cuenta",
     items: [
       { to: "/app/perfil",    icon: User,    name: "Mi Perfil" },
-      { to: "/app/broker",    icon: PlugZap, name: "Conectar Broker" },
       { to: "/app/logros",    icon: Trophy,  name: "Logros" },
       { to: "/app/afiliados", icon: Users2,  name: "Afiliados" },
     ],

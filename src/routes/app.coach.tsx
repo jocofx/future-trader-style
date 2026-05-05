@@ -1,6 +1,9 @@
+import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { Bot, Send, RefreshCw, Sparkles, Settings, Zap, AlertCircle, MessageSquare } from "lucide-react";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { computeStats } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
@@ -107,7 +110,7 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
   };
 
   return (
-    <div className="p-6 max-w-[1100px] mx-auto h-full flex flex-col">
+    <PlanGate feature="coach_ia" plan="pro">   <div className="p-6 max-w-[1100px] mx-auto h-full flex flex-col">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div>
@@ -252,5 +255,6 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
         </div>
       </div>
     </div>
+    </PlanGate>
   );
 }

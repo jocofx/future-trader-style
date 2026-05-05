@@ -4,7 +4,6 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { usePlan } from "@/hooks/usePlan";
 import type { Trade } from "@/lib/types";
 
 export const Route = createFileRoute("/app/operaciones")({
@@ -370,7 +369,7 @@ function OperacionesPage() {
     )}
     <ConfirmModal open={confirmDeleteId !== null} title="¿Eliminar operación?" message="Se eliminará permanentemente. Esta acción no se puede deshacer." confirmLabel="Sí, eliminar" onConfirm={doDelete} onCancel={() => setConfirmDeleteId(null)} />
     {showUpgrade && (
-      <UpgradeModal feature="max_trades" onClose={() => setShowUpgrade(false)} />
+      <UpgradeModal open={showUpgrade} feature="max_trades" onClose={() => setShowUpgrade(false)} />
     )}
     </>
   );

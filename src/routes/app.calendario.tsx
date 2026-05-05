@@ -5,6 +5,8 @@ import {
   Activity, Target, BookOpen, ClipboardList, Heart, Brain, CheckCircle2,
   XCircle, AlertTriangle, Smile, Sparkles, Percent, DollarSign,
 } from "lucide-react";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import type { Trade } from "@/lib/types";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -84,7 +86,7 @@ function CalendarioPage() {
   const selectedTrades = selected ? (byDate[selected] ?? []) : [];
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <PlanGate feature="calendar" plan="basic">   <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -492,5 +494,6 @@ function CalendarioPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </PlanGate>
   );
 }

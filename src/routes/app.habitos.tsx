@@ -1,3 +1,4 @@
+import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import {
@@ -5,6 +6,8 @@ import {
   Save, Check, Flame, TrendingUp, Plus, Pencil, Trash2, X, Settings,
   ArrowUp, ArrowDown, ToggleLeft, ToggleRight,
 } from "lucide-react";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useHabitosConfig } from "@/hooks/useHabitosConfig";
 import type { HabitConfig } from "@/hooks/useHabitosConfig";
@@ -122,7 +125,7 @@ function HabitosPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <PlanGate feature="habitos" plan="basic">   <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -439,5 +442,6 @@ function HabitosPage() {
         onCancel={() => setDeleteId(null)}
       />
     </div>
+    </PlanGate>
   );
 }

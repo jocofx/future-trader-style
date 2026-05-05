@@ -1,6 +1,9 @@
+import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Sparkles } from "lucide-react";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { computeStats } from "@/lib/types";
 
@@ -107,7 +110,7 @@ function InsightsPage() {
   const scoreColor = score>=70?"#00b87a":score>=50?"#3b82f6":score>=30?"#f59e0b":"#f43f5e";
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 space-y-6">
+    <PlanGate feature="insights" plan="basic">   <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 grid place-items-center rounded-xl bg-primary/10 text-primary border border-primary/20">
@@ -202,5 +205,6 @@ function InsightsPage() {
         </div>
       )}
     </div>
+    </PlanGate>
   );
 }

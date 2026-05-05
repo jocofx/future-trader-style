@@ -1,6 +1,9 @@
+import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { LineChart, TrendingUp, TrendingDown, ArrowDownToLine, ArrowUpFromLine, Plus, Wallet, Target, Percent } from "lucide-react";
 import { useState } from "react";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import type { CapitalEntry, CapitalGanancia } from "@/lib/types";
 
@@ -216,7 +219,8 @@ function CapitalPage() {
     t === "success" ? "text-success" : t === "destructive" ? "text-destructive" : "text-foreground"
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <PlanGate feature="capital" plan="basic">
+       <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Modals */}
       {showInv && (
         <InversionModal
@@ -391,5 +395,6 @@ function CapitalPage() {
         )}
       </div>
     </div>
+    </PlanGate>
   )
 }

@@ -75,7 +75,7 @@ const PLANS = [
       { text: "Cuentas ilimitadas", included: true },
       { text: "Coach IA incluido (150 msgs/mes)", included: true },
       { text: "Gestor de Expert Advisors (EA)", included: true },
-      { text: "Conexión directa al broker", included: true },
+      { text: "Sincronización automática MT4/MT5 (Gestor EA)", included: true },
       { text: "Exportar CSV + PDF", included: true },
       { text: "Afiliados (30%→50% comisión)", included: true },
       { text: "Soporte prioritario", included: true },
@@ -147,7 +147,7 @@ const FAQS = [
   },
   {
     q: "¿Compatible con mi broker?",
-    a: "TradyncApp es compatible con MetaTrader 4/5, cTrader, TradingView, Binance, Bybit, Interactive Brokers y más. También puedes añadir trades manualmente.",
+    a: "TradyncApp sincroniza automáticamente con MetaTrader 4/5 mediante el Gestor EA. También puedes añadir operaciones manualmente desde cualquier broker.",
   },
   {
     q: "¿Es seguro guardar mis datos aquí?",

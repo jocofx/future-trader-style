@@ -1,6 +1,9 @@
+import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Brain, Sparkles, AlertTriangle, TrendingUp, Activity, Target, Flame, Hash } from "lucide-react";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
 export const Route = createFileRoute("/app/psicologia")({
@@ -156,7 +159,7 @@ function PsicologiaPage() {
   const maxAbsConfAvg = Math.max(1, ...confData.map(d => Math.abs(d.avg)));
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <PlanGate feature="psicologia" plan="basic">   <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
 
       {/* ── INFO BANNER ── */}
       <div className="rounded-2xl border border-info/20 bg-info/5 p-5">
@@ -472,5 +475,6 @@ function PsicologiaPage() {
         </div>
       </div>
     </div>
+    </PlanGate>
   );
 }
