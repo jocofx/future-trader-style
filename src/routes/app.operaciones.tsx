@@ -21,6 +21,8 @@ const EMOCIONES = ["Sereno", "Confiado", "Ansioso", "Frustrado", "Motivado", "Ne
 
 function OperacionesPage() {
   const { trades: { trades, remove, save, loading }, accounts: { accounts } } = useApp();
+  const { canAddTrade } = usePlan();
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [newTrade, setNewTrade]   = useState<Partial<Trade & { error?: string }>>({
