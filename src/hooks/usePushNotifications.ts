@@ -42,9 +42,12 @@ export function usePushNotifications(userId: string | null) {
 
       // Save subscription to Supabase
       const subJson = sub.toJSON()
+      // Use device-specific key to support multiple devices
+      const deviceId = localStorage.getItem('device_id') || Math.random().toString(36).slice(2);
+      localStorage.setItem('device_id', deviceId);
       await supabase.from('configuracion').upsert({
         user_id:    userId,
-        clave:      'push_subscription',
+        clave:      `push_subscription_${deviceId}`,
         valor:      subJson,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id,clave' })

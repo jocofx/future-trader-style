@@ -1,371 +1,274 @@
 import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { UpgradeModal } from "@/components/UpgradeModal";
+import { useMemo } from "react";
 import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
 import { computeStats } from "@/lib/types";
-import { useMemo, useState } from "react";
 import {
-  Trophy, Star, Lock, Flame, Target, Zap, Crown, Medal, Sparkles,
-  TrendingUp, Award, Brain, Calendar, ShieldCheck, BookOpen, Bot,
+  Trophy, Sparkles, ShieldCheck, Flame, Target, Brain,
+  BookOpen, Calendar, TrendingUp, Star, Zap, Lock
 } from "lucide-react";
 
-export const Route = createFileRoute("/app/logros")({
-    component: LogrosPage,
-});
+export const Route = createFileRoute("/app/logros")({ component: LogrosPage });
 
-type Tier = "bronze" | "silver" | "gold" | "platinum" | "legendary";
-type Category = "discipline" | "performance" | "consistency" | "learning" | "social";
+type Tier = "bronze" | "silver" | "gold" | "platinum";
+type Category = "learning" | "discipline" | "performance" | "consistency";
 
-type Achievement = {
-  id: string;
-  title: string;
-  desc: string;
-  category: Category;
-  tier: Tier;
-  xp: number;
-  unlocked: boolean;
-  date?: string;
-  progress?: number; // 0-100 for in-progress
-  Icon: any;
+const TIER_META: Record<Tier, { label: string; color: string; bg: string }> = {
+  bronze:   { label: "Bronce",   color: "text-orange-400",  bg: "bg-orange-400/10 border-orange-400/20" },
+  silver:   { label: "Plata",    color: "text-slate-400",   bg: "bg-slate-400/10 border-slate-400/20" },
+  gold:     { label: "Oro",      color: "text-warning",     bg: "bg-warning/10 border-warning/20" },
+  platinum: { label: "Platino",  color: "text-primary",     bg: "bg-primary/10 border-primary/20" },
 };
 
-const TIER_META: Record<Tier, { label: string; color: string; glow: string }> = {
-  bronze:    { label: "Bronce",    color: "oklch(0.65 0.14 50)",  glow: "color-mix(in oklab, oklch(0.65 0.14 50) 35%, transparent)" },
-  silver:    { label: "Plata",     color: "oklch(0.78 0.02 250)", glow: "color-mix(in oklab, oklch(0.78 0.02 250) 35%, transparent)" },
-  gold:      { label: "Oro",       color: "oklch(0.82 0.16 80)",  glow: "color-mix(in oklab, oklch(0.82 0.16 80) 40%, transparent)" },
-  platinum:  { label: "Platino",   color: "oklch(0.78 0.10 200)", glow: "color-mix(in oklab, oklch(0.78 0.10 200) 40%, transparent)" },
-  legendary: { label: "Legendario",color: "oklch(0.74 0.22 305)", glow: "color-mix(in oklab, oklch(0.74 0.22 305) 50%, transparent)" },
-};
-
-const CATEGORY_META: Record<Category, { label: string; Icon: any }> = {
+const CATEGORY_META: Record<Category, { label: string; Icon: React.ElementType }> = {
+  learning:    { label: "Aprendizaje",  Icon: BookOpen },
   discipline:  { label: "Disciplina",   Icon: ShieldCheck },
   performance: { label: "Rendimiento",  Icon: TrendingUp },
-  consistency: { label: "Consistencia", Icon: Calendar },
-  learning:    { label: "Aprendizaje",  Icon: BookOpen },
-  social:      { label: "Social",       Icon: Bot },
+  consistency: { label: "Constancia",   Icon: Calendar },
 };
 
+interface Achievement {
+  id:        string;
+  title:     string;
+  desc:      string;
+  category:  Category;
+  tier:      Tier;
+  xp:        number;
+  Icon:      React.ElementType;
+  check:     (data: AchievementData) => { unlocked: boolean; progress?: number };
+}
+
+interface AchievementData {
+  trades:      any[];
+  closedTrades: any[];
+  stats:       any;
+  diaryDays:   number;
+  habitDays:   number;
+}
+
 const ACHIEVEMENTS: Achievement[] = [
-  { id: "1",  title: "Primera operación",        desc: "Registra tu primer trade en el journal",                category: "learning",    tier: "bronze",   xp: 50,   unlocked: true,  date: "12 Mar", Icon: Sparkles },
-  { id: "2",  title: "Disciplinado",             desc: "Cumple tus reglas 7 días seguidos",                     category: "discipline",  tier: "silver",   xp: 150,  unlocked: true,  date: "20 Mar", Icon: ShieldCheck },
-  { id: "3",  title: "Racha verde",              desc: "5 días consecutivos en positivo",                       category: "performance", tier: "silver",   xp: 200,  unlocked: true,  date: "28 Mar", Icon: Flame },
-  { id: "4",  title: "Sniper",                   desc: "Win rate ≥ 70% en 20 trades",                           category: "performance", tier: "gold",     xp: 400,  unlocked: true,  date: "15 Abr", Icon: Target },
-  { id: "5",  title: "Sin tilt",                 desc: "0 operaciones revenge en un mes",                       category: "discipline",  tier: "gold",     xp: 350,  unlocked: false, progress: 78,   Icon: Brain },
-  { id: "6",  title: "Diario completo",          desc: "Registra 30 entradas de journal",                       category: "learning",    tier: "silver",   xp: 200,  unlocked: false, progress: 60,   Icon: BookOpen },
-  { id: "7",  title: "Mes perfecto",             desc: "100% de hábitos completados durante 30 días",           category: "consistency", tier: "platinum", xp: 800,  unlocked: false, progress: 42,   Icon: Calendar },
-  { id: "8",  title: "Profit Factor 3.0",        desc: "Mantén PF ≥ 3.0 durante 50 trades",                     category: "performance", tier: "platinum", xp: 1000, unlocked: false, progress: 28,   Icon: TrendingUp },
-  { id: "9",  title: "Maestro Zen",              desc: "Wellness score ≥ 80 durante 60 días",                   category: "discipline",  tier: "legendary",xp: 2500, unlocked: false, progress: 12,   Icon: Crown },
-  { id: "10", title: "Coach IA",                 desc: "Completa 10 sesiones con el Coach IA",                  category: "learning",    tier: "bronze",   xp: 100,  unlocked: false, progress: 30,   Icon: Bot },
-  { id: "11", title: "Embajador",                desc: "Refiere 3 traders activos",                             category: "social",      tier: "gold",     xp: 500,  unlocked: false, progress: 0,    Icon: Star },
-  { id: "12", title: "Iron Hand",                desc: "0 reglas rotas en 90 días",                             category: "discipline",  tier: "legendary",xp: 3000, unlocked: false, progress: 8,    Icon: Award },
+  {
+    id: "1", title: "Primera operación", desc: "Registra tu primer trade en el journal",
+    category: "learning", tier: "bronze", xp: 50, Icon: Sparkles,
+    check: ({ closedTrades }) => ({ unlocked: closedTrades.length >= 1 }),
+  },
+  {
+    id: "2", title: "10 operaciones", desc: "Registra 10 trades en el journal",
+    category: "learning", tier: "bronze", xp: 100, Icon: Star,
+    check: ({ closedTrades }) => ({
+      unlocked: closedTrades.length >= 10,
+      progress: Math.min(100, (closedTrades.length / 10) * 100),
+    }),
+  },
+  {
+    id: "3", title: "50 operaciones", desc: "Registra 50 trades en el journal",
+    category: "learning", tier: "silver", xp: 200, Icon: Zap,
+    check: ({ closedTrades }) => ({
+      unlocked: closedTrades.length >= 50,
+      progress: Math.min(100, (closedTrades.length / 50) * 100),
+    }),
+  },
+  {
+    id: "4", title: "Sniper", desc: "Alcanza un win rate ≥ 60% con al menos 20 trades",
+    category: "performance", tier: "silver", xp: 300, Icon: Target,
+    check: ({ closedTrades, stats }) => ({
+      unlocked: closedTrades.length >= 20 && stats.winRate >= 0.6,
+      progress: closedTrades.length < 20
+        ? (closedTrades.length / 20) * 100
+        : Math.min(100, stats.winRate * 100 / 60 * 100),
+    }),
+  },
+  {
+    id: "5", title: "Profit Factor 2.0", desc: "Mantén un profit factor ≥ 2.0 en al menos 20 trades",
+    category: "performance", tier: "gold", xp: 400, Icon: TrendingUp,
+    check: ({ closedTrades, stats }) => ({
+      unlocked: closedTrades.length >= 20 && stats.profitFactor >= 2,
+      progress: closedTrades.length < 20
+        ? (closedTrades.length / 20) * 100
+        : Math.min(100, (stats.profitFactor / 2) * 100),
+    }),
+  },
+  {
+    id: "6", title: "Racha verde", desc: "Consigue 5 operaciones ganadoras consecutivas",
+    category: "performance", tier: "silver", xp: 200, Icon: Flame,
+    check: ({ closedTrades }) => {
+      let maxStreak = 0, current = 0;
+      for (const t of closedTrades) {
+        if ((t.resultado ?? 0) > 0) { current++; maxStreak = Math.max(maxStreak, current); }
+        else current = 0;
+      }
+      return { unlocked: maxStreak >= 5, progress: Math.min(100, (maxStreak / 5) * 100) };
+    },
+  },
+  {
+    id: "7", title: "Diario completo", desc: "Escribe 30 entradas en el diario",
+    category: "consistency", tier: "silver", xp: 200, Icon: BookOpen,
+    check: ({ diaryDays }) => ({
+      unlocked: diaryDays >= 30,
+      progress: Math.min(100, (diaryDays / 30) * 100),
+    }),
+  },
+  {
+    id: "8", title: "Hábitos constante", desc: "Registra tus hábitos 20 días",
+    category: "consistency", tier: "silver", xp: 200, Icon: Calendar,
+    check: ({ habitDays }) => ({
+      unlocked: habitDays >= 20,
+      progress: Math.min(100, (habitDays / 20) * 100),
+    }),
+  },
+  {
+    id: "9", title: "Disciplinado", desc: "Mantén un profit factor ≥ 1.5 en 50 trades",
+    category: "discipline", tier: "gold", xp: 350, Icon: ShieldCheck,
+    check: ({ closedTrades, stats }) => ({
+      unlocked: closedTrades.length >= 50 && stats.profitFactor >= 1.5,
+      progress: closedTrades.length < 50
+        ? (closedTrades.length / 50) * 100
+        : Math.min(100, (stats.profitFactor / 1.5) * 100),
+    }),
+  },
+  {
+    id: "10", title: "Mes perfecto", desc: "100 operaciones registradas",
+    category: "consistency", tier: "platinum", xp: 800, Icon: Trophy,
+    check: ({ closedTrades }) => ({
+      unlocked: closedTrades.length >= 100,
+      progress: Math.min(100, (closedTrades.length / 100) * 100),
+    }),
+  },
+  {
+    id: "11", title: "Profit Factor 3.0", desc: "Alcanza profit factor ≥ 3.0 en 30 trades",
+    category: "performance", tier: "platinum", xp: 1000, Icon: Brain,
+    check: ({ closedTrades, stats }) => ({
+      unlocked: closedTrades.length >= 30 && stats.profitFactor >= 3,
+      progress: closedTrades.length < 30
+        ? (closedTrades.length / 30) * 100
+        : Math.min(100, (stats.profitFactor / 3) * 100),
+    }),
+  },
 ];
 
-function LogrosPage() {
-  const [filter, setFilter] = useState<"all" | "unlocked" | "in-progress" | Category>("all");
-
-  const { trades: { trades } } = useApp();
-  const realStats = useMemo(() => computeStats(trades.filter(t => t.resultado != null)), [trades]);
-  
-  // Dynamic achievements based on real trades
-  const dynamicAchievements = useMemo(() => {
-    return ACHIEVEMENTS.map(a => {
-      if (a.id === "1") return {...a, unlocked: realStats.total >= 1, progress: Math.min(100, realStats.total)};
-      if (a.id === "2") return {...a, unlocked: realStats.total >= 10, progress: Math.min(100, realStats.total*10)};
-      if (a.id === "3") return {...a, unlocked: realStats.total >= 50, progress: Math.min(100, Math.round(realStats.total/50*100))};
-      if (a.id === "4") return {...a, unlocked: realStats.winRate >= 0.70 && realStats.total >= 20, progress: Math.min(100, Math.round(realStats.winRate*100))};
-      if (a.id === "5") return {...a, unlocked: realStats.pnl >= 100, progress: Math.min(100, Math.round(realStats.pnl))};
-      if (a.id === "6") return {...a, unlocked: realStats.wins >= 3, progress: Math.min(100, Math.round(realStats.wins/3*100))};
-      return a;
-    });
-  }, [realStats]);
-
-  const stats = useMemo(() => {
-    const unlocked = dynamicAchievements.filter((a) => a.unlocked);
-    const xp = unlocked.reduce((s, a) => s + a.xp, 0);
-    const level = Math.floor(xp / 500) + 1;
-    const xpInLevel = xp % 500;
-    const nextLevelAt = 500;
-    return {
-      total: dynamicAchievements.length,
-      unlocked: unlocked.length,
-      xp,
-      level,
-      xpInLevel,
-      nextLevelAt,
-      pct: (unlocked.length / ACHIEVEMENTS.length) * 100,
-    };
-  }, []);
-
-  const recentUnlock = dynamicAchievements.filter((a) => a.unlocked).slice(-1)[0];
-  const closeToUnlock = dynamicAchievements.filter((a) => !a.unlocked && (a.progress ?? 0) >= 50).sort((a, b) => (b.progress ?? 0) - (a.progress ?? 0))[0];
-
-  // filtered must come AFTER dynamicAchievements
-  const filtered = dynamicAchievements.filter((a) => {
-    if (filter === "unlocked") return a.unlocked;
-    if (filter === "in-progress") return !a.unlocked && (a.progress ?? 0) > 0;
-    if (filter === "all") return true;
-    return a.category === filter;
-  });
+function AchievementCard({ achievement: a, data }: { achievement: Achievement; data: AchievementData }) {
+  const tier     = TIER_META[a.tier];
+  const cat      = CATEGORY_META[a.category];
+  const CatIcon  = cat.Icon;
+  const Icon     = a.Icon;
+  const result   = a.check(data);
+  const unlocked = result.unlocked;
+  const progress = result.progress ?? (unlocked ? 100 : 0);
 
   return (
-    <PlanGate feature="logros" plan="basic">   <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <div className={`rounded-2xl border p-5 transition ${unlocked ? `${tier.bg} border` : "border-border bg-surface/40 opacity-60"}`}>
+      <div className="flex items-start justify-between mb-3">
+        <div className={`h-11 w-11 rounded-xl grid place-items-center border ${unlocked ? tier.bg : "bg-surface border-border"}`}>
+          {unlocked ? <Icon className={`h-5 w-5 ${tier.color}`} /> : <Lock className="h-5 w-5 text-muted-foreground" />}
+        </div>
+        <div className="text-right">
+          <div className={`text-[10px] font-bold uppercase tracking-wider ${tier.color}`}>{tier.label}</div>
+          <div className="text-[10px] text-muted-foreground">+{a.xp} XP</div>
+        </div>
+      </div>
+      <div className="font-bold text-sm mb-0.5">{a.title}</div>
+      <div className="text-[11px] text-muted-foreground mb-3">{a.desc}</div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${unlocked ? "bg-success" : "bg-primary/50"}`}
+            style={{ width: `${Math.round(progress)}%` }} />
+        </div>
+        <span className="text-[10px] font-mono text-muted-foreground">{Math.round(progress)}%</span>
+      </div>
+      <div className="flex items-center gap-1.5 mt-2">
+        <CatIcon className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[10px] text-muted-foreground">{cat.label}</span>
+        {unlocked && <span className="ml-auto text-[10px] text-success font-semibold">✓ Desbloqueado</span>}
+      </div>
+    </div>
+  );
+}
+
+function LogrosPage() {
+  const { trades: { trades }, diario: { entries }, habits: { habits } } = useApp();
+
+  const closedTrades = useMemo(() => trades.filter(t => t.resultado != null), [trades]);
+  const stats        = useMemo(() => computeStats(closedTrades), [closedTrades]);
+  const diaryDays    = entries.length;
+  const habitDays    = habits.length;
+
+  const data: AchievementData = { trades, closedTrades, stats, diaryDays, habitDays };
+
+  const evaluated = useMemo(() =>
+    ACHIEVEMENTS.map(a => ({ ...a, result: a.check(data) })),
+    [data]
+  );
+
+  const unlocked = evaluated.filter(a => a.result.unlocked);
+  const locked   = evaluated.filter(a => !a.result.unlocked);
+  const totalXP  = unlocked.reduce((s, a) => s + a.xp, 0);
+
+  return (
+    <PlanGate feature="logros" plan="basic">
+    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
-            <Trophy className="h-3.5 w-3.5 text-primary" />
-            Sistema de Logros
+            <Trophy className="h-3.5 w-3.5 text-primary" /> Progreso
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Tus medallas y XP</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Logros</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Cada hábito sano y cada regla cumplida te acerca a la siguiente medalla.
+            {unlocked.length} de {ACHIEVEMENTS.length} desbloqueados · {totalXP} XP total
           </p>
         </div>
-      </div>
-
-      {/* Hero — Level + XP */}
-      <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-surface/60 to-surface/40 backdrop-blur-xl p-6 relative overflow-hidden">
-        <div
-          className="absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 pointer-events-none"
-          style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--primary) 30%, transparent), transparent 70%)" }}
-        />
-        <div className="relative grid lg:grid-cols-[auto_1fr_auto] gap-6 items-center">
-          {/* Level badge */}
-          <div className="relative h-32 w-32 mx-auto lg:mx-0">
-            <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90">
-              <circle cx="18" cy="18" r="15.5" fill="none" stroke="oklch(1 0 0 / 0.06)" strokeWidth="2" />
-              <circle
-                cx="18" cy="18" r="15.5" fill="none"
-                stroke="var(--primary)"
-                strokeWidth="2"
-                strokeDasharray={`${(stats.xpInLevel / stats.nextLevelAt) * 97.4} 97.4`}
-                strokeLinecap="round"
-                style={{ filter: "drop-shadow(0 0 6px color-mix(in oklab, var(--primary) 50%, transparent))" }}
-              />
-            </svg>
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="text-center">
-                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Nivel</div>
-                <div className="text-4xl font-bold font-mono leading-none mt-0.5">{stats.level}</div>
-              </div>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <div className="text-2xl font-bold font-mono text-primary">{totalXP}</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">XP Total</div>
           </div>
-
-          {/* Info */}
-          <div className="text-center lg:text-left">
-            <div className="flex items-center gap-2 justify-center lg:justify-start">
-              <Crown className="h-4 w-4 text-warning" />
-              <span className="text-sm font-semibold uppercase tracking-wider text-warning">Trader Disciplinado</span>
-            </div>
-            <h2 className="text-2xl font-bold mt-1">{stats.xp.toLocaleString()} XP</h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              <span className="font-mono text-foreground">{stats.nextLevelAt - stats.xpInLevel} XP</span> para el siguiente nivel
-            </p>
-            <div className="mt-3 h-2 rounded-full bg-surface-2 overflow-hidden max-w-md mx-auto lg:mx-0">
-              <div
-                className="h-full bg-gradient-to-r from-primary to-primary-glow"
-                style={{ width: `${(stats.xpInLevel / stats.nextLevelAt) * 100}%`, boxShadow: "0 0 10px color-mix(in oklab, var(--primary) 60%, transparent)" }}
-              />
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="text-center p-3 rounded-xl bg-surface/60 border border-border min-w-[100px]">
-              <div className="text-2xl font-bold font-mono">{stats.unlocked}</div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Desbloqueados</div>
-            </div>
-            <div className="text-center p-3 rounded-xl bg-surface/60 border border-border min-w-[100px]">
-              <div className="text-2xl font-bold font-mono text-primary">{Math.round(stats.pct)}%</div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Completado</div>
-            </div>
+          <div className="h-12 w-12 rounded-xl bg-primary/10 border border-primary/20 grid place-items-center">
+            <Trophy className="h-6 w-6 text-primary" />
           </div>
         </div>
       </div>
 
-      {/* Spotlights */}
-      {(recentUnlock || closeToUnlock) && (
-        <div className="grid md:grid-cols-2 gap-4">
-          {recentUnlock && <SpotlightCard achievement={recentUnlock} variant="recent" />}
-          {closeToUnlock && <SpotlightCard achievement={closeToUnlock} variant="next" />}
+      {/* Progress bar */}
+      <div className="rounded-2xl border border-border bg-surface/60 p-4">
+        <div className="flex items-center justify-between mb-2 text-sm">
+          <span className="font-semibold">Progreso general</span>
+          <span className="font-mono text-primary">{unlocked.length}/{ACHIEVEMENTS.length}</span>
+        </div>
+        <div className="h-2.5 rounded-full bg-surface-3 overflow-hidden">
+          <div className="h-full rounded-full bg-gradient-primary transition-all"
+            style={{ width: `${(unlocked.length / ACHIEVEMENTS.length) * 100}%` }} />
+        </div>
+        <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5">
+          <span>Novato</span><span>Experto</span><span>Leyenda</span>
+        </div>
+      </div>
+
+      {/* Unlocked */}
+      {unlocked.length > 0 && (
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-success mb-3 flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-success inline-block" />
+            Desbloqueados ({unlocked.length})
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {unlocked.map(a => <AchievementCard key={a.id} achievement={a} data={data} />)}
+          </div>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-surface/60 backdrop-blur-xl p-1 w-fit">
-        {([
-          ["all", "Todos"],
-          ["unlocked", "Desbloqueados"],
-          ["in-progress", "En progreso"],
-          ["discipline", "Disciplina"],
-          ["performance", "Rendimiento"],
-          ["consistency", "Consistencia"],
-          ["learning", "Aprendizaje"],
-        ] as const).map(([k, label]) => (
-          <button
-            key={k}
-            onClick={() => setFilter(k as any)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-              filter === k
-                ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_25%,transparent)]"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Achievement grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((a) => (
-          <AchievementCard key={a.id} achievement={a} />
-        ))}
-      </div>
+      {/* Locked */}
+      {locked.length > 0 && (
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+            <Lock className="h-3 w-3" /> Por desbloquear ({locked.length})
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {locked.map(a => <AchievementCard key={a.id} achievement={a} data={data} />)}
+          </div>
+        </div>
+      )}
     </div>
     </PlanGate>
-  );
-}
-
-function AchievementCard({ achievement: a }: { achievement: Achievement }) {
-  const tier = TIER_META[a.tier];
-  const cat = CATEGORY_META[a.category];
-  const CatIcon = cat.Icon;
-  const Icon = a.Icon;
-
-  return (
-    <div
-      className={`group relative rounded-2xl border p-5 backdrop-blur-xl transition overflow-hidden ${
-        a.unlocked
-          ? "border-border bg-surface/70 hover:border-primary/40"
-          : "border-border bg-surface/30 hover:border-border"
-      }`}
-    >
-      {a.unlocked && (
-        <div
-          className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-60 pointer-events-none"
-          style={{ background: `radial-gradient(circle, ${tier.glow}, transparent 70%)` }}
-        />
-      )}
-      <div className="relative">
-        <div className="flex items-start gap-3 mb-3">
-          <div
-            className="h-12 w-12 grid place-items-center rounded-xl border-2 shrink-0 relative"
-            style={
-              a.unlocked
-                ? {
-                    background: `color-mix(in oklab, ${tier.color} 18%, transparent)`,
-                    borderColor: tier.color,
-                    color: tier.color,
-                    boxShadow: `0 0 16px ${tier.glow}`,
-                  }
-                : { background: "var(--surface-2)", borderColor: "var(--border)", color: "var(--muted-foreground)" }
-            }
-          >
-            {a.unlocked ? <Icon className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <div className={`text-sm font-semibold truncate ${!a.unlocked && "text-muted-foreground"}`}>{a.title}</div>
-            </div>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span
-                className="inline-flex items-center text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border"
-                style={{
-                  color: a.unlocked ? tier.color : "var(--muted-foreground)",
-                  borderColor: a.unlocked ? `color-mix(in oklab, ${tier.color} 40%, transparent)` : "var(--border)",
-                  background: a.unlocked ? `color-mix(in oklab, ${tier.color} 10%, transparent)` : "transparent",
-                }}
-              >
-                {tier.label}
-              </span>
-              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                <CatIcon className="h-3 w-3" /> {cat.label}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <p className="text-xs text-muted-foreground leading-relaxed mb-3">{a.desc}</p>
-
-        {!a.unlocked && a.progress !== undefined && a.progress > 0 && (
-          <div className="mb-3">
-            <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-              <span>Progreso</span>
-              <span className="font-mono">{a.progress}%</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-primary/60 to-primary"
-                style={{ width: `${a.progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between pt-2 border-t border-border">
-          <div className="flex items-center gap-1 text-[11px] font-mono font-bold text-primary">
-            <Zap className="h-3 w-3" /> +{a.xp} XP
-          </div>
-          {a.unlocked ? (
-            <div className="text-[10px] text-success font-mono flex items-center gap-1">
-              <Medal className="h-3 w-3" /> {a.date}
-            </div>
-          ) : (
-            <div className="text-[10px] text-muted-foreground font-mono">Bloqueado</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SpotlightCard({ achievement: a, variant }: { achievement: Achievement; variant: "recent" | "next" }) {
-  const tier = TIER_META[a.tier];
-  const Icon = a.Icon;
-  const isRecent = variant === "recent";
-  return (
-    <div
-      className="rounded-2xl border p-5 backdrop-blur-xl relative overflow-hidden"
-      style={{
-        borderColor: isRecent ? `color-mix(in oklab, ${tier.color} 40%, transparent)` : "var(--border)",
-        background: "color-mix(in oklab, var(--surface) 60%, transparent)",
-      }}
-    >
-      <div
-        className="absolute -top-16 -right-16 w-48 h-48 rounded-full opacity-50 pointer-events-none"
-        style={{ background: `radial-gradient(circle, ${tier.glow}, transparent 70%)` }}
-      />
-      <div className="relative flex items-center gap-4">
-        <div
-          className="h-16 w-16 grid place-items-center rounded-2xl border-2 shrink-0"
-          style={{
-            background: `color-mix(in oklab, ${tier.color} 18%, transparent)`,
-            borderColor: tier.color,
-            color: tier.color,
-            boxShadow: `0 0 24px ${tier.glow}`,
-          }}
-        >
-          <Icon className="h-7 w-7" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground mb-1 flex items-center gap-1.5">
-            {isRecent ? <><Sparkles className="h-3 w-3 text-warning" /> Último desbloqueado</> : <><Flame className="h-3 w-3 text-info" /> Casi lo tienes</>}
-          </div>
-          <div className="text-base font-bold truncate">{a.title}</div>
-          <div className="text-xs text-muted-foreground truncate">{a.desc}</div>
-          {!isRecent && a.progress !== undefined && (
-            <div className="mt-2 h-1.5 rounded-full bg-surface-2 overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-primary to-primary-glow" style={{ width: `${a.progress}%` }} />
-            </div>
-          )}
-        </div>
-        <div className="text-right shrink-0">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">XP</div>
-          <div className="text-xl font-bold font-mono text-primary">+{a.xp}</div>
-        </div>
-      </div>
-    </div>
   );
 }

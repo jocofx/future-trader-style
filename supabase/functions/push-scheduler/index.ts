@@ -33,6 +33,15 @@ async function sendPush(userId: string, notification: { title: string; body: str
   return res.status < 300;
 }
 
+async function sendPushDirect(subscription: any, notification: { title: string; body: string; url: string }) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subscription, ...notification }),
+  });
+  return res.ok;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -47,8 +56,8 @@ Deno.serve(async (req) => {
     // Get all users with push subscriptions
     const { data: subscriptions, error: subErr } = await supabase
       .from("configuracion")
-      .select("user_id")
-      .eq("clave", "push_subscription");
+      .select("user_id, clave, valor")
+      .like("clave", "push_subscription%");
 
     console.log(`Subscriptions found: ${subscriptions?.length ?? 0}`, subErr ? `Error: ${subErr.message}` : "");
 
@@ -90,7 +99,12 @@ Deno.serve(async (req) => {
         if (userPref.time !== localTime) continue;
 
         console.log(`  MATCH! Sending push for ${type}`);
-        const ok = await sendPush(userId, reminder);
+        // Send to all devices for this user
+        const userSubs = subscriptions.filter((s: any) => s.user_id === userId && s.clave.startsWith("push_subscription"));
+        for (const sub of userSubs) {
+          if (sub.valor) await sendPushDirect(sub.valor, reminder);
+        }
+        const ok = true;
         if (ok) sent++;
       }
     }

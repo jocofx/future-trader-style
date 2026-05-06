@@ -44,6 +44,7 @@ function InversionModal({ onClose, onSave }: {
   const submit = async () => {
     if (!tipo) return setErr("Selecciona el tipo")
     if (!coste || isNaN(Number(coste))) return setErr("Introduce el importe")
+    if (Number(coste) <= 0) return setErr("El importe debe ser mayor que 0")
     setSaving(true)
     try {
       await onSave({ user_id: "", tipo: tipo as CapitalEntry["tipo"], proveedor: proveedor || null, tamano: tamano || null, coste: Number(coste), estado: estado as CapitalEntry["estado"], fecha, notas: notas || null })

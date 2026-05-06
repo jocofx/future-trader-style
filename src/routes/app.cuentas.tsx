@@ -6,6 +6,8 @@ import {
   Shield, Settings, Wifi, WifiOff,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { usePlan } from "@/hooks/usePlan";
+import { UpgradeModal } from "@/components/UpgradeModal";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import type { Account, Trade } from "@/lib/types";
 
@@ -255,6 +257,13 @@ function AccountDetailModal({ account, trades, onClose, onEdit, onDelete }: {
 // ── Main Page ──────────────────────────────────────────────────────
 function CuentasPage() {
   const { accounts: { accounts, save, update, remove, loading }, trades: { trades } } = useApp();
+  const { limits, plan } = usePlan();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const canAddAccount = () => {
+    if (limits.max_accounts === Infinity) return true;
+    return accounts.length < limits.max_accounts;
+  };
 
   const [showForm,   setShowForm]   = useState(false);
   const [editing,    setEditing]    = useState<string | null>(null);
@@ -388,9 +397,15 @@ function CuentasPage() {
             {accounts.length} cuenta{accounts.length !== 1 ? "s" : ""} registrada{accounts.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <button onClick={() => { resetForm(); setEditing(null); setShowForm(v => !v); }}
+        <button onClick={() => {
+            if (!canAddAccount()) { setShowUpgradeModal(true); return; }
+            resetForm(); setEditing(null); setShowForm(v => !v);
+          }}
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold shadow-glow hover:brightness-110 transition">
           <Plus className="h-4 w-4" /> Nueva cuenta
+          {limits.max_accounts !== Infinity && (
+            <span className="text-[10px] opacity-70">({accounts.length}/{limits.max_accounts})</span>
+          )}
         </button>
       </div>
 
@@ -505,6 +520,7 @@ function CuentasPage() {
         />
       )}
 
+      <UpgradeModal open={showUpgradeModal} feature="max_accounts" onClose={() => setShowUpgradeModal(false)} />
       <ConfirmModal
         open={confirmId !== null}
         title="¿Eliminar cuenta?"

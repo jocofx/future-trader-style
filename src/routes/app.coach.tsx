@@ -6,6 +6,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { Lock } from "lucide-react";
 import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
+import { usePlan } from "@/hooks/usePlan";
 import { computeStats } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 
@@ -22,7 +23,7 @@ function CoachPage() {
   ]);
   const [input, setInput]     = useState("");
   const [loading, setLoading] = useState(false);
-  const [apiKey, setApiKey]   = useState(() => (typeof window !== "undefined" ? localStorage.getItem("tj_ai_key") ?? "" : ""));
+  const [apiKey, setApiKey]   = useState(() => (typeof window !== "undefined" ? sessionStorage.getItem("tj_ai_key") ?? "" : ""));
   const [showKey, setShowKey] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -170,7 +171,7 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
                 <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
                   placeholder="sk-ant-…"
                   className="flex-1 bg-surface/80 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono" />
-                <button onClick={() => { localStorage.setItem("tj_ai_key", apiKey); setShowKey(false); }}
+                <button onClick={() => { sessionStorage.setItem("tj_ai_key", apiKey); setShowKey(false); }}
                   className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition">
                   Guardar
                 </button>
