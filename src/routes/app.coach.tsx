@@ -210,14 +210,19 @@ Instrucciones:
         </div>
         <div className="flex items-center gap-2">
           {isPro && msgUsed !== null && (
-            <div className={`flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border ${
-              msgUsed >= MSG_LIMIT
-                ? "border-destructive/30 bg-destructive/10 text-destructive"
-                : msgUsed >= MSG_LIMIT * 0.8
-                ? "border-warning/30 bg-warning/10 text-warning"
-                : "border-border bg-surface/60 text-muted-foreground"
-            }`}>
-              {msgUsed}/{MSG_LIMIT} msgs
+            <div className="flex flex-col items-end gap-0.5">
+              <div className={`flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border ${
+                msgUsed >= MSG_LIMIT
+                  ? "border-destructive/30 bg-destructive/10 text-destructive"
+                  : msgUsed >= MSG_LIMIT * 0.8
+                  ? "border-warning/30 bg-warning/10 text-warning"
+                  : "border-border bg-surface/60 text-muted-foreground"
+              }`}>
+                {msgUsed}/{MSG_LIMIT} msgs
+              </div>
+              <div className="text-[9px] text-muted-foreground/60 px-1">
+                Se reinicia el 1 de cada mes
+              </div>
             </div>
           )}
           {!isPro && (
