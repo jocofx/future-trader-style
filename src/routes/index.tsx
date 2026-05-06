@@ -103,7 +103,7 @@ const PLANS = [
 // ── Social proof numbers ──────────────────────────────────────────
 const STATS = [
   { value: "12.400+", label: "Operaciones registradas" },
-  { value: "97%",     label: "Retención a 90 días" },
+  { value: "100%",    label: "Datos de trading reales" },
   { value: "2.3x",    label: "Mejora media profit factor" },
   { value: "€0",      label: "Para empezar hoy" },
 ];

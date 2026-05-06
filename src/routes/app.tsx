@@ -64,10 +64,11 @@ const SECTIONS = [
 
 // Bottom nav items for mobile (max 5)
 const BOTTOM_NAV = [
-  { to: "/app",             icon: LayoutDashboard, name: "Inicio",   exact: true },
-  { to: "/app/operaciones", icon: ListOrdered,     name: "Trades" },
-  { to: "/app/capital",     icon: LineChart,       name: "Capital" },
-  { to: "/app/diario",      icon: BookText,        name: "Diario" },
+  { to: "/app",               icon: LayoutDashboard, name: "Inicio",  exact: true },
+  { to: "/app/operaciones",   icon: ListOrdered,     name: "Trades"  },
+  { to: "/app/estadisticas",  icon: LineChart,       name: "Stats"   },
+  { to: "/app/diario",        icon: BookText,        name: "Diario"  },
+  { to: "/app/coach",         icon: Bot,             name: "Coach"   },
 ] as const;
 
 function AppShell() {

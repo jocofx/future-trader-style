@@ -162,6 +162,7 @@ export function useAfiliados(userId: string | null, userPlan: string = "free") {
   }) => {
     if (!profile || !userId) throw new Error('No profile')
     if (stats.pendiente <= 0) throw new Error('Sin saldo pendiente')
+    if (stats.pendiente < 20) throw new Error('El mínimo de retiro es $20')
 
     // Save payment method on affiliate profile
     const updateData: Record<string, string> = {}

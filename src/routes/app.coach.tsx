@@ -137,7 +137,8 @@ Instrucciones:
     inputRef.current?.focus();
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = (sessionData as any)?.session;
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`, {
         method: "POST",
         headers: {
@@ -150,6 +151,7 @@ Instrucciones:
           messages: [...messages, userMsg]
             .filter(m => m.role !== "assistant" || messages.indexOf(m) > 0)
             .map(m => ({ role: m.role, content: m.content })),
+          // model is set server-side in coach-chat Edge Function
         }),
       });
 

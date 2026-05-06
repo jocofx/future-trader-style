@@ -34,8 +34,8 @@ function InsightsPage() {
     return Math.min(99, Math.round(s));
   }, [closed, stats]);
 
-  const traderType = score >= 70 ? "Disciplinado" : score >= 50 ? "En Desarrollo" : score >= 30 ? "Impulsivo" : "Iniciando";
-  const typeColor  = score >= 70 ? "text-success" : score >= 50 ? "text-info" : score >= 30 ? "text-warning" : "text-destructive";
+  const traderType = closed.length < 3 ? "Sin datos aún" : score >= 70 ? "Disciplinado" : score >= 50 ? "En Desarrollo" : score >= 30 ? "Impulsivo" : "Iniciando";
+  const typeColor  = closed.length < 3 ? "text-muted-foreground" : score >= 70 ? "text-success" : score >= 50 ? "text-info" : score >= 30 ? "text-warning" : "text-destructive";
 
   // Best conditions
   const bestSession = useMemo(() => {

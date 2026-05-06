@@ -39,6 +39,16 @@ export function ComingSoon() {
   const [waitDone, setWaitDone] = useState(false);
   const [err,      setErr]      = useState("");
 
+  // Check if already logged in as admin → redirect directly
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }: any) => {
+      const session = data?.session;
+      if (session?.user?.id === ADMIN_ID) {
+        navigate({ to: "/app" });
+      }
+    });
+  }, []);
+
   // Admin login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -32,8 +32,11 @@ export function useCapital(userId: string | null) {
   }
 
   const removeEntry = async (id: string) => {
-    await supabase.from('capital_tracker').delete().eq('id', id)
+    // Delete linked ganancias first (orphan prevention)
+    await supabase.from('capital_ganancias').delete().eq('inversion_id', id).eq('user_id', userId!)
+    await supabase.from('capital_tracker').delete().eq('id', id).eq('user_id', userId!)
     setEntries(prev => prev.filter(e => e.id !== id))
+    setGanancias(prev => prev.filter(g => g.inversion_id !== id))
   }
 
   const addGanancia = async (g: Omit<CapitalGanancia, 'id' | 'created_at'>) => {
@@ -47,7 +50,7 @@ export function useCapital(userId: string | null) {
   }
 
   const removeGanancia = async (id: string) => {
-    await supabase.from('capital_ganancias').delete().eq('id', id)
+    await supabase.from('capital_ganancias').delete().eq('id', id).eq('user_id', userId!)
     setGanancias(prev => prev.filter(g => g.id !== id))
   }
 
