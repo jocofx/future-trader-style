@@ -19,6 +19,143 @@ export const Route = createFileRoute("/app/perfil")({
 
 type Tab = "general" | "seguridad" | "notificaciones" | "facturacion" | "preferencias";
 
+// ── Plan Selector Modal ───────────────────────────────────────────
+function PlanSelectorModal({ onClose, currentPlan }: {
+  onClose: () => void;
+  currentPlan: string;
+}) {
+  const { startCheckout, loading } = useCheckout();
+  const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
+  const [selected, setSelected] = useState<"basic" | "pro">("pro");
+
+  const PLANS = [
+    {
+      id: "basic" as const,
+      name: "Basic",
+      monthlyPrice: 19,
+      yearlyPrice: 15,
+      color: "oklch(0.72 0.18 250)",
+      features: [
+        "Hasta 100 operaciones/mes",
+        "Estadísticas completas",
+        "Diario, Hábitos, Premarket",
+        "Capital Tracker",
+        "Logros e Insights",
+        "Afiliados (20%→30%)",
+      ],
+    },
+    {
+      id: "pro" as const,
+      name: "Pro",
+      monthlyPrice: 39,
+      yearlyPrice: 29,
+      color: "oklch(0.78 0.20 158)",
+      popular: true,
+      features: [
+        "Operaciones ilimitadas",
+        "Todo lo de Basic",
+        "Gestor EA + MT4/MT5",
+        "Coach IA (150 msgs/mes)",
+        "Afiliados (30%→50%)",
+        "Soporte prioritario",
+      ],
+    },
+  ];
+
+  const handleCheckout = async () => {
+    await startCheckout(selected, interval);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="w-full max-w-2xl rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+          <div>
+            <div className="font-bold text-lg">Elige tu plan</div>
+            <div className="text-sm text-muted-foreground mt-0.5">Cancela cuando quieras. Sin permanencia.</div>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Billing toggle */}
+        <div className="flex justify-center pt-5 pb-2">
+          <div className="flex items-center gap-1 bg-surface/60 border border-border rounded-xl p-1">
+            <button onClick={() => setInterval("monthly")}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${interval === "monthly" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              Mensual
+            </button>
+            <button onClick={() => setInterval("yearly")}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${interval === "yearly" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              Anual
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-bold border border-success/20">-25%</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Plans grid */}
+        <div className="grid sm:grid-cols-2 gap-4 p-6">
+          {PLANS.map(p => {
+            const price = interval === "monthly" ? p.monthlyPrice : p.yearlyPrice;
+            const isSelected = selected === p.id;
+            const isCurrent = currentPlan === p.id;
+            return (
+              <button key={p.id} onClick={() => setSelected(p.id)} disabled={isCurrent}
+                className={`relative text-left rounded-2xl border-2 p-5 transition ${
+                  isSelected ? "border-primary bg-primary/5 shadow-lg" :
+                  isCurrent ? "border-border bg-surface/30 opacity-60 cursor-not-allowed" :
+                  "border-border bg-surface/40 hover:border-primary/40"
+                }`}>
+                {p.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] px-3 py-1 rounded-full bg-primary text-primary-foreground font-bold uppercase tracking-wider">
+                    Más popular
+                  </div>
+                )}
+                {isCurrent && (
+                  <div className="absolute -top-3 right-4 text-[10px] px-3 py-1 rounded-full bg-success text-white font-bold">
+                    Plan actual
+                  </div>
+                )}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-bold text-lg">{p.name}</div>
+                  {isSelected && <Check className="h-5 w-5 text-primary" />}
+                </div>
+                <div className="flex items-baseline gap-1 mb-4">
+                  <span className="text-3xl font-bold font-mono">${price}</span>
+                  <span className="text-muted-foreground text-sm">/mes</span>
+                  {interval === "yearly" && (
+                    <span className="text-xs text-muted-foreground ml-1">(${price * 12}/año)</span>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  {p.features.map(f => (
+                    <div key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Check className="h-3 w-3 text-success shrink-0" /> {f}
+                    </div>
+                  ))}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* CTA */}
+        <div className="px-6 pb-6">
+          <button onClick={handleCheckout} disabled={loading || currentPlan === selected}
+            className="w-full h-12 rounded-xl bg-gradient-primary text-primary-foreground font-semibold text-sm hover:brightness-110 transition shadow-glow disabled:opacity-50 flex items-center justify-center gap-2">
+            {loading ? "Redirigiendo a Stripe…" : `Empezar con ${selected === "pro" ? "Pro" : "Basic"} ${interval === "yearly" ? "Anual" : "Mensual"} →`}
+          </button>
+          <div className="text-center text-xs text-muted-foreground mt-2">
+            Pago seguro con Stripe · Cancela cuando quieras
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PerfilPage() {
   const { startCheckout, loading: checkoutLoading } = useCheckout();
   const { user, plan, trades: { trades } } = useApp();
@@ -61,6 +198,7 @@ function PerfilPage() {
   };
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("general");
+  const [showPlanModal, setShowPlanModal] = useState(false);
   const [editing, setEditing] = useState(false);
   const [pwModal, setPwModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
@@ -154,6 +292,7 @@ function PerfilPage() {
   ];
 
   return (
+    <>
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -226,7 +365,7 @@ function PerfilPage() {
           {/* Quick actions */}
           <div className="flex flex-col gap-2">
             <button
-              onClick={() => startCheckout("basic", "monthly")}
+              onClick={() => setShowPlanModal(true)}
               disabled={checkoutLoading}
               className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition shadow-[0_0_20px_color-mix(in_oklab,var(--primary)_35%,transparent)] inline-flex items-center justify-center gap-1.5 whitespace-nowrap disabled:opacity-50"
             >
@@ -544,8 +683,16 @@ function PerfilPage() {
       <ChangePasswordModal open={pwModal} onClose={() => setPwModal(false)} />
       <DeleteAccountModal open={deleteModal} onClose={() => setDeleteModal(false)} email={user?.email ?? ""} />
     </div>
+    {showPlanModal && (
+      <PlanSelectorModal
+        currentPlan={plan}
+        onClose={() => setShowPlanModal(false)}
+      />
+    )}
+    </>
   );
 }
+
 
 /* ── Subcomponents ────────────────────────────────────────── */
 
