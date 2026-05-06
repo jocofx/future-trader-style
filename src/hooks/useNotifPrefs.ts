@@ -83,9 +83,24 @@ export function useNotifPrefs(userId: string | null) {
     return granted
   }
 
-  const testPush = (title: string, body: string) => {
+  const testPush = async (title: string, body: string) => {
     if (!pushGranted) return
-    new Notification(title, { body, icon: '/favicon.ico' })
+    try {
+      // Use Service Worker showNotification — works on iOS PWA
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready
+        await reg.showNotification(title, {
+          body,
+          icon:    '/icon-192.png',
+          badge:   '/icon-192.png',
+          vibrate: [100, 50, 100],
+        })
+      } else {
+        new Notification(title, { body, icon: '/icon-192.png' })
+      }
+    } catch (e) {
+      console.warn('testPush failed:', e)
+    }
   }
 
   // Schedule browser push reminders based on preferences
@@ -117,31 +132,31 @@ export function useNotifPrefs(userId: string | null) {
 
     if (prefs.recordatorio_diario.push) {
       const c = checkTime(prefs.recordatorio_diario.time, () =>
-        new Notification('✍️ TradyncApp — Diario', { body: '¿Has escrito tu reflexión del día?' })
+        navigator.serviceWorker.ready.then(r => r.showNotification('✍️ TradyncApp — Diario', { body: '¿Has escrito tu reflexión del día?', icon: '/icon-192.png' }))
       )
       if (c) cleanups.push(c)
     }
     if (prefs.recordatorio_habitos.push) {
       const c = checkTime(prefs.recordatorio_habitos.time, () =>
-        new Notification('💪 TradyncApp — Hábitos', { body: '¿Has registrado tus hábitos de hoy?' })
+        navigator.serviceWorker.ready.then(r => r.showNotification('💪 TradyncApp — Hábitos', { body: '¿Has registrado tus hábitos de hoy?', icon: '/icon-192.png' }))
       )
       if (c) cleanups.push(c)
     }
     if (prefs.recordatorio_premarket.push) {
       const c = checkTime(prefs.recordatorio_premarket.time, () =>
-        new Notification('📋 TradyncApp — Pre-Market', { body: '¿Has completado tu checklist pre-market?' })
+        navigator.serviceWorker.ready.then(r => r.showNotification('📋 TradyncApp — Pre-Market', { body: '¿Has completado tu checklist pre-market?', icon: '/icon-192.png' }))
       )
       if (c) cleanups.push(c)
     }
     if (prefs.resumen_diario.push) {
       const c = checkTime(prefs.resumen_diario.time, () =>
-        new Notification('📊 TradyncApp — Resumen', { body: 'Tu resumen de trading del día está listo.' })
+        navigator.serviceWorker.ready.then(r => r.showNotification('📊 TradyncApp — Resumen', { body: 'Tu resumen de trading del día está listo.', icon: '/icon-192.png' }))
       )
       if (c) cleanups.push(c)
     }
     if (prefs.recordatorio_cierre.push) {
       const c = checkTime(prefs.recordatorio_cierre.time, () =>
-        new Notification('🔔 TradyncApp — Cierre', { body: '¿Has revisado tus operaciones del día?' })
+        navigator.serviceWorker.ready.then(r => r.showNotification('🔔 TradyncApp — Cierre', { body: '¿Has revisado tus operaciones del día?', icon: '/icon-192.png' }))
       )
       if (c) cleanups.push(c)
     }
