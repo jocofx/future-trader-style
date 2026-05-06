@@ -40,11 +40,12 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    // Current time in HH:MM format (UTC — users set their time in local but we store as-is)
-    const now   = new Date();
-    const hh    = String(now.getUTCHours()).padStart(2, "0");
-    const mm    = String(now.getUTCMinutes()).padStart(2, "0");
-    const timeNow = `${hh}:${mm}`;
+    // Current UTC time
+    const now     = new Date();
+    const utcHH   = now.getUTCHours();
+    const utcMM   = now.getUTCMinutes();
+    const timeNow = `${String(utcHH).padStart(2,"0")}:${String(utcMM).padStart(2,"0")}`;
+    const utcMinutes = utcHH * 60 + utcMM;
 
     console.log(`Scheduler running at UTC ${timeNow}`);
 
@@ -76,8 +77,12 @@ Deno.serve(async (req) => {
         const userPref = notifPrefs?.[type];
         if (!userPref?.push || !userPref?.time) continue;
 
-        // Check if current time matches (HH:MM)
-        if (userPref.time !== timeNow) continue;
+        // Check if current time matches
+        // time is stored in local time, tzOffset in minutes (e.g. -120 for UTC+2)
+        const tzOffset = (notifPrefs as any)._tzOffset ?? 0; // minutes from UTC
+        const localHH = (utcMinutes - tzOffset + 1440) % 1440;
+        const localTime = `${String(Math.floor(localHH/60)).padStart(2,"0")}:${String(localHH%60).padStart(2,"0")}`;
+        if (userPref.time !== localTime) continue;
 
         // Send push
         const ok = await sendPush(userId, reminder);

@@ -66,10 +66,14 @@ export function useNotifPrefs(userId: string | null) {
   const save = async (newPrefs: NotifPrefs) => {
     if (!userId) return
     setPrefs(newPrefs)
+    // Include timezone offset so scheduler can convert to UTC
+    // getTimezoneOffset() returns minutes WEST of UTC (negative for UTC+)
+    // We store as minutes EAST (positive for UTC+)
+    const tzOffset = -new Date().getTimezoneOffset()
     await supabase.from('configuracion').upsert({
       user_id:    userId,
       clave:      CLAVE,
-      valor:      newPrefs,
+      valor:      { ...newPrefs, _tzOffset: tzOffset },
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,clave' })
   }
