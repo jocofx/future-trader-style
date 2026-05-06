@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Create Checkout Session ───────────────────────────────
-    const appUrl = req.headers.get("origin") ?? "https://future-trader-style.vercel.app";
+    const appUrl = "https://tradyncapp.com";  // always use production domain
 
     const session = await stripe.checkout.sessions.create({
       customer:            customerId,
