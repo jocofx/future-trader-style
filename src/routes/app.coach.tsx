@@ -57,10 +57,6 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
     setInput("");
     setLoading(true);
 
-    if (user) {
-      await supabase.from("chat_history").insert({ user_id: user.id, role: "user", content: userMsg.content }).catch(() => {});
-    }
-
     try {
       // Route through Supabase Edge Function to avoid exposing API key
     const { data: { session } } = await supabase.auth.getSession();
@@ -92,9 +88,7 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
       const aiMsg: Msg = { role: "assistant", content: reply };
       setMessages(prev => [...prev, aiMsg]);
 
-      if (user) {
-        await supabase.from("chat_history").insert({ user_id: user.id, role: "assistant", content: reply }).catch(() => {});
-      }
+
     } catch (e) {
       setMessages(prev => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : "Problema de conexión"}` }]);
     } finally {
@@ -107,6 +101,8 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
     { icon: "🧠", text: "Analiza mi psicología de las últimas ops" },
     { icon: "📊", text: "¿Qué instrumento me funciona mejor?" },
     { icon: "🚀", text: "Dame 3 cosas a mejorar esta semana" },
+    { icon: "💪", text: "¿Cómo están afectando mis hábitos a mis resultados?" },
+    { icon: "💰", text: "¿Cuál es mi rentabilidad real y cómo mejorarla?" },
   ];
 
   const clearChat = () => {
@@ -236,7 +232,7 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
             <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground font-semibold mb-2 flex items-center gap-1.5">
               <Zap className="h-3 w-3 text-primary" /> Sugerencias
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {QUICK.map(q => (
                 <button key={q.text} onClick={() => sendMessage(q.text)}
                   className="text-left text-xs px-3 py-2 rounded-xl border border-border bg-surface-2/40 text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-surface-2 transition flex items-center gap-2">
