@@ -1,178 +1,221 @@
 import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
-import { Bot, Send, RefreshCw, Sparkles, Settings, Zap, AlertCircle, MessageSquare } from "lucide-react";
-import { UpgradeModal } from "@/components/UpgradeModal";
-import { Lock } from "lucide-react";
+import { Bot, Send, RefreshCw, Sparkles, Settings, Zap, AlertCircle } from "lucide-react";
 import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
 import { usePlan } from "@/hooks/usePlan";
 import { computeStats } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 
-export const Route = createFileRoute("/app/coach")({
-    component: CoachPage,
-});
+export const Route = createFileRoute("/app/coach")({ component: CoachPage });
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; time?: string };
+
+const QUICK = [
+  { icon: "🎯", label: "Problema principal", text: "¿Cuál es mi mayor problema de trading según mis datos?" },
+  { icon: "🧠", label: "Psicología",         text: "Analiza mi psicología y emociones en las últimas operaciones" },
+  { icon: "📊", label: "Mejor instrumento",  text: "¿Qué instrumento me funciona mejor y por qué?" },
+  { icon: "🚀", label: "Plan de mejora",     text: "Dame 3 cosas concretas a mejorar esta semana" },
+  { icon: "💪", label: "Hábitos",            text: "¿Cómo están afectando mis hábitos a mis resultados?" },
+  { icon: "💰", label: "Rentabilidad",       text: "¿Cuál es mi rentabilidad real y cómo puedo mejorarla?" },
+];
+
+// Render message content with markdown-like formatting
+function MessageContent({ content }: { content: string }) {
+  const lines = content.split("\n");
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, i) => {
+        if (!line.trim()) return <div key={i} className="h-1" />;
+        // Bold: **text**
+        const parts = line.split(/(\*\*[^*]+\*\*)/g);
+        return (
+          <p key={i} className="leading-relaxed">
+            {parts.map((part, j) =>
+              part.startsWith("**") && part.endsWith("**")
+                ? <strong key={j} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>
+                : part
+            )}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
 
 function CoachPage() {
-  const { trades: { trades }, user } = useApp();
+  const { trades: { trades } } = useApp();
   const { isPro } = usePlan();
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "assistant", content: "¡Hola! Soy tu Coach IA de trading. Puedo analizar tus operaciones, detectar patrones en tu psicología y ayudarte a mejorar. ¿En qué te ayudo hoy?" }
+    {
+      role: "assistant",
+      content: "¡Hola! Soy tu Coach IA de trading.\n\nPuedo analizar tus operaciones reales, detectar patrones en tu psicología y darte recomendaciones concretas para mejorar.\n\n¿En qué te ayudo hoy?",
+      time: new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }),
+    }
   ]);
   const [input, setInput]     = useState("");
   const [loading, setLoading] = useState(false);
-  const [apiKey, setApiKey]   = useState(() => (typeof window !== "undefined" ? sessionStorage.getItem("tj_ai_key") ?? "" : ""));
+  const [apiKey, setApiKey]   = useState(() => sessionStorage.getItem("tj_ai_key") ?? "");
   const [showKey, setShowKey] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef  = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
   const stats = computeStats(trades.filter(t => t.resultado != null));
 
   const buildContext = () => {
     const recent = trades.slice(0, 20).map(t =>
-      `${t.fecha} ${t.instrumento} ${t.tipo} resultado:${t.resultado?.toFixed(2)} emocion:${t.emocion ?? "—"} rr:${t.rr ?? "—"}`
+      `${t.fecha} ${t.instrumento} ${t.tipo} pnl:${t.resultado?.toFixed(2)} emocion:${t.emocion ?? "—"} rr:${t.rr ?? "—"} sesion:${t.sesion ?? "—"}`
     ).join("\n");
+    return `Eres un coach profesional de trading. Analiza con precisión y da consejos concretos y accionables.
 
-    return `Eres un coach profesional de trading. Datos del trader:
-- Total ops: ${stats.total} | Win rate: ${(stats.winRate*100).toFixed(1)}% | P&L: $${stats.pnl.toFixed(2)}
+Datos del trader:
+- Operaciones totales: ${stats.total} | Win rate: ${(stats.winRate*100).toFixed(1)}% | P&L total: $${stats.pnl.toFixed(2)}
 - Profit Factor: ${stats.profitFactor.toFixed(2)} | Expectancy: $${stats.expectancy.toFixed(2)}
-- Mejor trade: +$${stats.bestTrade.toFixed(2)} | Peor: -$${Math.abs(stats.worstTrade).toFixed(2)}
-Últimas 20 ops:
-${recent}
-Responde en español. Sé directo, específico y actionable. Usa emojis con moderación.`;
+- Mejor trade: +$${stats.bestTrade.toFixed(2)} | Peor trade: -$${Math.abs(stats.worstTrade).toFixed(2)}
+
+Últimas 20 operaciones:
+${recent || "Sin operaciones registradas aún"}
+
+Instrucciones:
+- Responde siempre en español
+- Sé directo, específico y usa los datos reales del trader
+- Usa **negrita** para resaltar puntos importantes
+- Mantén respuestas concisas (máx 200 palabras salvo que pidan análisis completo)
+- Si no hay datos suficientes, indícalo y da consejos generales`;
   };
 
   const sendMessage = async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || loading) return;
-    // Pro users use the server's API key — no need for their own
     if (!apiKey && !isPro) { setShowKey(true); return; }
 
-    const userMsg: Msg = { role: "user", content: text };
+    const now = new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+    const userMsg: Msg = { role: "user", content: text, time: now };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setLoading(true);
+    inputRef.current?.focus();
 
     try {
-      // Route through Supabase Edge Function to avoid exposing API key
-    const { data: { session } } = await supabase.auth.getSession();
-    const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`;
-    const res = await fetch(endpoint, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          "x-user-api-key": apiKey, // user's own key if provided
+          "Content-Type":   "application/json",
+          "Authorization":  `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          "x-user-api-key": apiKey,
         },
         body: JSON.stringify({
-          model: "claude-3-haiku-20240307",
-          max_tokens: 800,
-          system: buildContext(),
-          messages: [...messages.filter(m => m.role !== "assistant" || messages.indexOf(m) > 0), userMsg].map(m => ({
-            role: m.role, content: m.content
-          })),
+          system:   buildContext(),
+          messages: [...messages, userMsg]
+            .filter(m => m.role !== "assistant" || messages.indexOf(m) > 0)
+            .map(m => ({ role: m.role, content: m.content })),
         }),
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error?.message ?? `Error ${res.status}`);
+        throw new Error((err as any).error ?? `Error ${res.status}`);
       }
 
       const data = await res.json();
       const reply = data.content?.[0]?.text ?? "Sin respuesta";
-      const aiMsg: Msg = { role: "assistant", content: reply };
-      setMessages(prev => [...prev, aiMsg]);
-
-
+      setMessages(prev => [...prev, {
+        role: "assistant", content: reply,
+        time: new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }),
+      }]);
     } catch (e) {
-      setMessages(prev => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : "Problema de conexión"}` }]);
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: `❌ ${e instanceof Error ? e.message : "Error de conexión. Inténtalo de nuevo."}`,
+        time: new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }),
+      }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const QUICK = [
-    { icon: "🎯", text: "¿Cuál es mi mayor problema de trading?" },
-    { icon: "🧠", text: "Analiza mi psicología de las últimas ops" },
-    { icon: "📊", text: "¿Qué instrumento me funciona mejor?" },
-    { icon: "🚀", text: "Dame 3 cosas a mejorar esta semana" },
-    { icon: "💪", text: "¿Cómo están afectando mis hábitos a mis resultados?" },
-    { icon: "💰", text: "¿Cuál es mi rentabilidad real y cómo mejorarla?" },
-  ];
-
   const clearChat = () => {
-    setMessages([{ role: "assistant", content: "Conversación reiniciada. ¿En qué te ayudo?" }]);
+    if (!window.confirm("¿Eliminar la conversación?")) return;
+    setMessages([{
+      role: "assistant",
+      content: "Conversación eliminada. ¿En qué te ayudo?",
+      time: new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }),
+    }]);
   };
 
   return (
-    <PlanGate feature="coach_ia" plan="pro">   <div className="p-6 max-w-[1100px] mx-auto h-full flex flex-col">
+    <PlanGate feature="coach_ia" plan="pro">
+    <div className="h-[calc(100vh-4rem)] flex flex-col p-4 md:p-6 max-w-[1000px] mx-auto gap-4">
+
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            AI Coach · Powered by Claude
+      <div className="flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-2xl bg-gradient-primary grid place-items-center shadow-glow shrink-0">
+            <Bot className="h-5 w-5 text-white" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Coach Inteligente</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Análisis basado en tus <span className="text-primary font-mono">{stats.total}</span> operaciones reales
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-bold text-lg leading-none">Coach IA</h1>
+              <span className="flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-success bg-success/10 border border-success/20 rounded-full px-2 py-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> Online
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Powered by Claude · {stats.total} operaciones analizadas
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={clearChat}
-            className="h-9 px-3 rounded-xl border border-border bg-surface/60 text-xs font-semibold hover:border-primary/40 hover:text-primary text-muted-foreground transition flex items-center gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" /> Eliminar chat
-          </button>
           {!isPro && (
             <button onClick={() => setShowKey(k => !k)}
-              className={`h-9 px-3 rounded-xl border text-xs font-semibold transition flex items-center gap-1.5 ${
-                apiKey
-                  ? "border-success/30 bg-success/8 text-success"
-                  : "border-warning/30 bg-warning/8 text-warning"
+              className={`h-8 px-2.5 rounded-xl border text-[11px] font-semibold transition flex items-center gap-1.5 ${
+                apiKey ? "border-success/30 bg-success/8 text-success" : "border-border text-muted-foreground hover:border-primary/40"
               }`}>
-              <Settings className="h-3.5 w-3.5" /> {apiKey ? "API conectada" : "Configurar API"}
+              <Settings className="h-3 w-3" /> {apiKey ? "API activa" : "API Key"}
             </button>
           )}
+          <button onClick={clearChat}
+            className="h-8 px-2.5 rounded-xl border border-border text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/30 transition flex items-center gap-1.5">
+            <RefreshCw className="h-3 w-3" /> Eliminar chat
+          </button>
         </div>
       </div>
 
       {/* Stats strip */}
-      <div className="grid grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-5 gap-2 shrink-0">
         {[
-          { label: "Total ops",  value: stats.total.toString(),                            tone: "text-info" },
-          { label: "Win rate",   value: `${(stats.winRate*100).toFixed(1)}%`,              tone: stats.winRate >= 0.5 ? "text-success" : "text-warning" },
-          { label: "P&L",        value: `${stats.pnl >= 0 ? "+" : "-"}$${Math.abs(stats.pnl).toFixed(0)}`, tone: stats.pnl >= 0 ? "text-success" : "text-destructive" },
-          { label: "PF",         value: stats.profitFactor.toFixed(2),                     tone: "text-primary" },
-          { label: "Expectancy", value: `$${stats.expectancy.toFixed(2)}`,                 tone: "text-success" },
-        ].map(k => (
-          <div key={k.label} className="rounded-xl border border-border bg-surface/60 backdrop-blur-xl px-3 py-2">
-            <div className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground">{k.label}</div>
-            <div className={`text-sm font-bold font-mono mt-0.5 ${k.tone}`}>{k.value}</div>
+          { label: "Ops",       value: stats.total.toString(),                                          color: "text-foreground" },
+          { label: "Win Rate",  value: `${(stats.winRate*100).toFixed(0)}%`,                            color: stats.winRate >= 0.5 ? "text-success" : "text-warning" },
+          { label: "P&L",       value: `${stats.pnl >= 0 ? "+" : ""}$${stats.pnl.toFixed(0)}`,         color: stats.pnl >= 0 ? "text-success" : "text-destructive" },
+          { label: "PF",        value: stats.profitFactor.toFixed(2),                                   color: stats.profitFactor >= 1 ? "text-primary" : "text-destructive" },
+          { label: "Expectancy",value: `$${stats.expectancy.toFixed(1)}`,                               color: stats.expectancy >= 0 ? "text-success" : "text-destructive" },
+        ].map(s => (
+          <div key={s.label} className="rounded-xl border border-border bg-surface/60 px-2 py-1.5 text-center">
+            <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{s.label}</div>
+            <div className={`text-sm font-bold font-mono ${s.color}`}>{s.value}</div>
           </div>
         ))}
       </div>
 
       {/* API Key panel */}
       {showKey && !isPro && (
-        <div className="rounded-2xl border border-warning/30 bg-warning/5 backdrop-blur p-4 mb-4">
+        <div className="rounded-2xl border border-border bg-surface/60 p-4 shrink-0">
           <div className="flex items-start gap-3">
             <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
             <div className="flex-1">
-              <div className="text-sm font-semibold mb-1">Anthropic API Key</div>
-              <div className="text-xs text-muted-foreground mb-3">
-                Necesitas una API key de <a href="https://console.anthropic.com" target="_blank" rel="noreferrer" className="text-primary underline">console.anthropic.com</a>. Se guarda solo en tu navegador.
-              </div>
+              <div className="text-sm font-semibold mb-1">API Key de Anthropic</div>
               <div className="flex gap-2">
                 <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
                   placeholder="sk-ant-…"
-                  className="flex-1 bg-surface/80 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono" />
+                  className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-mono" />
                 <button onClick={() => { sessionStorage.setItem("tj_ai_key", apiKey); setShowKey(false); }}
-                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition">
+                  className="px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
                   Guardar
                 </button>
               </div>
@@ -181,81 +224,79 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
         </div>
       )}
 
-      {/* Chat */}
-      <div className="flex-1 rounded-2xl border border-border bg-surface/70 backdrop-blur-xl overflow-hidden flex flex-col" style={{minHeight:"500px"}}>
-        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <div className="text-sm font-semibold flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-primary" /> Conversación
-          </div>
-          <span className="flex items-center gap-1.5 text-[10px] text-success font-medium">
-            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> ONLINE
-          </span>
+      {/* Quick buttons — always visible */}
+      <div className="shrink-0">
+        <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">
+          <Zap className="h-3 w-3 text-primary" /> Preguntas rápidas
         </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {QUICK.map(q => (
+            <button key={q.text} onClick={() => sendMessage(q.text)} disabled={loading}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface/50 hover:bg-surface hover:border-primary/30 hover:text-foreground text-muted-foreground transition disabled:opacity-40 text-left">
+              <span className="text-base shrink-0">{q.icon}</span>
+              <span className="text-[11px] font-medium leading-tight">{q.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+      {/* Chat messages */}
+      <div className="flex-1 overflow-y-auto rounded-2xl border border-border bg-surface/40 backdrop-blur flex flex-col min-h-0">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((m, i) => (
             <div key={i} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
               {m.role === "assistant" && (
-                <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_-4px_oklch(var(--primary)/0.6)]">
-                  <Bot className="h-4 w-4 text-primary" />
+                <div className="h-8 w-8 rounded-xl bg-gradient-primary grid place-items-center shrink-0 shadow-glow mt-0.5">
+                  <Sparkles className="h-4 w-4 text-white" />
                 </div>
               )}
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                m.role === "user"
-                  ? "bg-primary text-primary-foreground ml-auto shadow-[0_0_16px_-6px_oklch(var(--primary)/0.5)]"
-                  : "bg-surface-2/60 border border-border text-foreground"
-              }`}>
-                {m.content.split("\n").map((line, j) => (
-                  <span key={j}>{line}{j < m.content.split("\n").length-1 && <br/>}</span>
-                ))}
+              <div className={`flex flex-col gap-1 max-w-[82%] ${m.role === "user" ? "items-end" : "items-start"}`}>
+                <div className={`rounded-2xl px-4 py-3 text-sm ${
+                  m.role === "user"
+                    ? "bg-primary text-primary-foreground rounded-tr-sm shadow-glow"
+                    : "bg-card border border-border text-foreground rounded-tl-sm shadow-sm"
+                }`}>
+                  {m.role === "assistant"
+                    ? <MessageContent content={m.content} />
+                    : <p className="leading-relaxed">{m.content}</p>
+                  }
+                </div>
+                {m.time && (
+                  <span className="text-[10px] text-muted-foreground px-1">{m.time}</span>
+                )}
               </div>
             </div>
           ))}
+
           {loading && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center flex-shrink-0">
-                <Bot className="h-4 w-4 text-primary animate-pulse" />
+              <div className="h-8 w-8 rounded-xl bg-gradient-primary grid place-items-center shrink-0 shadow-glow mt-0.5">
+                <Sparkles className="h-4 w-4 text-white animate-pulse" />
               </div>
-              <div className="bg-surface-2/60 border border-border rounded-2xl px-4 py-3 flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{animationDelay:"0ms"}}/>
-                <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{animationDelay:"150ms"}}/>
-                <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{animationDelay:"300ms"}}/>
+              <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5 shadow-sm">
+                <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{animationDelay:"0ms"}}/>
+                <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{animationDelay:"150ms"}}/>
+                <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{animationDelay:"300ms"}}/>
+                <span className="text-xs text-muted-foreground ml-1">Analizando...</span>
               </div>
             </div>
           )}
           <div ref={bottomRef} />
         </div>
 
-        {/* Quick suggestions */}
-        {messages.length <= 1 && (
-          <div className="px-5 pb-3">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground font-semibold mb-2 flex items-center gap-1.5">
-              <Zap className="h-3 w-3 text-primary" /> Sugerencias
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {QUICK.map(q => (
-                <button key={q.text} onClick={() => sendMessage(q.text)}
-                  className="text-left text-xs px-3 py-2 rounded-xl border border-border bg-surface-2/40 text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-surface-2 transition flex items-center gap-2">
-                  <span className="text-base">{q.icon}</span>
-                  <span>{q.text}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Input */}
-        <div className="p-4 border-t border-border flex gap-2">
-          <input value={input} onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();} }}
-            placeholder="Pregunta algo sobre tu trading…"
-            className="flex-1 bg-surface-2/60 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground" />
+        <div className="p-3 border-t border-border bg-surface/60 flex gap-2">
+          <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+            placeholder="Escribe tu pregunta…"
+            className="flex-1 bg-surface border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground" />
           <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
-            className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-[0_0_16px_-4px_oklch(var(--primary)/0.5)] hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed">
+            className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-glow hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
             <Send className="h-4 w-4" />
           </button>
         </div>
       </div>
+
     </div>
     </PlanGate>
   );
