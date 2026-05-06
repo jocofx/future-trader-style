@@ -32,8 +32,9 @@ function PlanSelectorModal({ onClose, currentPlan }: {
     {
       id: "basic" as const,
       name: "Basic",
-      monthlyPrice: 19,
-      yearlyPrice: 15,
+      monthlyPrice: 9,
+      yearlyPrice: 84,
+      yearlyMonthly: 7,  // 84/12 = 7€/mes
       color: "oklch(0.72 0.18 250)",
       features: [
         "Hasta 100 operaciones/mes",
@@ -47,8 +48,9 @@ function PlanSelectorModal({ onClose, currentPlan }: {
     {
       id: "pro" as const,
       name: "Pro",
-      monthlyPrice: 39,
-      yearlyPrice: 29,
+      monthlyPrice: 29,
+      yearlyPrice: 264,
+      yearlyMonthly: 22,  // 264/12 = 22€/mes
       color: "oklch(0.78 0.20 158)",
       popular: true,
       features: [
@@ -123,10 +125,15 @@ function PlanSelectorModal({ onClose, currentPlan }: {
                   {isSelected && <Check className="h-5 w-5 text-primary" />}
                 </div>
                 <div className="flex items-baseline gap-1 mb-4">
-                  <span className="text-3xl font-bold font-mono">${price}</span>
+                  <span className="text-3xl font-bold font-mono">
+                    {interval === "yearly" ? `${p.yearlyMonthly}€` : `${price}€`}
+                  </span>
                   <span className="text-muted-foreground text-sm">/mes</span>
                   {interval === "yearly" && (
-                    <span className="text-xs text-muted-foreground ml-1">(${price * 12}/año)</span>
+                    <span className="text-xs text-muted-foreground ml-1">({p.yearlyPrice}€/año)</span>
+                  )}
+                  {interval === "monthly" && (
+                    <span className="text-xs text-success ml-1">Ahorra {p.yearlyPrice < p.monthlyPrice * 12 ? `${p.monthlyPrice * 12 - p.yearlyPrice}€/año` : ""} con anual</span>
                   )}
                 </div>
                 <div className="space-y-1.5">
