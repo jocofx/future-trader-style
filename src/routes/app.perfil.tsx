@@ -8,6 +8,7 @@ import {
 import { useApp } from "@/context/AppContext";
 import { useCheckout } from "@/hooks/useCheckout";
 import { useNotifPrefs } from "@/hooks/useNotifPrefs";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import type { NotifPrefs, NotifPref } from "@/hooks/useNotifPrefs";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/components/theme-provider";
@@ -167,6 +168,7 @@ function PerfilPage() {
   const { startCheckout, loading: checkoutLoading } = useCheckout();
   const { user, plan, trades: { trades } } = useApp();
   const notif = useNotifPrefs(user?.id ?? null);
+  const push  = usePushNotifications(user?.id ?? null);
   useEffect(() => { if (user?.id) notif.load(); }, [user?.id]);
 
   // ── Preferencias state ────────────────────────────────────────
@@ -534,9 +536,11 @@ function PerfilPage() {
       {tab === "notificaciones" && (
         <NotificacionesTab
           prefs={notif.prefs}
-          pushGranted={notif.pushGranted}
+          pushGranted={push.granted}
+          pushSubscribed={push.subscribed}
+          pushSupported={push.supported}
           onSave={notif.save}
-          onRequestPush={notif.requestPush}
+          onRequestPush={push.subscribe}
           onTestPush={notif.testPush}
         />
       )}
@@ -771,11 +775,13 @@ function NotifRow({ label, desc, icon, pref, onChangePref, showTime = false }: {
   );
 }
 
-function NotificacionesTab({ prefs, pushGranted, onSave, onRequestPush, onTestPush }: {
+function NotificacionesTab({ prefs, pushGranted, pushSubscribed, pushSupported, onSave, onRequestPush, onTestPush }: {
   prefs: NotifPrefs;
   pushGranted: boolean;
+  pushSubscribed?: boolean;
+  pushSupported?: boolean;
   onSave: (p: NotifPrefs) => Promise<void>;
-  onRequestPush: () => Promise<boolean>;
+  onRequestPush: () => Promise<boolean | void>;
   onTestPush: (title: string, body: string) => void;
 }) {
   const [local, setLocal] = useState<NotifPrefs>(prefs);
@@ -798,15 +804,21 @@ function NotificacionesTab({ prefs, pushGranted, onSave, onRequestPush, onTestPu
   return (
     <div className="space-y-6">
       {/* Push permission banner */}
-      {!pushGranted && (
+      {pushSupported === false && (
+        <div className="p-3 rounded-xl border border-border bg-surface/40 text-xs text-muted-foreground">
+          Tu navegador no soporta notificaciones push. En iOS, instala TradyncApp como PWA (Safari → Compartir → Añadir a pantalla de inicio).
+        </div>
+      )}
+
+      {pushSupported !== false && !pushSubscribed && (
         <div className="flex items-start gap-3 p-4 rounded-xl border border-warning/30 bg-warning/8">
           <span className="text-lg shrink-0">🔔</span>
           <div className="flex-1">
-            <div className="text-sm font-semibold">Activa las notificaciones del navegador</div>
+            <div className="text-sm font-semibold">Activa las notificaciones push</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              Para recibir recordatorios en tiempo real necesitas dar permiso al navegador.
+              Recibe recordatorios aunque tengas el navegador cerrado. Funciona en iOS si instalas TradyncApp como app.
             </div>
-            <button onClick={onRequestPush}
+            <button onClick={() => onRequestPush()}
               className="mt-2 text-xs font-semibold text-primary hover:underline">
               Activar notificaciones push →
             </button>
@@ -814,10 +826,10 @@ function NotificacionesTab({ prefs, pushGranted, onSave, onRequestPush, onTestPu
         </div>
       )}
 
-      {pushGranted && (
+      {pushSubscribed && (
         <div className="flex items-center justify-between p-3 rounded-xl border border-success/20 bg-success/5">
           <div className="flex items-center gap-2 text-xs text-success font-semibold">
-            <Check className="h-3.5 w-3.5" /> Notificaciones push activadas
+            <Check className="h-3.5 w-3.5" /> Notificaciones push activas — funcionan con el navegador cerrado
           </div>
           <button onClick={() => onTestPush("🔔 TradyncApp", "Las notificaciones funcionan correctamente ✅")}
             className="text-xs text-muted-foreground hover:text-foreground underline">
