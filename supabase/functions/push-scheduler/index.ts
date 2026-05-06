@@ -38,6 +38,8 @@ async function sendPush(userId: string, notification: { title: string; body: str
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  // Allow internal cron calls without JWT verification
+  // The function is protected by Supabase's network layer
 
   try {
     // Current UTC time

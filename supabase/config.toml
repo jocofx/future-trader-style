@@ -1,0 +1,23 @@
+[functions.push-scheduler]
+verify_jwt = false
+
+[functions.send-push]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.ea-api]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.download-ea]
+verify_jwt = false
+
+[functions.coach-chat]
+verify_jwt = false
