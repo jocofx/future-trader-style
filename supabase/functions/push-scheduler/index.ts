@@ -45,24 +45,28 @@ Deno.serve(async (req) => {
     console.log(`Scheduler UTC: ${timeUtc} (${utcMinutes} min)`);
 
     // Get all users with push subscriptions
-    const { data: subscriptions } = await supabase
+    const { data: subscriptions, error: subErr } = await supabase
       .from("configuracion")
       .select("user_id")
       .eq("clave", "push_subscription");
 
+    console.log(`Subscriptions found: ${subscriptions?.length ?? 0}`, subErr ? `Error: ${subErr.message}` : "");
+
     if (!subscriptions?.length) {
-      return new Response(JSON.stringify({ ok: true, sent: 0, time: timeUtc }), { headers: CORS });
+      return new Response(JSON.stringify({ ok: true, sent: 0, time: timeUtc, debug: "no subscriptions" }), { headers: CORS });
     }
 
     const userIds = subscriptions.map((s: any) => s.user_id);
     let sent = 0;
 
     // Get notification preferences for all subscribed users
-    const { data: prefs } = await supabase
+    const { data: prefs, error: prefsErr } = await supabase
       .from("configuracion")
       .select("user_id, valor")
       .eq("clave", "notif_prefs")
       .in("user_id", userIds);
+
+    console.log(`Prefs found: ${prefs?.length ?? 0}`, prefsErr ? `Error: ${prefsErr.message}` : "");
 
     for (const pref of prefs ?? []) {
       const userId     = pref.user_id;
