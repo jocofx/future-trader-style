@@ -8,7 +8,7 @@ const ADMIN_ID = "7b14f1e1-4e5a-41e9-a3cc-48161ca41adb";
 
 // Target launch date — change this to your real launch date
 // Update this date before launching
-const LAUNCH_DATE = new Date("2026-08-01T00:00:00Z");
+const LAUNCH_DATE = new Date("2026-05-08T00:00:00Z");
 
 function useCountdown(target: Date) {
   const calc = () => {
