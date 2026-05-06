@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ComingSoon } from "@/components/ComingSoon";
 import {
   Sparkles, Brain, ShieldCheck, BarChart3, Bot, Calendar, ChevronRight,
   Zap, Globe2, Lock, Star, Check, ArrowRight, TrendingUp, BookText,
@@ -11,14 +12,24 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useCheckout } from "@/hooks/useCheckout";
 
+function RootPage() {
+  // VITE_COMING_SOON=true → show coming soon page
+  if (import.meta.env.VITE_COMING_SOON === "true") {
+    return <ComingSoon />;
+  }
+  return <Landing />;
+}
+
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
+    // Skip redirect if coming soon mode (ComingSoon handles its own auth)
+    if (import.meta.env.VITE_COMING_SOON === "true") return;
     const { supabase } = await import("@/lib/supabase");
     const { redirect } = await import("@tanstack/react-router");
     const { data: { session } } = await supabase.auth.getSession();
     if (session) throw redirect({ to: "/app" });
   },
-  component: Landing,
+  component: RootPage,
 });
 
 // ── Pricing data ─────────────────────────────────────────────────
