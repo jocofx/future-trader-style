@@ -60,6 +60,24 @@ Deno.serve(async (req) => {
         }, { onConflict: "user_id" });
 
         console.log(`✓ Plan updated: user=${uid} plan=${plan} estado=${estado}`);
+
+        // Send welcome email on new subscription
+        if (event.type === "customer.subscription.created") {
+          const { data: profile } = await supabase
+            .from("profiles").select("full_name, email").eq("id", uid).maybeSingle();
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+            },
+            body: JSON.stringify({
+              type: "welcome",
+              to:   profile?.email ?? "",
+              data: { name: profile?.full_name ?? "" },
+            }),
+          }).catch(e => console.warn("Welcome email failed:", e));
+        }
         break;
       }
 
@@ -105,8 +123,21 @@ Deno.serve(async (req) => {
           .update({ activa: false, updated_at: new Date().toISOString() })
           .eq("user_id", uid);
 
-        // TODO: trigger email notification via Resend/SendGrid
-        console.log(`⚠ Payment failed: user=${uid}`);
+        const { data: pfProfile } = await supabase
+          .from("profiles").select("full_name, email").eq("id", uid).maybeSingle();
+        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+          },
+          body: JSON.stringify({
+            type: "payment_failed",
+            to:   pfProfile?.email ?? "",
+            data: { name: pfProfile?.full_name ?? "" },
+          }),
+        }).catch(e => console.warn("Payment failed email failed:", e));
+        console.log(`⚠ Payment failed email sent: user=${uid}`);
         break;
       }
 
@@ -114,8 +145,21 @@ Deno.serve(async (req) => {
       case "customer.subscription.trial_will_end": {
         const sub = event.data.object as Stripe.Subscription;
         const uid = sub.metadata.user_id;
-        console.log(`📧 Trial ending soon: user=${uid} — send conversion email`);
-        // TODO: trigger email via Resend
+        const { data: profile } = await supabase
+          .from("profiles").select("full_name, email").eq("id", uid).maybeSingle();
+        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+          },
+          body: JSON.stringify({
+            type: "trial_ending",
+            to:   profile?.email ?? "",
+            data: { name: profile?.full_name ?? "" },
+          }),
+        }).catch(e => console.warn("Trial ending email failed:", e));
+        console.log(`📧 Trial ending email sent: user=${uid}`);
         break;
       }
 
