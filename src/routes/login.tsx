@@ -1,4 +1,14 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+
+function translateAuthError(msg: string): string {
+  if (msg.includes("Email not confirmed")) return "Confirma tu email antes de iniciar sesión. Revisa tu bandeja de entrada.";
+  if (msg.includes("Invalid login credentials")) return "Email o contraseña incorrectos.";
+  if (msg.includes("User already registered")) return "Ya existe una cuenta con este email.";
+  if (msg.includes("Password should be at least")) return "La contraseña debe tener al menos 6 caracteres.";
+  if (msg.includes("rate limit")) return "Demasiados intentos. Espera unos minutos.";
+  if (msg.includes("network")) return "Error de conexión. Comprueba tu internet.";
+  return msg;
+}
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Logo } from "@/components/Logo";
@@ -31,10 +41,10 @@ function LoginPage() {
       } else {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        setSuccess("Revisa tu email para confirmar la cuenta.");
+        setSuccess("¡Cuenta creada! Revisa tu email y haz click en el enlace de confirmación para activar tu cuenta.");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error de autenticación");
+      setError(translateAuthError(e instanceof Error ? e.message : "Error de autenticación"));
     } finally {
       setLoading(false);
     }

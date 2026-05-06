@@ -1,7 +1,7 @@
 import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
-import { BookText, ChevronLeft, ChevronRight, Save, Check, Search } from "lucide-react";
+import { BookText, ChevronLeft, ChevronRight, Save, Trash2, Check, Search } from "lucide-react";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { Lock } from "lucide-react";
 import { PlanGate } from "@/components/PlanGate";
@@ -47,6 +47,16 @@ function DiarioPage() {
     setEnergia(e?.energia ?? 7);
     setEmociones(Array.isArray(e?.emociones) ? e.emociones : []);
   }, [selected, entries]);
+
+  const handleDelete = async () => {
+    if (!window.confirm("¿Eliminar esta entrada del diario? No se puede deshacer.")) return;
+    // Clear all fields and save empty entry (soft delete)
+    await save(selected, { texto: "", leccion: "", energia: 5, emociones: [] });
+    setTexto("");
+    setLeccion("");
+    setEnergia(5);
+    setEmociones([]);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -275,6 +285,12 @@ function DiarioPage() {
               className="w-full bg-surface-2/40 border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground resize-none" />
           </div>
 
+          {texto.trim() && (
+            <button onClick={handleDelete}
+              className="h-10 px-3 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 transition flex items-center gap-1.5 text-sm">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
           <button onClick={handleSave} disabled={saving}
             className="w-full h-11 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-semibold shadow-glow hover:brightness-110 transition disabled:opacity-50 flex items-center justify-center gap-2">
             {saved ? <><Check className="h-4 w-4"/>Entrada guardada</> : saving ? "Guardando…" : <><Save className="h-4 w-4"/>Guardar entrada del día</>}

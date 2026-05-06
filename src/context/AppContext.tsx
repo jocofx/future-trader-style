@@ -86,7 +86,6 @@ premarket.load(new Date().getFullYear(), new Date().getMonth()),
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data, error }: any) => {
-        console.log('[Plan] suscripciones query:', { data, error })
         setPlanLoading(false)
         // Schema uses 'activa' boolean (not 'estado' string)
         if (data?.activa === true) {

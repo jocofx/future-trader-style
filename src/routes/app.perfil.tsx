@@ -275,7 +275,14 @@ function PerfilPage() {
       if (upErr) throw upErr;
       const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
       setAvatarUrl(publicUrl);
-      await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
+      await Promise.all([
+        supabase.auth.updateUser({ data: { avatar_url: publicUrl } }),
+        supabase.from("profiles").upsert({
+          id: user.id,
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "id" }),
+      ]);
       await supabase.from("profiles").upsert({ id: user.id, avatar_url: publicUrl, updated_at: new Date().toISOString() }, { onConflict: "id" });
     } catch (err) {
       console.error("Avatar upload:", err);

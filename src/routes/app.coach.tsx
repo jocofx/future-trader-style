@@ -65,7 +65,7 @@ function CoachPage() {
   const [apiKey, setApiKey]   = useState(() => sessionStorage.getItem("tj_ai_key") ?? "");
   const [showKey, setShowKey] = useState(false);
   const [msgUsed, setMsgUsed] = useState<number | null>(null);
-  const MSG_LIMIT = isPro ? 150 : 0;
+  const MSG_LIMIT = isPro ? 150 : Infinity; // Non-Pro blocked by PlanGate anyway
   const monthKey  = new Date().toISOString().slice(0, 7); // YYYY-MM
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
@@ -137,8 +137,8 @@ Instrucciones:
     inputRef.current?.focus();
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const session = (sessionData as any)?.session;
+      const sessionResult = await supabase.auth.getSession();
+      const session = (sessionResult.data as any)?.session;
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`, {
         method: "POST",
         headers: {

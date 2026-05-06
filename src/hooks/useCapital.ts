@@ -60,8 +60,10 @@ export function useCapital(userId: string | null) {
     const retiros     = entries.filter(e => e.tipo === 'retiro')
     const totalInv    = inversiones.reduce((s, e) => s + e.coste, 0)
     const totalRetiros= retiros.reduce((s, e) => s + e.coste, 0)
+    // Ganancias reales: solo de capital_ganancias, NO retiros
+    // Los retiros son movimientos de capital, no beneficios
     const totalGan    = ganancias.reduce((s, g) => s + g.cantidad, 0)
-    const totalGanado = totalRetiros + totalGan
+    const totalGanado = totalGan // retiros excluded — they are capital movements
     const neto        = totalGanado - totalInv
     const roi         = totalInv > 0 ? (neto / totalInv) * 100 : 0
 
