@@ -64,12 +64,32 @@ function CoachPage() {
   const [loading, setLoading] = useState(false);
   const [apiKey, setApiKey]   = useState(() => sessionStorage.getItem("tj_ai_key") ?? "");
   const [showKey, setShowKey] = useState(false);
+  const [msgUsed, setMsgUsed] = useState<number | null>(null);
+  const MSG_LIMIT = isPro ? 150 : 0;
+  const monthKey  = new Date().toISOString().slice(0, 7); // YYYY-MM
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // Fetch monthly message count
+  useEffect(() => {
+    if (!user?.id || !isPro) return;
+    supabase.from("configuracion")
+      .select("valor")
+      .eq("user_id", user.id)
+      .eq("clave", `coach_msg_month_${monthKey}`)
+      .maybeSingle()
+      .then(({ data }) => setMsgUsed((data?.valor as number) ?? 0))
+      .catch(() => setMsgUsed(0));
+  }, [user?.id, isPro, monthKey]);
+
+  // Update count after sending
+  const incrementMsgCount = () => {
+    setMsgUsed(prev => (prev ?? 0) + 1);
+  };
 
   // Persist chat to localStorage
   useEffect(() => {
@@ -107,6 +127,7 @@ Instrucciones:
     const text = (overrideText ?? input).trim();
     if (!text || loading) return;
     if (!apiKey && !isPro) { setShowKey(true); return; }
+    if (isPro && msgUsed !== null && msgUsed >= MSG_LIMIT) return;
 
     const now = new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
     const userMsg: Msg = { role: "user", content: text, time: now };
@@ -143,6 +164,7 @@ Instrucciones:
         role: "assistant", content: reply,
         time: new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }),
       }]);
+      if (isPro) incrementMsgCount();
     } catch (e) {
       setMessages(prev => [...prev, {
         role: "assistant",
@@ -187,6 +209,17 @@ Instrucciones:
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isPro && msgUsed !== null && (
+            <div className={`flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border ${
+              msgUsed >= MSG_LIMIT
+                ? "border-destructive/30 bg-destructive/10 text-destructive"
+                : msgUsed >= MSG_LIMIT * 0.8
+                ? "border-warning/30 bg-warning/10 text-warning"
+                : "border-border bg-surface/60 text-muted-foreground"
+            }`}>
+              {msgUsed}/{MSG_LIMIT} msgs
+            </div>
+          )}
           {!isPro && (
             <button onClick={() => setShowKey(k => !k)}
               className={`h-8 px-2.5 rounded-xl border text-[11px] font-semibold transition flex items-center gap-1.5 ${
@@ -303,7 +336,8 @@ Instrucciones:
         <div className="p-3 border-t border-border bg-surface/60 flex gap-2">
           <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-            placeholder="Escribe tu pregunta…"
+            disabled={isPro && msgUsed !== null && msgUsed >= MSG_LIMIT}
+            placeholder={isPro && msgUsed !== null && msgUsed >= MSG_LIMIT ? "Límite mensual alcanzado" : "Escribe tu pregunta…"}
             className="flex-1 bg-surface border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground" />
           <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
             className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-glow hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0">

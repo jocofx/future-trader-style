@@ -110,8 +110,10 @@ function AppShell() {
     return name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) || "?";
   }, [user]);
 
+  const [showLogout, setShowLogout] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
+
   const handleLogout = async () => {
-    if (!window.confirm("¿Cerrar sesión?")) return;
     await supabase.auth.signOut();
     window.location.href = "/login";
   };
@@ -221,6 +223,7 @@ function AppShell() {
   );
 
   return (
+    <>
     <div className="h-screen flex bg-background overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className={`hidden lg:flex flex-col border-r border-sidebar-border bg-sidebar/80 backdrop-blur-xl transition-[width] duration-200 ${collapsed ? "w-[68px]" : "w-[248px]"}`}>
@@ -269,11 +272,12 @@ function AppShell() {
               <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
               En vivo
             </span>
-            <Button variant="glass" size="icon" className="h-9 w-9 relative">
+            <button onClick={() => setShowNotifs(v => !v)}
+              className="h-9 w-9 rounded-xl border border-border bg-surface/60 hover:bg-surface hover:border-primary/30 transition flex items-center justify-center relative">
               <Bell className="h-4 w-4" />
-            </Button>
+            </button>
             <ThemeToggle />
-            <button onClick={handleLogout}
+            <button onClick={() => setShowLogout(true)}
               className="hidden sm:flex text-xs text-muted-foreground hover:text-destructive transition px-2 items-center gap-1">
               <LogOut className="h-3.5 w-3.5" />
             </button>
@@ -315,5 +319,60 @@ function AppShell() {
         </nav>
       </div>
     </div>
+    {/* Logout Modal */}
+    {showLogout && (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        onClick={e => e.target === e.currentTarget && setShowLogout(false)}>
+        <div className="bg-card border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-11 w-11 rounded-xl bg-destructive/10 border border-destructive/20 grid place-items-center">
+              <LogOut className="h-5 w-5 text-destructive" />
+            </div>
+            <div>
+              <div className="font-bold">Cerrar sesión</div>
+              <div className="text-xs text-muted-foreground">¿Estás seguro que quieres salir?</div>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-6">
+            <button onClick={() => setShowLogout(false)}
+              className="flex-1 h-10 rounded-xl border border-border text-sm font-semibold hover:bg-surface transition">
+              Cancelar
+            </button>
+            <button onClick={handleLogout}
+              className="flex-1 h-10 rounded-xl bg-destructive text-white text-sm font-semibold hover:opacity-90 transition">
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Notifications Panel */}
+    {showNotifs && (
+      <div className="fixed inset-0 z-[200]" onClick={() => setShowNotifs(false)}>
+        <div className="absolute top-16 right-4 w-80 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
+          onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="font-semibold text-sm flex items-center gap-2">
+              <Bell className="h-4 w-4 text-primary" /> Notificaciones
+            </div>
+            <button onClick={() => setShowNotifs(false)}
+              className="text-muted-foreground hover:text-foreground transition">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-4 text-center">
+            <div className="h-12 w-12 rounded-2xl bg-surface border border-border grid place-items-center mx-auto mb-3">
+              <Bell className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <div className="text-sm font-semibold mb-1">Sin notificaciones</div>
+            <div className="text-xs text-muted-foreground">
+              Configura tus recordatorios en Perfil → Notificaciones
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
