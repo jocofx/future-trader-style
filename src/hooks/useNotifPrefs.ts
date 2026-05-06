@@ -97,7 +97,7 @@ export function useNotifPrefs(userId: string | null) {
           body,
           icon:    '/icon-192.png',
           badge:   '/icon-192.png',
-          vibrate: [100, 50, 100],
+          // vibrate not in NotificationOptions type
         })
       } else {
         new Notification(title, { body, icon: '/icon-192.png' })
