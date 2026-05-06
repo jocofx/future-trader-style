@@ -45,15 +45,21 @@ function MessageContent({ content }: { content: string }) {
 }
 
 function CoachPage() {
-  const { trades: { trades } } = useApp();
+  const { trades: { trades }, user } = useApp();
   const { isPro } = usePlan();
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      role: "assistant",
-      content: "¡Hola! Soy tu Coach IA de trading.\n\nPuedo analizar tus operaciones reales, detectar patrones en tu psicología y darte recomendaciones concretas para mejorar.\n\n¿En qué te ayudo hoy?",
-      time: new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }),
-    }
-  ]);
+  const STORAGE_KEY = `coach_messages_${user?.id ?? "anon"}`;
+  const INITIAL_MSG: Msg = {
+    role: "assistant",
+    content: "¡Hola! Soy tu Coach IA de trading.\n\nPuedo analizar tus operaciones reales, detectar patrones en tu psicología y darte recomendaciones concretas para mejorar.\n\n¿En qué te ayudo hoy?",
+    time: new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }),
+  };
+  const [messages, setMessages] = useState<Msg[]>(() => {
+    try {
+      const saved = localStorage.getItem(`coach_messages_${user?.id ?? "anon"}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [INITIAL_MSG];
+  });
   const [input, setInput]     = useState("");
   const [loading, setLoading] = useState(false);
   const [apiKey, setApiKey]   = useState(() => sessionStorage.getItem("tj_ai_key") ?? "");
@@ -64,6 +70,14 @@ function CoachPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // Persist chat to localStorage
+  useEffect(() => {
+    if (messages.length <= 1) return; // don't save just the initial message
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-100))); // keep last 100 msgs
+    } catch {}
+  }, [messages, STORAGE_KEY]);
 
   const stats = computeStats(trades.filter(t => t.resultado != null));
 
@@ -142,6 +156,7 @@ Instrucciones:
 
   const clearChat = () => {
     if (!window.confirm("¿Eliminar la conversación?")) return;
+    localStorage.removeItem(STORAGE_KEY);
     setMessages([{
       role: "assistant",
       content: "Conversación eliminada. ¿En qué te ayudo?",
