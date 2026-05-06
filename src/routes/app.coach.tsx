@@ -130,16 +130,18 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
         <div className="flex items-center gap-2">
           <button onClick={clearChat}
             className="h-9 px-3 rounded-xl border border-border bg-surface/60 text-xs font-semibold hover:border-primary/40 hover:text-primary text-muted-foreground transition flex items-center gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" /> Reiniciar
+            <RefreshCw className="h-3.5 w-3.5" /> Eliminar chat
           </button>
-          <button onClick={() => setShowKey(k => !k)}
-            className={`h-9 px-3 rounded-xl border text-xs font-semibold transition flex items-center gap-1.5 ${
-              apiKey
-                ? "border-success/30 bg-success/8 text-success"
-                : "border-warning/30 bg-warning/8 text-warning"
-            }`}>
-            <Settings className="h-3.5 w-3.5" /> {apiKey ? "API conectada" : "Configurar API"}
-          </button>
+          {!isPro && (
+            <button onClick={() => setShowKey(k => !k)}
+              className={`h-9 px-3 rounded-xl border text-xs font-semibold transition flex items-center gap-1.5 ${
+                apiKey
+                  ? "border-success/30 bg-success/8 text-success"
+                  : "border-warning/30 bg-warning/8 text-warning"
+              }`}>
+              <Settings className="h-3.5 w-3.5" /> {apiKey ? "API conectada" : "Configurar API"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -160,7 +162,7 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
       </div>
 
       {/* API Key panel */}
-      {showKey && (
+      {showKey && !isPro && (
         <div className="rounded-2xl border border-warning/30 bg-warning/5 backdrop-blur p-4 mb-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
