@@ -111,6 +111,7 @@ function AppShell() {
   }, [user]);
 
   const handleLogout = async () => {
+    if (!window.confirm("¿Cerrar sesión?")) return;
     await supabase.auth.signOut();
     window.location.href = "/login";
   };

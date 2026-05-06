@@ -172,7 +172,7 @@ const FAQS = [
   },
   {
     q: "¿Qué es el plan Basic vs Pro?",
-    a: "Basic cubre todo lo que necesita un trader activo: estadísticas, diario, psicología, Capital Tracker y hasta 3 cuentas. Pro añade el Gestor EA, conexión directa al broker y Coach IA incluido sin necesidad de API key.",
+    a: "Basic cubre todo lo que necesita un trader activo: estadísticas, diario, psicología, Capital Tracker y hasta 3 cuentas. Pro añade el Gestor EA y el Coach IA con 150 mensajes/mes incluidos.",
   },
 ];
 

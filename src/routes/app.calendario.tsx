@@ -28,8 +28,12 @@ function CalendarioPage() {
   // Cargar datos del mes (premarket + hábitos) cuando cambia mes/año
   useEffect(() => {
     premarket.load(year, month);
+    // Also load adjacent month to avoid empty state when navigating back
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const prevYear  = month === 0 ? year - 1 : year;
+    premarket.load(prevYear, prevMonth);
     habits.load(year, month);
-    diario.load(90); // load 90 days to cover current month
+    diario.load(365);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
 

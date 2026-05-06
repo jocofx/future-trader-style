@@ -88,7 +88,11 @@ function StatCard({ label, value, sub, color = "text-foreground" }: {
 
 function EstadisticasPage() {
   const { trades: { trades }, accounts: { accounts } } = useApp();
-  const [period, setPeriod]   = useState<Period>("3month");
+  const [period, setPeriod] = useState<Period>(() => {
+    const saved = localStorage.getItem("stats_period");
+    return (saved as Period) ?? "3month";
+  });
+  const handlePeriodChange = (p: Period) => { setPeriod(p); localStorage.setItem("stats_period", p); };
   const [account, setAccount] = useState("");
 
   // Only show accounts currently registered (activa=true) in the selector
@@ -182,7 +186,7 @@ function EstadisticasPage() {
           {/* Period pills */}
           <div className="flex bg-surface/60 border border-border rounded-xl p-1 gap-0.5">
             {PERIODS.map(p => (
-              <button key={p.key} onClick={() => setPeriod(p.key)}
+              <button key={p.key} onClick={() => handlePeriodChange(p.key)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${period === p.key ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_25%,transparent)]" : "text-muted-foreground hover:text-foreground"}`}>
                 {p.label}
               </button>

@@ -28,8 +28,8 @@ type AppContextType = {
 const AppContext = createContext<AppContextType | null>(null)
 
 const DEFAULT_RISK: RiskSettings = {
-  maxLoss: 100,
-  maxOps: 5,
+  maxLoss: 0,
+  maxOps: 0,
   accounts: {},
   objetivo: 200,
   riskPct: 1,
@@ -77,6 +77,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       capital.load(),
       habits.load(),
       diario.load(),
+      premarket.load(),
     ])
 
     // Load plan

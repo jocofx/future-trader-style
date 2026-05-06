@@ -18,6 +18,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 function CoachPage() {
   const { trades: { trades }, user } = useApp();
+  const { isPro } = usePlan();
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: "¡Hola! Soy tu Coach IA de trading. Puedo analizar tus operaciones, detectar patrones en tu psicología y ayudarte a mejorar. ¿En qué te ayudo hoy?" }
   ]);
@@ -48,7 +49,8 @@ Responde en español. Sé directo, específico y actionable. Usa emojis con mode
   const sendMessage = async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || loading) return;
-    if (!apiKey) { setShowKey(true); return; }
+    // Pro users use the server's API key — no need for their own
+    if (!apiKey && !isPro) { setShowKey(true); return; }
 
     const userMsg: Msg = { role: "user", content: text };
     setMessages(prev => [...prev, userMsg]);

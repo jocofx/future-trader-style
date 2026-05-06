@@ -190,7 +190,7 @@ function LogrosPage() {
 
   const closedTrades = useMemo(() => trades.filter(t => t.resultado != null), [trades]);
   const stats        = useMemo(() => computeStats(closedTrades), [closedTrades]);
-  const diaryDays    = entries.length;
+  const diaryDays    = new Set(entries.map(e => e.fecha?.slice(0,10))).size;
   const habitDays    = habits.length;
 
   const data: AchievementData = { trades, closedTrades, stats, diaryDays, habitDays };

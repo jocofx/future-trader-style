@@ -104,7 +104,11 @@ export function useTrades(userId: string | null) {
   }
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from('operaciones').delete().eq('id', id)
+    const { error } = await supabase
+      .from('operaciones')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId!) // security: only delete own trades
     if (error) throw error
     setTrades(prev => prev.filter(t => t.id !== id))
   }
