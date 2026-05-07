@@ -317,8 +317,9 @@ function OperacionesPage() {
       }
       await update(editTrade.id, changes);
       setEditTrade(null);
-    } catch (e) {
-      setEditTrade(p => p ? { ...p, error: e instanceof Error ? e.message : "Error actualizando" } : p);
+    } catch (e: any) {
+      console.error("Update error:", e);
+      setEditTrade(p => p ? { ...p, error: e?.message ?? "Error actualizando" } : p);
     } finally { setEditSaving(false); }
   };
 

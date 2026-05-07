@@ -83,11 +83,12 @@ export function useTrades(userId: string | null) {
   }
 
   const update = async (id: string, changes: Partial<Trade>) => {
+    if (!userId) throw new Error('Not authenticated')
     const { data, error } = await supabase
       .from('operaciones')
       .update(changes)
       .eq('id', id)
-      .eq('user_id', userId!) // extra RLS safety
+      .eq('user_id', userId) // extra RLS safety
       .select()
       .single()
     if (error) throw error
@@ -108,7 +109,7 @@ export function useTrades(userId: string | null) {
       .from('operaciones')
       .delete()
       .eq('id', id)
-      .eq('user_id', userId!) // security: only delete own trades
+      .eq('user_id', userId) // security: only delete own trades
     if (error) throw error
     setTrades(prev => prev.filter(t => t.id !== id))
   }
