@@ -57,7 +57,8 @@ const SECTIONS = [
     items: [
       { to: "/app/perfil",    icon: User,    name: "Mi Perfil" },
       { to: "/app/logros",    icon: Trophy,  name: "Logros" },
-      { to: "/app/afiliados", icon: Users2,  name: "Afiliados" },
+      { to: "/app/afiliados",   icon: Users2,             name: "Afiliados" },
+      { to: "/app/sugerencias",  icon: MessageSquarePlus,  name: "Sugerencias" },
     ],
   },
 ] as const;
