@@ -212,7 +212,7 @@ function AppShell() {
           )}
         </Link>
         {(!collapsed || inDrawer) && (
-          <button onClick={handleLogout}
+          <button onClick={() => setShowLogout(true)}
             className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition">
             <LogOut className="h-3.5 w-3.5" />
             Cerrar sesión
