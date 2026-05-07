@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppSugerenciasRouteImport } from './routes/app.sugerencias'
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppPsicologiaRouteImport } from './routes/app.psicologia'
 import { Route as AppPremarketRouteImport } from './routes/app.premarket'
@@ -50,6 +51,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSugerenciasRoute = AppSugerenciasRouteImport.update({
+  id: '/sugerencias',
+  path: '/sugerencias',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRiesgoRoute = AppRiesgoRouteImport.update({
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/app/premarket': typeof AppPremarketRoute
   '/app/psicologia': typeof AppPsicologiaRoute
   '/app/riesgo': typeof AppRiesgoRoute
+  '/app/sugerencias': typeof AppSugerenciasRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/app/premarket': typeof AppPremarketRoute
   '/app/psicologia': typeof AppPsicologiaRoute
   '/app/riesgo': typeof AppRiesgoRoute
+  '/app/sugerencias': typeof AppSugerenciasRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/app/premarket': typeof AppPremarketRoute
   '/app/psicologia': typeof AppPsicologiaRoute
   '/app/riesgo': typeof AppRiesgoRoute
+  '/app/sugerencias': typeof AppSugerenciasRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/app/premarket'
     | '/app/psicologia'
     | '/app/riesgo'
+    | '/app/sugerencias'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/app/premarket'
     | '/app/psicologia'
     | '/app/riesgo'
+    | '/app/sugerencias'
     | '/app'
   id:
     | '__root__'
@@ -286,6 +297,7 @@ export interface FileRouteTypes {
     | '/app/premarket'
     | '/app/psicologia'
     | '/app/riesgo'
+    | '/app/sugerencias'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
@@ -324,6 +336,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/sugerencias': {
+      id: '/app/sugerencias'
+      path: '/sugerencias'
+      fullPath: '/app/sugerencias'
+      preLoaderRoute: typeof AppSugerenciasRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/riesgo': {
@@ -473,6 +492,7 @@ interface AppRouteChildren {
   AppPremarketRoute: typeof AppPremarketRoute
   AppPsicologiaRoute: typeof AppPsicologiaRoute
   AppRiesgoRoute: typeof AppRiesgoRoute
+  AppSugerenciasRoute: typeof AppSugerenciasRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -494,6 +514,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPremarketRoute: AppPremarketRoute,
   AppPsicologiaRoute: AppPsicologiaRoute,
   AppRiesgoRoute: AppRiesgoRoute,
+  AppSugerenciasRoute: AppSugerenciasRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

@@ -2,7 +2,7 @@ import { Outlet, Link, useRouterState, createFileRoute, redirect } from "@tansta
 import {
   LayoutDashboard, ListOrdered, CalendarDays, BarChart3, ShieldAlert, Wallet, Sunrise,
   CheckCircle2, LineChart, Sparkles, Brain, BookText, Settings2, PlugZap, Trophy, Users2,
-  Bot, ChevronsLeft, ChevronsRight, Search, Bell, LogOut, User, Menu, X,
+  Bot, ChevronsLeft, ChevronsRight, MessageSquarePlus, Search, Bell, LogOut, User, Menu, X,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { Logo } from "@/components/Logo";
