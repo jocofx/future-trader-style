@@ -437,11 +437,11 @@ function OperacionesPage() {
                         <div className="flex items-center justify-center gap-1">
                           <button onClick={() => openEdit(t)}
                             title={isEA ? "Añadir emoción y notas" : "Editar operación"}
-                            className="text-muted-foreground hover:text-primary transition p-1 rounded opacity-0 group-hover:opacity-100">
+                            className="text-muted-foreground hover:text-primary transition p-1 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button onClick={() => setConfirmDeleteId(t.id)}
-                            className="text-muted-foreground hover:text-destructive transition p-1 rounded opacity-0 group-hover:opacity-100">
+                            className="text-muted-foreground hover:text-destructive transition p-1 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
