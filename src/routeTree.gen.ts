@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -33,6 +35,16 @@ import { Route as AppBrokerRouteImport } from './routes/app.broker'
 import { Route as AppAfiliadosRouteImport } from './routes/app.afiliados'
 import { Route as AdminAfiliadosRouteImport } from './routes/admin.afiliados'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -153,6 +165,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
@@ -177,6 +191,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
@@ -203,6 +219,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/app/afiliados': typeof AppAfiliadosRoute
   '/app/broker': typeof AppBrokerRoute
@@ -230,6 +248,8 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/privacy'
+    | '/terms'
     | '/admin/afiliados'
     | '/app/afiliados'
     | '/app/broker'
@@ -254,6 +274,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/privacy'
+    | '/terms'
     | '/admin/afiliados'
     | '/app/afiliados'
     | '/app/broker'
@@ -279,6 +301,8 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/privacy'
+    | '/terms'
     | '/admin/afiliados'
     | '/app/afiliados'
     | '/app/broker'
@@ -305,11 +329,27 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
   AdminAfiliadosRoute: typeof AdminAfiliadosRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -524,6 +564,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
   AdminAfiliadosRoute: AdminAfiliadosRoute,
 }
 export const routeTree = rootRouteImport
