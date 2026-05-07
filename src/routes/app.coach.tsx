@@ -82,7 +82,7 @@ function CoachPage() {
       .eq("user_id", user.id)
       .eq("clave", `coach_msg_month_${monthKey}`)
       .maybeSingle()
-      .then(({ data }) => setMsgUsed((data?.valor as number) ?? 0))
+      .then(({ data }: any) => setMsgUsed((data?.valor as number) ?? 0))
       .catch(() => setMsgUsed(0));
   }, [user?.id, isPro, monthKey]);
 
@@ -137,8 +137,8 @@ Instrucciones:
     inputRef.current?.focus();
 
     try {
-      const sessionResult = await supabase.auth.getSession();
-      const session = (sessionResult.data as any)?.session;
+      const { data: sessionResult } = await supabase.auth.getSession();
+      const session = (sessionResult as any)?.session;
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`, {
         method: "POST",
         headers: {
