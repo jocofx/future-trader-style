@@ -303,7 +303,7 @@ function HabitosPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "Días este mes", value: `${monthHabits.length}`, Icon: CheckCircle2, tone: "text-info" },
-          { label: "Score medio",   value: monthHabits.length ? (monthHabits.reduce((s,h) => s+getScore(h),0)/monthHabits.length).toFixed(1)+"/"+maxScore : "—", Icon: TrendingUp, tone: "text-primary" },
+          { label: "Score medio", tooltip: `Puntuación promedio del mes. Máximo ${maxScore} (un punto por hábito completado al día)`, value: monthHabits.length ? (monthHabits.reduce((s,h) => s+getScore(h),0)/monthHabits.length).toFixed(1)+"/"+maxScore : "—", Icon: TrendingUp, tone: "text-primary" },
           { label: "Racha actual",  value: `${streak}d`, Icon: Flame, tone: streak >= 3 ? "text-warning" : "text-muted-foreground" },
           { label: "Hoy",           value: `${todayScore}/${maxScore}`, Icon: Check, tone: todayScore === maxScore ? "text-success" : "text-warning" },
         ].map(s => (

@@ -39,7 +39,17 @@ function LoginPage() {
         if (error) throw error;
         window.location.href = "/app";
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const refCode = localStorage.getItem("tradync_ref");
+        const { error, data: signUpData } = await supabase.auth.signUp({ email, password });
+        if (!error && refCode && signUpData.user) {
+          // Store referral conversion
+          await supabase.from("configuracion").insert({
+            user_id: signUpData.user.id,
+            clave: "referral_code",
+            valor: refCode,
+          }).catch(() => {});
+          localStorage.removeItem("tradync_ref");
+        }
         if (error) throw error;
         setSuccess("¡Cuenta creada! Revisa tu email y haz click en el enlace de confirmación para activar tu cuenta.");
       }

@@ -168,9 +168,20 @@ Instrucciones:
       }]);
       if (isPro) incrementMsgCount();
     } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error de conexión";
+      let friendlyMsg = `❌ ${msg}`;
+      if (msg.includes("429") || msg.includes("rate") || msg.includes("quota")) {
+        friendlyMsg = "⏳ Has alcanzado el límite de mensajes. Tu cuota se renueva el 1 de cada mes.";
+      } else if (msg.includes("401") || msg.includes("Unauthorized")) {
+        friendlyMsg = "🔑 API key inválida o expirada. Configura una nueva en ajustes.";
+      } else if (msg.includes("503") || msg.includes("overloaded")) {
+        friendlyMsg = "⚠️ El servicio está sobrecargado. Inténtalo en unos segundos.";
+      } else if (msg.includes("network") || msg.includes("fetch")) {
+        friendlyMsg = "📡 Error de conexión. Comprueba tu internet e inténtalo de nuevo.";
+      }
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: `❌ ${e instanceof Error ? e.message : "Error de conexión. Inténtalo de nuevo."}`,
+        content: friendlyMsg,
         time: new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }),
       }]);
     } finally {

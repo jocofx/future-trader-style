@@ -9,7 +9,7 @@ import { MarketingHeader } from "@/components/MarketingHeader";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { HeroDashboardMock } from "@/components/HeroDashboardMock";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCheckout } from "@/hooks/useCheckout";
 
 function RootPage() {
@@ -177,7 +177,17 @@ const FAQS = [
 ];
 
 // ── Component ─────────────────────────────────────────────────────
+// Store referral code from URL params
+function useReferral() {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) localStorage.setItem("tradync_ref", ref);
+  }, []);
+}
+
 function Landing() {
+  useReferral();
   const [yearly, setYearly]         = useState(false);
   const { startCheckout, loading: checkoutLoading } = useCheckout();
 
@@ -216,7 +226,10 @@ function Landing() {
               </Link>
             </Button>
             <Button asChild variant="glass" size="xl" className="rounded-xl">
-              <Link to="/login">Ver demo en vivo</Link>
+              <a href="#features" onClick={e => {
+                e.preventDefault();
+                document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+              }}>Ver cómo funciona ↓</a>
             </Button>
           </div>
 

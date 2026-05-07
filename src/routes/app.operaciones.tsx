@@ -218,7 +218,12 @@ function TradeForm({ trade, accounts, isEATrade, saving, onSet, onSave, onClose,
 
 // ── Main page ──────────────────────────────────────────────────────
 function OperacionesPage() {
-  const { trades: { trades, remove, save, update, loading, error }, accounts: { accounts } } = useApp();
+  const { trades: { trades, remove, save, update, loading, error }, accounts: { accounts }, premarket: { getPlan } } = useApp();
+  const todayPremarketCuenta = useMemo(() => {
+    const today = new Date().toISOString().slice(0,10);
+    const plan = getPlan(today);
+    return (plan as any)?.cuenta_dia ?? null;
+  }, [getPlan]);
   const { canAddTrade } = usePlan();
 
   // New trade modal
@@ -335,7 +340,7 @@ function OperacionesPage() {
             </span>
           </p>
         </div>
-        <button onClick={() => { setNewTrade({ tipo: "BUY", fecha: new Date().toISOString().slice(0, 10) }); setShowModal(true); }}
+        <button onClick={() => { setNewTrade({ tipo: "BUY", fecha: new Date().toISOString().slice(0, 10), cuenta: todayPremarketCuenta }); setShowModal(true); }}
           className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold shadow-glow hover:brightness-110 transition">
           <Plus className="h-4 w-4" /> Nueva operación
         </button>

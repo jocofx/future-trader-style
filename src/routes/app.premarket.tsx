@@ -24,7 +24,7 @@ const DAYS   = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 function PremarketPage() {
-  const { user, premarket: { plans, checklistState, load, savePlan, saveChecklist, getPlan, getChecklist } } = useApp();
+  const { user, accounts: { accounts }, premarket: { plans, checklistState, load, savePlan, saveChecklist, getPlan, getChecklist } } = useApp();
   const clConfig = useChecklistConfig(user?.id ?? null);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -33,6 +33,7 @@ function PremarketPage() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [checks, setChecks]     = useState<boolean[]>([]);
   const [sesgo, setSesgo]       = useState("");
+  const [cuentaDia, setCuentaDia] = useState("");
   const [niveles, setNiveles]   = useState("");
   const [noHacer, setNoHacer]   = useState("");
   const [notas, setNotas]       = useState("");
@@ -63,6 +64,7 @@ function PremarketPage() {
     setNiveles(plan?.niveles ?? "");
     setNoHacer(plan?.no_hacer ?? "");
     setNotas(plan?.notas ?? "");
+    setCuentaDia((plan as any)?.cuenta_dia ?? "");
   }, [selectedDate, plans]);
 
   const toggleCheck = async (i: number) => {
@@ -74,7 +76,7 @@ function PremarketPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    await savePlan(selectedDate, { sesgo, niveles, no_hacer: noHacer, notas });
+    await savePlan(selectedDate, { sesgo, niveles, no_hacer: noHacer, notas, cuenta_dia: cuentaDia } as any);
     await saveChecklist(selectedDate, checks);
     setSaving(false); setSaved(true);
     setTimeout(() => setSaved(false), 2000);

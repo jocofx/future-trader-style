@@ -1,6 +1,6 @@
 import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { PlanGate } from "@/components/PlanGate";
 import { useApp } from "@/context/AppContext";
 import { computeStats } from "@/lib/types";
@@ -194,6 +194,31 @@ function LogrosPage() {
   const habitDays    = habits.length;
 
   const data: AchievementData = { trades, closedTrades, stats, diaryDays, habitDays };
+
+  // Detect newly unlocked achievements and show toast
+  const prevUnlocked = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const nowUnlocked = new Set(
+      ACHIEVEMENTS.filter(a => a.check(data).unlocked).map(a => a.id)
+    );
+    const newlyUnlocked = [...nowUnlocked].filter(id => !prevUnlocked.current.has(id));
+    if (prevUnlocked.current.size > 0 && newlyUnlocked.length > 0) {
+      newlyUnlocked.forEach(id => {
+        const achievement = ACHIEVEMENTS.find(a => a.id === id);
+        if (!achievement) return;
+        const toast = document.createElement("div");
+        toast.innerHTML = `🏆 <strong>¡Logro desbloqueado!</strong> ${achievement.title} +${achievement.xp} XP`;
+        toast.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#6d28d9,#4f46e5);color:white;padding:12px 20px;border-radius:14px;font-size:13px;z-index:9999;pointer-events:none;box-shadow:0 8px 32px rgba(109,40,217,0.4);animation:slideUp 0.3s ease";
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.style.opacity = "0";
+          toast.style.transition = "opacity 0.3s";
+          setTimeout(() => toast.remove(), 300);
+        }, 3500);
+      });
+    }
+    prevUnlocked.current = nowUnlocked;
+  }, [closedTrades.length, diaryDays, habitDays]);
 
   const evaluated = useMemo(() =>
     ACHIEVEMENTS.map(a => ({ ...a, result: a.check(data) })),
