@@ -51,7 +51,11 @@ function HabitosPage() {
   const [showAdd, setShowAdd]       = useState(false);
   const [editForm, setEditForm]     = useState<Partial<HabitConfig>>({});
 
-  useEffect(() => { load(year, month); config.load(); }, [year, month]);
+  useEffect(() => {
+    if (!user?.id) return;
+    load(year, month);
+    config.load();
+  }, [year, month, user?.id]);
 
   useEffect(() => {
     const h = getForDate(selected);

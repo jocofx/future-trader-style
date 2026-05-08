@@ -48,9 +48,10 @@ function PremarketPage() {
   const [deleteId, setDeleteId]       = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user?.id) return;
     load(year, month);
     clConfig.load();
-  }, [year, month]);
+  }, [year, month, user?.id]);
 
   // Sync checks array size when config changes
   useEffect(() => {

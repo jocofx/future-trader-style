@@ -27,8 +27,8 @@ export const DEFAULT_HABITS: HabitConfig[] = [
 ]
 
 export function useHabitosConfig(userId: string | null) {
-  const [habits, setHabits]   = useState<HabitConfig[]>(DEFAULT_HABITS)
-  const [loading, setLoading] = useState(false)
+  const [habits, setHabits]   = useState<HabitConfig[]>([])
+  const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     if (!userId) return
@@ -42,8 +42,9 @@ export function useHabitosConfig(userId: string | null) {
 
       if (data?.habitos && (data.habitos as any).config?.length > 0) {
         setHabits((data.habitos as any).config as HabitConfig[])
+      } else {
+        setHabits(DEFAULT_HABITS)
       }
-      // else keep defaults
     } catch (e) { console.warn('useHabitosConfig.load:', e) }
     finally { setLoading(false) }
   }, [userId])
