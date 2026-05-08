@@ -59,20 +59,20 @@ function PremarketPage() {
     setChecks(clConfig.items.map((_, i) => cl[i] ?? false));
   }, [selectedDate, plans, checklistState, clConfig.items]);
 
-  // Load plan data when date changes OR when plans first loads from DB
-  const [plansLoaded, setPlansLoaded] = useState(false);
-  useEffect(() => {
-    if (plans.length > 0 && !plansLoaded) setPlansLoaded(true);
-  }, [plans]);
+  // Load plan fields when date changes or when plans array updates
+  // Use a ref to track if we are currently saving to avoid overwriting
+  const isSavingRef = React.useRef(false);
+  useEffect(() => { isSavingRef.current = saving; }, [saving]);
 
   useEffect(() => {
+    if (isSavingRef.current) return; // don't overwrite while saving
     const plan = getPlan(selectedDate);
     setSesgo(plan?.sesgo ?? "");
     setNiveles(plan?.niveles ?? "");
     setNoHacer(plan?.no_hacer ?? "");
     setNotas(plan?.notas ?? "");
     setCuentaDia((plan as any)?.cuenta_dia ?? "");
-  }, [selectedDate, plansLoaded]); // reload when date changes or plans first loads
+  }, [selectedDate, plans]); // reload when date changes or plans updates from DB
 
   const toggleCheck = async (i: number) => {
     const next = [...checks];
@@ -83,10 +83,16 @@ function PremarketPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    await savePlan(selectedDate, { sesgo, niveles, no_hacer: noHacer, notas, cuenta_dia: cuentaDia } as any);
-    await saveChecklist(selectedDate, checks);
-    setSaving(false); setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await savePlan(selectedDate, { sesgo, niveles, no_hacer: noHacer, notas, cuenta_dia: cuentaDia } as any);
+      await saveChecklist(selectedDate, checks);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      console.error("savePlan error:", e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const firstDay = new Date(year, month, 1).getDay();
