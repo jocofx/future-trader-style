@@ -59,6 +59,12 @@ function PremarketPage() {
     setChecks(clConfig.items.map((_, i) => cl[i] ?? false));
   }, [selectedDate, plans, checklistState, clConfig.items]);
 
+  // Load plan data when date changes OR when plans first loads from DB
+  const [plansLoaded, setPlansLoaded] = useState(false);
+  useEffect(() => {
+    if (plans.length > 0 && !plansLoaded) setPlansLoaded(true);
+  }, [plans]);
+
   useEffect(() => {
     const plan = getPlan(selectedDate);
     setSesgo(plan?.sesgo ?? "");
@@ -66,7 +72,7 @@ function PremarketPage() {
     setNoHacer(plan?.no_hacer ?? "");
     setNotas(plan?.notas ?? "");
     setCuentaDia((plan as any)?.cuenta_dia ?? "");
-  }, [selectedDate, plans]);
+  }, [selectedDate, plansLoaded]); // reload when date changes or plans first loads
 
   const toggleCheck = async (i: number) => {
     const next = [...checks];
