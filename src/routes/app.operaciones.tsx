@@ -308,10 +308,11 @@ function OperacionesPage() {
           instrumento:    editTrade.instrumento,
           tipo:           editTrade.tipo,
           fecha:          editTrade.fecha,
-          resultado:      editTrade.resultado  ?? null,
-          precio_entrada: editTrade.precio_entrada ?? null,
-          precio_salida:  editTrade.precio_salida  ?? null,
-          lotes:          editTrade.lotes          ?? null,
+          resultado:      editTrade.resultado    ?? null,
+          // Map frontend aliases → DB column names
+          entrada:        editTrade.precio_entrada ?? null,
+          tp:             editTrade.precio_salida  ?? null,
+          contratos:      editTrade.lotes          ?? null,
           cuenta:         editTrade.cuenta         ?? null,
         });
       }

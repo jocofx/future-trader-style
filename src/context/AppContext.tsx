@@ -77,8 +77,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       capital.load(),
       habits.load(),
       diario.load(),
-premarket.load(new Date().getFullYear(), new Date().getMonth()),
-    ])
+])
 
     // Load plan
     supabase.from('suscripciones')
