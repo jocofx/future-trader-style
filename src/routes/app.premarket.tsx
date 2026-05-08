@@ -295,7 +295,11 @@ function PremarketPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {clConfig.items.map((item, i) => (
+                {clConfig.loading ? (
+                  <div className="space-y-2">
+                    {[1,2,3].map(i => <div key={i} className="h-8 bg-surface/40 rounded-xl animate-pulse" />)}
+                  </div>
+                ) : clConfig.items.map((item, i) => (
                   <button key={item.id} onClick={() => toggleCheck(i)}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition group ${
                       checks[i] ? "bg-success/8 border-success/25" : "bg-surface-2/40 border-border hover:border-primary/30"

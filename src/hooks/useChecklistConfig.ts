@@ -24,8 +24,8 @@ const DEFAULT_ITEMS: ChecklistItem[] = [
 const CLAVE = 'checklist_config'
 
 export function useChecklistConfig(userId: string | null) {
-  const [items, setItems]     = useState<ChecklistItem[]>(DEFAULT_ITEMS)
-  const [loading, setLoading] = useState(false)
+  const [items, setItems]     = useState<ChecklistItem[]>([])
+  const [loading, setLoading] = useState(true) // start loading to avoid flash of defaults
 
   const load = useCallback(async () => {
     if (!userId) return
@@ -40,6 +40,8 @@ export function useChecklistConfig(userId: string | null) {
 
       if (data?.valor && (data.valor as any).items?.length > 0) {
         setItems((data.valor as any).items as ChecklistItem[])
+      } else {
+        setItems(DEFAULT_ITEMS) // use defaults only if nothing saved
       }
     } catch (e) { console.warn(e) }
     finally { setLoading(false) }

@@ -85,7 +85,11 @@ export function useSugerencias(userId: string | null) {
 
   const remove = async (id: string) => {
     if (userId !== ADMIN_ID) return
-    await supabase.from('sugerencias').delete().eq('id', id)
+    const { error } = await supabase.from('sugerencias').delete().eq('id', id)
+    if (error) {
+      console.error('Delete error:', error)
+      // Force remove from local state anyway
+    }
     setSugerencias(prev => prev.filter(s => s.id !== id))
   }
 
