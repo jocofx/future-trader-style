@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { STRIPE_PRICES } from "@/lib/stripe";
 import type { Plan, BillingInterval } from "@/lib/stripe";
 
 export function useCheckout() {
@@ -20,10 +19,7 @@ export function useCheckout() {
         return;
       }
 
-      // Get the correct price ID
-      const priceId = STRIPE_PRICES[plan][interval];
-
-      // Call Edge Function
+      // Call Edge Function (el precio lo decide el servidor a partir de plan + periodo)
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
         {
@@ -32,7 +28,7 @@ export function useCheckout() {
             "Content-Type":  "application/json",
             "Authorization": `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ priceId, plan, interval }),
+          body: JSON.stringify({ plan, interval }),
         }
       );
 
@@ -50,9 +46,39 @@ export function useCheckout() {
       setError(msg);
       setLoading(false);
       // Show alert so user knows something went wrong
-      alert(`Error al iniciar el checkout: ${msg}\n\nAsegúrate de que la función de pago está activa.`);
+      alert(`No se pudo iniciar el pago: ${msg}`);
     }
   };
 
-  return { startCheckout, loading, error };
+  // Portal de facturación de Stripe: cambiar de plan, de tarjeta o cancelar
+  const openPortal = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = "/login"; return; }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":  "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ action: "portal" }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error ?? "No se pudo abrir el portal de facturación");
+      window.location.href = data.url;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error inesperado";
+      setError(msg);
+      setLoading(false);
+      alert(msg);
+    }
+  };
+
+  return { startCheckout, openPortal, loading, error };
 }

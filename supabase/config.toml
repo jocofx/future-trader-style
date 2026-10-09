@@ -1,23 +1,31 @@
-[functions.push-scheduler]
-verify_jwt = false
+# verify_jwt = true  → Supabase exige una sesión de usuario antes de ejecutar la función.
+# verify_jwt = false → la función se identifica por otro medio (indicado en cada una).
 
-[functions.send-push]
-verify_jwt = false
-
-[functions.send-email]
-verify_jwt = false
-
-[functions.ea-api]
-verify_jwt = false
-
+# Las llama la web con la sesión del usuario
 [functions.create-checkout]
+verify_jwt = true
+
+[functions.coach-chat]
+verify_jwt = true
+
+# La llama Stripe: se valida con la firma del aviso
+[functions.stripe-webhook]
 verify_jwt = false
 
-[functions.stripe-webhook]
+# Las llama el bot de MT5: se validan con el token del bot (tabla api_keys)
+[functions.ea-api]
 verify_jwt = false
 
 [functions.download-ea]
 verify_jwt = false
 
-[functions.coach-chat]
+# La llama la tarea programada de la base de datos
+[functions.push-scheduler]
+verify_jwt = false
+
+# Uso interno: exigen la clave de servicio en la cabecera Authorization
+[functions.send-push]
+verify_jwt = false
+
+[functions.send-email]
 verify_jwt = false
