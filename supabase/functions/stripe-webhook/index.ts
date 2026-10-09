@@ -21,7 +21,21 @@ const supabase = createClient(
 );
 
 const isLive = (status: string) => status === "active" || status === "trialing";
-const validPlan = (p: unknown): "basic" | "pro" => (p === "pro" ? "pro" : "basic");
+
+// Producto de Stripe → plan. Es la fuente de verdad: si el cliente cambia de
+// plan desde el portal de facturación, el producto cambia pero los metadatos no.
+const PRODUCT_PLAN: Record<string, "basic" | "pro"> = {
+  "prod_UR1vdHO4PI7ccW": "basic", // Tradync Basic
+  "prod_UR20ifoDxTOGXO": "pro",   // Tradync Pro
+};
+
+// deno-lint-ignore no-explicit-any
+function planOf(sub: any): "basic" | "pro" {
+  const product = sub?.items?.data?.[0]?.price?.product;
+  const productId = typeof product === "string" ? product : product?.id;
+  if (productId && PRODUCT_PLAN[productId]) return PRODUCT_PLAN[productId];
+  return sub?.metadata?.plan === "pro" ? "pro" : "basic";
+}
 
 // current_period_end está en la suscripción (API antigua) o en sus items (API nueva)
 // deno-lint-ignore no-explicit-any
@@ -59,7 +73,7 @@ async function currentRow(uid: string) {
 async function activate(uid: string, sub: any) {
   must(await supabase.from("suscripciones").upsert({
     user_id:                uid,
-    plan:                   validPlan(sub.metadata?.plan),
+    plan:                   planOf(sub),
     activa:                 true,
     fecha_fin:              periodEnd(sub),
     stripe_customer_id:     typeof sub.customer === "string" ? sub.customer : sub.customer?.id,
@@ -114,14 +128,19 @@ async function sendEmail(type: string, uid: string) {
   try {
     const { data: profile } = await supabase
       .from("profiles").select("full_name, email").eq("id", uid).maybeSingle();
-    if (!profile?.email) return;
+    let email: string | null = profile?.email ?? null;
+    if (!email) {
+      const { data } = await supabase.auth.admin.getUserById(uid);
+      email = data?.user?.email ?? null;
+    }
+    if (!email) return;
     await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email`, {
       method: "POST",
       headers: {
         "Content-Type":  "application/json",
         "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
       },
-      body: JSON.stringify({ type, to: profile.email, data: { name: profile.full_name ?? "" } }),
+      body: JSON.stringify({ type, to: email, data: { name: profile?.full_name ?? "" } }),
     });
   } catch (e) {
     console.warn(`Email ${type} no enviado:`, e);
@@ -159,7 +178,7 @@ Deno.serve(async (req) => {
 
         if (isLive(sub.status)) {
           await activate(uid, sub);
-          console.log(`✓ Plan activo: user=${uid} plan=${validPlan(sub.metadata?.plan)} estado=${sub.status}`);
+          console.log(`✓ Plan activo: user=${uid} plan=${planOf(sub)} estado=${sub.status}`);
           if (event.type === "customer.subscription.created") await sendEmail("welcome", uid);
         } else {
           await deactivate(uid, sub);

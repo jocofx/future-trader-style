@@ -165,7 +165,7 @@ function PlanSelectorModal({ onClose, currentPlan }: {
 }
 
 function PerfilPage() {
-  const { startCheckout, loading: checkoutLoading } = useCheckout();
+  const { startCheckout, openPortal, loading: checkoutLoading } = useCheckout();
   const { user, plan, trades: { trades } } = useApp();
   const notif = useNotifPrefs(user?.id ?? null);
   const push  = usePushNotifications(user?.id ?? null);
@@ -573,14 +573,17 @@ function PerfilPage() {
                 </div>
                 <div className="flex flex-col gap-2 min-w-[140px]">
                   <button
-                    onClick={() => startCheckout(plan === "basic" ? "pro" : "basic", "monthly")}
+                    onClick={() => plan === "free" ? startCheckout("basic", "monthly") : openPortal()}
                     disabled={checkoutLoading}
                     className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition disabled:opacity-50">
-                    {checkoutLoading ? "Redirigiendo…" : plan === "basic" ? "Actualizar a Pro" : "Ver planes"}
+                    {checkoutLoading ? "Redirigiendo…" : plan === "basic" ? "Actualizar a Pro" : plan === "pro" ? "Cambiar de plan" : "Ver planes"}
                   </button>
                   {plan !== "free" && (
-                    <button className="h-9 px-4 rounded-lg border border-border bg-surface-2/60 hover:border-destructive/40 hover:text-destructive text-xs font-medium transition">
-                      Cancelar
+                    <button
+                      onClick={openPortal}
+                      disabled={checkoutLoading}
+                      className="h-9 px-4 rounded-lg border border-border bg-surface-2/60 hover:border-destructive/40 hover:text-destructive text-xs font-medium transition disabled:opacity-50">
+                      Gestionar o cancelar
                     </button>
                   )}
                 </div>

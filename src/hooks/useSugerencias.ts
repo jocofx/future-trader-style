@@ -37,8 +37,8 @@ export function useSugerencias(userId: string | null) {
         .select('sugerencia_id')
         .eq('user_id', userId)
 
-      const votedIds = new Set((votes ?? []).map(v => v.sugerencia_id))
-      setSugerencias((data ?? []).map(s => ({ ...s, ya_vote: votedIds.has(s.id) })))
+      const votedIds = new Set((votes ?? []).map((v: any) => v.sugerencia_id))
+      setSugerencias((data ?? []).map((s: any) => ({ ...s, ya_vote: votedIds.has(s.id) })))
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -64,15 +64,13 @@ export function useSugerencias(userId: string | null) {
     if (!sug) return
 
     if (sug.ya_vote) {
-      // Remove vote
+      // Quitar voto (el contador lo actualiza la base de datos)
       await supabase.from('sugerencias_votos').delete()
         .eq('sugerencia_id', id).eq('user_id', userId)
-      await supabase.from('sugerencias').update({ votos: Math.max(0, sug.votos - 1) }).eq('id', id)
       setSugerencias(prev => prev.map(s => s.id === id ? { ...s, votos: Math.max(0, s.votos - 1), ya_vote: false } : s))
     } else {
-      // Add vote
+      // Votar (el contador lo actualiza la base de datos)
       await supabase.from('sugerencias_votos').insert({ sugerencia_id: id, user_id: userId })
-      await supabase.from('sugerencias').update({ votos: sug.votos + 1 }).eq('id', id)
       setSugerencias(prev => prev.map(s => s.id === id ? { ...s, votos: s.votos + 1, ya_vote: true } : s))
     }
   }

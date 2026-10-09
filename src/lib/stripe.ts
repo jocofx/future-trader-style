@@ -1,46 +1,9 @@
-// ── Stripe configuration ──────────────────────────────────────────
-// Price IDs — create these in Stripe Dashboard and paste here
+// ── Planes ────────────────────────────────────────────────────────
+// Los precios de Stripe viven en el servidor (función create-checkout):
+// la web solo envía plan + periodo.
 
-// ── Live prices (production) ──────────────────────────────────
-export const STRIPE_PRICES_LIVE = {
-  basic: {
-    monthly: "price_1TS9rU1bty03DSjpMsFoaEoJ",
-    yearly:  "price_1TS9uI1bty03DSjpDLTV7ifc",
-  },
-  pro: {
-    monthly: "price_1TS9wC1bty03DSjpZ78jfAmG",
-    yearly:  "price_1TS9wC1bty03DSjpVZ93271r",
-  },
-} as const;
-
-// ── Test prices (development) ─────────────────────────────────
-export const STRIPE_PRICES_TEST = {
-  basic: {
-    monthly: "price_1TSCbsP0m8lsmKp7GaLgCGL7",
-    yearly:  "price_1TSCcDP0m8lsmKp7v5hs3ESe",
-  },
-  pro: {
-    monthly: "price_1TSCd6P0m8lsmKp7XyYkwkho",
-    yearly:  "price_1TSCcqP0m8lsmKp7KJU7P5TB",
-  },
-} as const;
-
-// ── MODO ACTIVO ──────────────────────────────────────────────
-// Controlado por variable de entorno VITE_STRIPE_MODE=live
-// En desarrollo o si no está definida → test mode (seguro)
-const USE_TEST_MODE = import.meta.env.VITE_STRIPE_MODE !== "live";
-
-export const STRIPE_PRICES = USE_TEST_MODE
-  ? STRIPE_PRICES_TEST
-  : STRIPE_PRICES_LIVE;
-
-// Export for debugging
-export const IS_TEST_MODE = USE_TEST_MODE;
-
-// Fallback to env vars if set (for future flexibility)
-// const STRIPE_PRICES_ENV = {
-//   basic: { monthly: import.meta.env.VITE_STRIPE_PRICE_BASIC_MONTHLY, ... }
-// }
+// Aviso de "modo pruebas" en la app. En producción VITE_STRIPE_MODE=live.
+export const IS_TEST_MODE = import.meta.env.VITE_STRIPE_MODE !== "live";
 
 export type Plan = "free" | "basic" | "pro";
 export type BillingInterval = "monthly" | "yearly";

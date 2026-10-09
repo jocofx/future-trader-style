@@ -1,5 +1,10 @@
-// Supabase Edge Function — Email sender via Resend
+// Supabase Edge Function — envío de emails por Resend
+//
+// Uso interno: solo la llaman otras funciones del servidor (stripe-webhook),
+// que se identifican con la clave de servicio. Desplegar con verify_jwt = false;
+// la comprobación se hace aquí.
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+const SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const FROM_EMAIL     = "TradyncApp <hola@tradyncapp.com>";
 const APP_URL        = "https://tradyncapp.com";
 
@@ -10,6 +15,11 @@ const CORS = {
 
 const json = (d: unknown, s = 200) =>
   new Response(JSON.stringify(d), { status: s, headers: { ...CORS, "Content-Type": "application/json" } });
+
+// Texto del usuario dentro de HTML
+const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+const nameOf = (d: { name?: unknown }) => esc(d?.name || "Trader");
 
 async function sendEmail(to: string, subject: string, html: string) {
   const res = await fetch("https://api.resend.com/emails", {
@@ -45,7 +55,7 @@ function baseTemplate(content: string) {
   <div class="header"><div class="logo">TradyncApp</div></div>
   <div class="body">${content}</div>
 </div>
-<div class="footer">© 2025 TradyncApp · <a href="${APP_URL}" style="color:#5a5a7a">tradyncapp.com</a></div>
+<div class="footer">© ${new Date().getFullYear()} TradyncApp · <a href="${APP_URL}" style="color:#5a5a7a">tradyncapp.com</a></div>
 </div></body></html>`;
 }
 
@@ -53,7 +63,7 @@ const TEMPLATES: Record<string, (d: any) => { subject: string; html: string }> =
   welcome: (d) => ({
     subject: "¡Bienvenido a TradyncApp! 🚀",
     html: baseTemplate(`
-      <h1 class="title">Hola ${d.name ?? "Trader"} 👋</h1>
+      <h1 class="title">Hola ${nameOf(d)} 👋</h1>
       <p class="text">Tu cuenta está lista. Empieza registrando tu primera operación.</p>
       <ul style="color:#8b8ba8;font-size:14px;line-height:2">
         <li>📊 Analiza tus operaciones con estadísticas avanzadas</li>
@@ -63,24 +73,13 @@ const TEMPLATES: Record<string, (d: any) => { subject: string; html: string }> =
       </ul><br>
       <a href="${APP_URL}/app" class="btn">Ir al dashboard →</a>`),
   }),
-  daily_summary: (d) => ({
-    subject: `📊 Resumen del ${d.fecha ?? "hoy"} — TradyncApp`,
-    html: baseTemplate(`
-      <h1 class="title">Resumen del día</h1>
-      <p class="text">${d.fecha ?? new Date().toLocaleDateString("es")}</p><hr>
-      <div class="stat"><div class="stat-label">P&L del día</div>
-        <div class="stat-value ${(d.pnl??0)>=0?"green":"red"}">${(d.pnl??0)>=0?"+":"-"}$${Math.abs(d.pnl??0).toFixed(2)}</div></div>
-      <div class="stat"><div class="stat-label">Operaciones</div><div class="stat-value">${d.ops??0}</div></div>
-      <div class="stat"><div class="stat-label">Win Rate</div><div class="stat-value">${d.wr??0}%</div></div><br>
-      <a href="${APP_URL}/app/estadisticas" class="btn">Ver estadísticas →</a>`),
-  }),
   trial_ending: (d) => ({
     subject: "⏰ Tu prueba gratuita termina en 3 días",
     html: baseTemplate(`
       <h1 class="title">Tu prueba termina pronto</h1>
-      <p class="text">Hola ${d.name??"Trader"}, tu prueba gratuita termina en <strong style="color:#f8f8ff">3 días</strong>.</p>
-      <p class="text">Activa tu plan para seguir con acceso completo.</p><br>
-      <a href="${APP_URL}/app/perfil?tab=facturacion" class="btn">Activar mi plan →</a>
+      <p class="text">Hola ${nameOf(d)}, tu prueba gratuita termina en <strong style="color:#f8f8ff">3 días</strong>.</p>
+      <p class="text">Al terminar, tu plan se renovará con la tarjeta que indicaste. Si no quieres continuar, puedes cancelarlo antes desde tu perfil.</p><br>
+      <a href="${APP_URL}/app/perfil" class="btn">Gestionar mi plan →</a>
       <p class="text" style="font-size:12px;margin-top:16px">Basic 9€/mes · Pro 29€/mes · Cancela cuando quieras</p>`),
   }),
   payment_failed: (d) => ({
@@ -88,33 +87,16 @@ const TEMPLATES: Record<string, (d: any) => { subject: string; html: string }> =
     html: baseTemplate(`
       <h1 class="title">No hemos podido procesar tu pago</h1>
       <p class="text">Ha habido un problema al renovar tu suscripción. Actualiza tu método de pago.</p><br>
-      <a href="https://billing.stripe.com" class="btn">Actualizar método de pago →</a>`),
-  }),
-  reminder_diario: (d) => ({
-    subject: "✍️ ¿Has escrito tu diario hoy?",
-    html: baseTemplate(`
-      <h1 class="title">Reflexión del día</h1>
-      <p class="text">Hola ${d.name??"Trader"}, recuerda escribir tu reflexión de hoy.</p><br>
-      <a href="${APP_URL}/app/diario" class="btn">Abrir el diario →</a>`),
-  }),
-  reminder_habitos: (d) => ({
-    subject: "💪 ¿Has registrado tus hábitos?",
-    html: baseTemplate(`
-      <h1 class="title">Hábitos del día</h1>
-      <p class="text">Hola ${d.name??"Trader"}, no olvides registrar tus hábitos de hoy.</p><br>
-      <a href="${APP_URL}/app/habitos" class="btn">Registrar hábitos →</a>`),
-  }),
-  reminder_premarket: (d) => ({
-    subject: "📋 Pre-market checklist — TradyncApp",
-    html: baseTemplate(`
-      <h1 class="title">¿Listo para la sesión?</h1>
-      <p class="text">Hola ${d.name??"Trader"}, completa tu checklist antes de operar.</p><br>
-      <a href="${APP_URL}/app/premarket" class="btn">Abrir checklist →</a>`),
+      <a href="${APP_URL}/app/perfil" class="btn">Actualizar método de pago →</a>
+      <p class="text" style="font-size:12px;margin-top:16px">En tu perfil, pulsa «Gestionar o cancelar» para abrir el portal de pago.</p>`),
   }),
 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (!SERVICE_KEY || req.headers.get("Authorization") !== `Bearer ${SERVICE_KEY}`) {
+    return json({ error: "Unauthorized" }, 401);
+  }
   try {
     const { type, to, data } = await req.json() as { type: string; to: string; data: Record<string,unknown> };
     if (!type || !to)        return json({ error: "Missing type or to" }, 400);

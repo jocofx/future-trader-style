@@ -80,20 +80,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 ])
 
     // Load plan
-    supabase.from('suscripciones')
-      .select('plan,activa')
-      .eq('user_id', user.id)
-      .maybeSingle()
-      .then(({ data, error }: any) => {
-        setPlanLoading(false)
-        // Schema uses 'activa' boolean (not 'estado' string)
-        if (data?.activa === true) {
-          setPlan((data.plan ?? 'free') as UserPlan)
-        } else if (data?.activa === false || data === null) {
-          setPlan('free')
-        }
-      })
-      .catch((e: any) => { console.warn('[Plan] error:', e); setPlanLoading(false) })
+    let cancelled = false
+    const loadPlan = async (): Promise<UserPlan | null> => {
+      try {
+        const { data, error } = await supabase.from('suscripciones')
+          .select('plan,activa')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (error) throw error
+        const p: UserPlan = data?.activa === true ? ((data.plan ?? 'free') as UserPlan) : 'free'
+        if (!cancelled) setPlan(p)
+        return p
+      } catch (e) {
+        console.warn('[Plan] error:', e)
+        return null
+      } finally {
+        if (!cancelled) setPlanLoading(false)
+      }
+    }
+
+    // Al volver de pagar, Stripe avisa al servidor unos segundos después:
+    // se reintenta hasta que el plan aparezca activado.
+    const justPaid = new URLSearchParams(window.location.search).get('checkout') === 'success'
+    ;(async () => {
+      let p = await loadPlan()
+      for (let i = 0; justPaid && p === 'free' && i < 10 && !cancelled; i++) {
+        await new Promise(r => setTimeout(r, 2000))
+        p = await loadPlan()
+      }
+    })()
+
+    // Código de afiliado guardado en la landing: se registra en el primer
+    // inicio de sesión (antes de confirmar el email no hay sesión para guardarlo).
+    try {
+      const refCode = localStorage.getItem('tradync_ref')
+      if (refCode) {
+        supabase.from('configuracion').upsert({
+          user_id: user.id,
+          clave: 'referral_code',
+          valor: refCode,
+        }, { onConflict: 'user_id,clave', ignoreDuplicates: true }).then(({ error }: any) => {
+          if (!error) localStorage.removeItem('tradync_ref')
+        })
+      }
+    } catch { /* localStorage no disponible */ }
 
     // Load risk settings from Supabase (overrides localStorage)
     supabase.from('configuracion')
@@ -105,6 +135,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (data?.valor) setRiskSettingsState(prev => ({ ...prev, ...(data.valor as Partial<RiskSettings>) }))
       })
       .catch(() => {})
+
+    return () => { cancelled = true }
   }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setRiskSettings = (s: RiskSettings) => {
@@ -116,7 +148,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         clave: 'riskSettings',
         valor: s,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,clave' }).catch(() => {})
+      }, { onConflict: 'user_id,clave' }).then(({ error }: any) => {
+        if (error) console.warn('[Riesgo] no se pudo guardar:', error.message)
+      })
     }
   }
 

@@ -1,19 +1,21 @@
-// Supabase Edge Function — Push Notification Scheduler
-// Called by Supabase cron every minute
+// Supabase Edge Function — recordatorios push
+//
+// La ejecuta cada minuto la tarea programada "push-scheduler" (pg_cron).
+// Mira qué usuarios tienen un recordatorio configurado para este minuto
+// (en su hora local) y envía la notificación a todos sus dispositivos.
+//
+// Desplegar con verify_jwt = false (la llama la base de datos).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL") ?? "",
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-);
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-const SUPABASE_URL  = Deno.env.get("SUPABASE_URL") ?? "";
-const SUPABASE_ANON = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-const CORS = { "Access-Control-Allow-Origin": "*" };
+type Notification = { title: string; body: string; url: string };
 
-const REMINDERS: Record<string, { title: string; body: string; url: string }> = {
+const REMINDERS: Record<string, Notification> = {
   recordatorio_diario:    { title: "✍️ Diario de trading",    body: "¿Has escrito tu reflexión del día?",        url: "/app/diario"       },
   recordatorio_habitos:   { title: "💪 Hábitos del día",      body: "¿Has registrado tus hábitos de hoy?",       url: "/app/habitos"      },
   recordatorio_premarket: { title: "📋 Pre-Market checklist", body: "Prepara tu sesión antes de operar.",        url: "/app/premarket"    },
@@ -22,100 +24,74 @@ const REMINDERS: Record<string, { title: string; body: string; url: string }> = 
   premarket_diario:       { title: "📅 Pre-Market",           body: "Revisa los eventos económicos del día.",   url: "/app/premarket"    },
 };
 
-async function sendPush(userId: string, notification: { title: string; body: string; url: string }) {
+const json = (d: unknown, s = 200) =>
+  new Response(JSON.stringify(d), { status: s, headers: { "Content-Type": "application/json" } });
+
+// Devuelve "ok", "gone" (el navegador dio de baja la suscripción) o "error"
+async function sendPush(subscription: unknown, n: Notification): Promise<"ok" | "gone" | "error"> {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
     method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: userId, ...notification }),
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SERVICE_KEY}` },
+    body:    JSON.stringify({ subscription, ...n }),
   });
-  const text = await res.text();
-  console.log(`send-push response: ${res.status} ${text}`);
-  return res.status < 300;
+  if (res.ok) return "ok";
+  const data = await res.json().catch(() => ({}));
+  console.warn(`send-push ${res.status}: ${JSON.stringify(data)}`);
+  return data?.gone ? "gone" : "error";
 }
 
-async function sendPushDirect(subscription: any, notification: { title: string; body: string; url: string }) {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ subscription, ...notification }),
-  });
-  return res.ok;
-}
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-
+Deno.serve(async () => {
   try {
-    // Current UTC time in minutes since midnight
     const now        = new Date();
     const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-    const timeUtc    = `${String(now.getUTCHours()).padStart(2,"0")}:${String(now.getUTCMinutes()).padStart(2,"0")}`;
 
-    console.log(`Scheduler UTC: ${timeUtc} (${utcMinutes} min)`);
-
-    // Get all users with push subscriptions
-    const { data: subscriptions, error: subErr } = await supabase
+    // Una sola consulta: preferencias de aviso y dispositivos suscritos
+    const { data: rows, error } = await supabase
       .from("configuracion")
       .select("user_id, clave, valor")
-      .like("clave", "push_subscription%");
+      .or("clave.eq.notif_prefs,clave.like.push_subscription*");
+    if (error) throw new Error(error.message);
 
-    console.log(`Subscriptions found: ${subscriptions?.length ?? 0}`, subErr ? `Error: ${subErr.message}` : "");
+    // deno-lint-ignore no-explicit-any
+    const prefs = (rows ?? []).filter((r: any) => r.clave === "notif_prefs");
+    // deno-lint-ignore no-explicit-any
+    const subs  = (rows ?? []).filter((r: any) => r.clave !== "notif_prefs" && r.valor);
+    if (!prefs.length || !subs.length) return json({ ok: true, sent: 0 });
 
-    if (!subscriptions?.length) {
-      return new Response(JSON.stringify({ ok: true, sent: 0, time: timeUtc, debug: "no subscriptions" }), { headers: CORS });
-    }
-
-    const userIds = subscriptions.map((s: any) => s.user_id);
     let sent = 0;
 
-    // Get notification preferences for all subscribed users
-    const { data: prefs, error: prefsErr } = await supabase
-      .from("configuracion")
-      .select("user_id, valor")
-      .eq("clave", "notif_prefs")
-      .in("user_id", userIds);
+    for (const pref of prefs) {
+      // deno-lint-ignore no-explicit-any
+      const notifPrefs = (pref.valor ?? {}) as Record<string, any>;
+      // deno-lint-ignore no-explicit-any
+      const userSubs   = subs.filter((s: any) => s.user_id === pref.user_id);
+      if (!userSubs.length) continue;
 
-    console.log(`Prefs found: ${prefs?.length ?? 0}`, prefsErr ? `Error: ${prefsErr.message}` : "");
-
-    for (const pref of prefs ?? []) {
-      const userId     = pref.user_id;
-      const notifPrefs = pref.valor as Record<string, any>;
-
-      // Get timezone offset for this user (minutes east of UTC, e.g. 120 for UTC+2)
-      const tzOffset   = notifPrefs._tzOffset ?? 0;
-
-      // Convert UTC minutes to user's local minutes
+      // Hora local del usuario (_tzOffset = minutos al este de UTC)
+      const tzOffset     = Number(notifPrefs._tzOffset ?? 0);
       const localMinutes = (utcMinutes + tzOffset + 1440) % 1440;
-      const localTime    = `${String(Math.floor(localMinutes / 60)).padStart(2,"0")}:${String(localMinutes % 60).padStart(2,"0")}`;
-
-      console.log(`User ${userId}: UTC=${timeUtc} offset=${tzOffset} local=${localTime}`);
+      const localTime    = `${String(Math.floor(localMinutes / 60)).padStart(2, "0")}:${String(localMinutes % 60).padStart(2, "0")}`;
 
       for (const [type, reminder] of Object.entries(REMINDERS)) {
-        const userPref = notifPrefs[type] as { push?: boolean; time?: string } | undefined;
-        if (!userPref?.push || !userPref?.time) continue;
+        const p = notifPrefs[type] as { push?: boolean; time?: string } | undefined;
+        if (!p?.push || p.time !== localTime) continue;
 
-        console.log(`  Checking ${type}: configured=${userPref.time} local=${localTime}`);
-
-        if (userPref.time !== localTime) continue;
-
-        console.log(`  MATCH! Sending push for ${type}`);
-        // Send to all devices for this user
-        const userSubs = subscriptions.filter((s: any) => s.user_id === userId && s.clave.startsWith("push_subscription"));
         for (const sub of userSubs) {
-          if (sub.valor) await sendPushDirect(sub.valor, reminder);
+          const result = await sendPush(sub.valor, reminder);
+          if (result === "ok") sent++;
+          if (result === "gone") {
+            // Dispositivo dado de baja: se quita para no reintentar cada día
+            await supabase.from("configuracion").delete()
+              .eq("user_id", sub.user_id).eq("clave", sub.clave);
+          }
         }
-        const ok = true;
-        if (ok) sent++;
+        console.log(`Recordatorio ${type} → user=${pref.user_id} (${userSubs.length} dispositivos)`);
       }
     }
 
-    console.log(`Done: ${sent} pushes sent`);
-    return new Response(JSON.stringify({ ok: true, sent, time: timeUtc }), {
-      headers: { ...CORS, "Content-Type": "application/json" }
-    });
-
+    return json({ ok: true, sent });
   } catch (err) {
     console.error("Scheduler error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: CORS });
+    return json({ error: String(err) }, 500);
   }
 });
