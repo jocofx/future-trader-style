@@ -13,6 +13,7 @@ verify_jwt = false
 [functions.create-checkout]
 verify_jwt = false
 
+# Stripe no envía sesión de usuario: se valida con la firma del aviso.
 [functions.stripe-webhook]
 verify_jwt = false
 
